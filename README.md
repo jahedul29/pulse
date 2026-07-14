@@ -11,6 +11,7 @@ It showcases the full UI vocabulary the brief called for: a section menu, KPI ca
   - New-clients trend chart, package / supervision / cancellation donuts
   - Clients-by-territory Leaflet map with a companion share table
   - Searchable, paginated client table → account detail (whole row clickable, keyboard accessible)
+  - **Client CRUD**: add / edit / delete accounts with validated forms (react-hook-form + zod), confirm dialog for delete, toast feedback; changes persist in-session via a Zustand store
   - Account detail: identity, wallet (balance / bonus / gift / forfeit + transactions), bank cards, notifications, admin notes, and per-profile tabs (profile map, assigned specialists, service balances, usage history)
 - **Personnel, Discounts, Orders, Events, Content** — navigation stubs (scaffolded, labelled "soon")
 
@@ -18,7 +19,7 @@ The period selector (`D · W · M · 3M · 6M · 12M · YTD`) drives the KPIs an
 
 ## Stack
 
-Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · shadcn/ui · Recharts · React-Leaflet (OpenStreetMap) · lucide-react.
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · shadcn/ui · Recharts · React-Leaflet (OpenStreetMap) · Zustand · react-hook-form + zod · sonner · lucide-react.
 
 All data is mock and generated deterministically in `lib/mock/data.ts` (US / New York City locale, USD) — no backend, no API keys.
 
@@ -53,7 +54,9 @@ Or import the repository at [vercel.com/new](https://vercel.com/new) — no envi
 app/(dashboard)/            layout (sidebar + topbar), section pages
 app/(dashboard)/clients/    dashboard + [id] account detail
 app/icon.svg                favicon (Pulse heartbeat mark)
-components/clients/          KPI, charts, map, table, account panel, profile tabs
+components/clients/          KPI, charts, map, table, account panel, profile tabs,
+                             client form dialog (add/edit), client actions (edit/delete)
 components/nav|common/       sidebar, topbar, period toggle, status badge, pagination
-lib/                         types, period helpers, formatters, mock data
+lib/                         types, period helpers, formatters, mock data,
+                             store (Zustand), client helpers (create/age/initials)
 ```

@@ -46,6 +46,8 @@ const REGIONS = [
   { region: "Astoria", lat: 40.7644, lng: -73.9235 },
 ];
 
+export const REGION_NAMES = REGIONS.map((r) => r.region);
+
 const FEMALE = [
   "Emma", "Olivia", "Sophia", "Mia", "Isabella", "Ava", "Camila", "Aaliyah", "Mei", "Priya",
   "Sofia", "Maya", "Hannah", "Grace", "Zoe", "Layla", "Chloe", "Amara", "Nina", "Leila",
@@ -67,7 +69,7 @@ const LAST = [
 ];
 
 const LANGUAGES = ["English", "Spanish", "Mandarin", "Tagalog", "Vietnamese", "French", "Korean"];
-const NATIONS = ["United States", "Mexico", "India", "China", "Canada", "United Kingdom", "Philippines", "Brazil"];
+export const NATIONS = ["United States", "Mexico", "India", "China", "Canada", "United Kingdom", "Philippines", "Brazil"];
 const CARDS: Client["bankCards"][number]["brand"][] = ["Visa", "Mastercard", "Amex"];
 
 const NOTIFICATIONS = [

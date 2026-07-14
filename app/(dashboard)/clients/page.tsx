@@ -3,10 +3,9 @@ import { KpiCard } from "@/components/clients/kpi-card";
 import { TrendChart } from "@/components/clients/trend-chart";
 import { Donut } from "@/components/clients/donut";
 import { TerritoryPanel } from "@/components/clients/territory-panel";
-import { ClientTable, type ClientRow } from "@/components/clients/client-table";
+import { ClientTable } from "@/components/clients/client-table";
 import {
   cancellationSplit,
-  clients,
   kpis,
   packageSplit,
   supervisionSplit,
@@ -21,20 +20,6 @@ export default async function ClientsPage({
 }) {
   const period = coercePeriod((await searchParams).period);
   const newTrend = kpis.find((k) => k.key === "new")?.trends[period] ?? [];
-
-  const rows: ClientRow[] = clients.map((c) => ({
-    id: c.id,
-    fullName: c.fullName,
-    initials: c.initials,
-    email: c.email,
-    refCode: c.refCode,
-    region: c.region,
-    status: c.status,
-    profiles: c.profiles.length,
-    wallet: c.wallet.balance,
-    activePackage: c.activePackage,
-    joinedAt: c.joinedAt,
-  }));
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6">
@@ -94,7 +79,7 @@ export default async function ClientsPage({
           </p>
         </CardHeader>
         <CardContent>
-          <ClientTable rows={rows} />
+          <ClientTable />
         </CardContent>
       </Card>
     </div>

@@ -29,7 +29,7 @@ export function PeriodToggle() {
           onClick={() => select(p)}
           aria-pressed={active === p}
           className={cn(
-            "rounded-md px-2.5 py-1 font-mono text-xs font-medium transition-colors",
+            "cursor-pointer rounded-md px-2.5 py-1 font-mono text-xs font-medium transition-colors",
             active === p
               ? "bg-primary text-primary-foreground"
               : "text-muted-foreground hover:text-foreground",

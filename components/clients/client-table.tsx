@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -12,39 +12,30 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { ACCOUNT_STATUS_LABEL, StatusBadge, accountTone } from "@/components/common/status-badge";
 import { Pagination } from "@/components/common/pagination";
+import { ClientFormDialog } from "@/components/clients/client-form-dialog";
+import { useClientStore } from "@/lib/store";
 import { fmtDate, fmtMoney } from "@/lib/format";
 
 const PAGE_SIZE = 8;
 
-export interface ClientRow {
-  id: string;
-  fullName: string;
-  initials: string;
-  email: string;
-  refCode: string;
-  region: string;
-  status: string;
-  profiles: number;
-  wallet: number;
-  activePackage: boolean;
-  joinedAt: string;
-}
-
-export function ClientTable({ rows }: { rows: ClientRow[] }) {
+export function ClientTable() {
   const router = useRouter();
+  const clients = useClientStore((s) => s.clients);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [prevQuery, setPrevQuery] = useState(query);
+  const [addOpen, setAddOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) =>
-      [r.fullName, r.email, r.refCode, r.region].some((f) => f.toLowerCase().includes(q)),
+    if (!q) return clients;
+    return clients.filter((c) =>
+      [c.fullName, c.email, c.refCode, c.region].some((f) => f.toLowerCase().includes(q)),
     );
-  }, [query, rows]);
+  }, [query, clients]);
 
   if (query !== prevQuery) {
     setPrevQuery(query);
@@ -58,7 +49,7 @@ export function ClientTable({ rows }: { rows: ClientRow[] }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <label className="relative flex w-full max-w-sm items-center">
           <Search className="pointer-events-none absolute left-2.5 size-4 text-muted-foreground" />
           <input
@@ -68,9 +59,10 @@ export function ClientTable({ rows }: { rows: ClientRow[] }) {
             className="h-9 w-full rounded-lg border bg-card pl-8 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           />
         </label>
-        <span className="shrink-0 font-mono text-xs text-muted-foreground">
-          {filtered.length} of {rows.length}
-        </span>
+        <Button size="sm" onClick={() => setAddOpen(true)}>
+          <Plus />
+          New client
+        </Button>
       </div>
 
       <div className="overflow-x-auto rounded-lg border">
@@ -86,55 +78,55 @@ export function ClientTable({ rows }: { rows: ClientRow[] }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {visible.map((r) => (
+            {visible.map((c) => (
               <TableRow
-                key={r.id}
-                onClick={() => router.push(`/clients/${r.id}`)}
+                key={c.id}
+                onClick={() => router.push(`/clients/${c.id}`)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    router.push(`/clients/${r.id}`);
+                    router.push(`/clients/${c.id}`);
                   }
                 }}
                 tabIndex={0}
                 role="link"
-                aria-label={`Open ${r.fullName}`}
+                aria-label={`Open ${c.fullName}`}
                 className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               >
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="size-8">
                       <AvatarFallback className="bg-accent text-xs font-medium text-accent-foreground">
-                        {r.initials}
+                        {c.initials}
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
-                      <span className="block truncate font-medium">{r.fullName}</span>
+                      <span className="block truncate font-medium">{c.fullName}</span>
                       <span className="block truncate font-mono text-xs text-muted-foreground">
-                        {r.refCode}
+                        {c.refCode}
                       </span>
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="text-muted-foreground">{r.region}</TableCell>
+                <TableCell className="text-muted-foreground">{c.region}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1.5">
-                    <StatusBadge tone={accountTone(r.status)}>
-                      {ACCOUNT_STATUS_LABEL[r.status]}
+                    <StatusBadge tone={accountTone(c.status)}>
+                      {ACCOUNT_STATUS_LABEL[c.status]}
                     </StatusBadge>
-                    {r.activePackage && (
+                    {c.activePackage && (
                       <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
                         pkg
                       </span>
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="text-right font-mono tabular">{r.profiles}</TableCell>
+                <TableCell className="text-right font-mono tabular">{c.profiles.length}</TableCell>
                 <TableCell className="text-right font-mono tabular">
-                  {fmtMoney(r.wallet)}
+                  {fmtMoney(c.wallet.balance)}
                 </TableCell>
                 <TableCell className="text-right font-mono text-xs tabular text-muted-foreground">
-                  {fmtDate(r.joinedAt)}
+                  {fmtDate(c.joinedAt)}
                 </TableCell>
               </TableRow>
             ))}
@@ -159,6 +151,8 @@ export function ClientTable({ rows }: { rows: ClientRow[] }) {
         onNext={() => setPage((p) => Math.min(pageCount, p + 1))}
         label="clients"
       />
+
+      <ClientFormDialog mode="add" open={addOpen} onOpenChange={setAddOpen} />
     </div>
   );
 }

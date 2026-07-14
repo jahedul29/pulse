@@ -21,7 +21,7 @@ export function Pagination({
   label?: string;
 }) {
   const btn =
-    "inline-flex size-8 items-center justify-center rounded-md border transition-colors disabled:opacity-40 disabled:cursor-not-allowed enabled:hover:bg-accent enabled:hover:text-accent-foreground";
+    "inline-flex size-8 cursor-pointer items-center justify-center rounded-md border transition-colors disabled:opacity-40 disabled:cursor-not-allowed enabled:hover:bg-accent enabled:hover:text-accent-foreground";
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
       <span className="font-mono text-xs text-muted-foreground tabular">

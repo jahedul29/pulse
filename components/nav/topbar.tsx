@@ -15,6 +15,7 @@ function currentSection(pathname: string) {
 export function Topbar() {
   const pathname = usePathname();
   const section = currentSection(pathname);
+  const showPeriod = pathname === "/clients";
   return (
     <header className="sticky top-0 z-20 flex flex-wrap items-center gap-3 border-b bg-background/85 px-5 py-3 backdrop-blur">
       <div className="mr-auto">
@@ -29,7 +30,7 @@ export function Topbar() {
           className="h-9 w-56 rounded-lg border bg-card pl-8 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         />
       </label>
-      <PeriodToggle />
+      {showPeriod && <PeriodToggle />}
     </header>
   );
 }
