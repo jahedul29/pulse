@@ -100,7 +100,6 @@ export function ClientFormDialog({
   const { control, handleSubmit, reset, formState } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: defaults,
-    mode: "onTouched",
   });
   const errors = formState.errors;
 
