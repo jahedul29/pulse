@@ -1,5 +1,5 @@
-import { SectionStub } from "@/components/common/section-stub";
+import { SpecialistsTable } from "@/components/personnel/specialists-table";
 
 export default function Page() {
-  return <SectionStub slug="personnel" />;
+  return <SpecialistsTable />;
 }

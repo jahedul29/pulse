@@ -17,7 +17,7 @@ export interface NavSection {
 }
 
 export const SECTIONS: NavSection[] = [
-  { slug: "personnel", label: "Personnel", icon: Briefcase, live: false },
+  { slug: "personnel", label: "Specialists", icon: Briefcase, live: true, note: "Availability calendar" },
   { slug: "discounts", label: "Discounts & campaigns", icon: TicketPercent, live: false },
   { slug: "clients", label: "Clients & Profiles", icon: Users, live: true },
   { slug: "orders", label: "Orders", icon: ClipboardList, live: false, note: "Calendar of services lives here" },

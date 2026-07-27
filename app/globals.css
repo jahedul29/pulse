@@ -161,3 +161,17 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+@keyframes rule-shake {
+  0% { transform: translateX(0); }
+  15% { transform: translateX(-6px); }
+  30% { transform: translateX(6px); }
+  45% { transform: translateX(-4px); }
+  60% { transform: translateX(4px); }
+  75% { transform: translateX(-2px); }
+  100% { transform: translateX(0); }
+}
+
+.animate-rule-shake {
+  animation: rule-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
