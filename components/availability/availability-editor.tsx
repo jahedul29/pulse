@@ -4,7 +4,14 @@ import { useEffect, useReducer, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SLOTS_PER_DAY, WEEKDAY_LABELS } from "@/lib/availability/constants";
-import { addBlock, removeBlock, resizeBlock, validateDay, weekPasses } from "@/lib/availability/rules";
+import {
+  addBlock,
+  blockSubMinAvailability,
+  removeBlock,
+  resizeBlock,
+  validateDay,
+  weekPasses,
+} from "@/lib/availability/rules";
 import type { Block, DayState, MarkKind, RuleConfig } from "@/lib/availability/types";
 import { ROLE_BADGE, ROLE_LABEL, useSpecialistStore, type Specialist } from "@/lib/specialists";
 import { cn } from "@/lib/utils";
@@ -27,6 +34,7 @@ type Action =
   | { type: "resetSchedule" }
   | { type: "setActiveKind"; kind: MarkKind }
   | { type: "addBlock"; dayIndex: number; draft: Block }
+  | { type: "setDay"; dayIndex: number; day: DayState }
   | { type: "removeBlock"; dayIndex: number; index: number }
   | { type: "resizeBlock"; dayIndex: number; index: number; start: number; end: number }
   | { type: "toggleFullDay"; dayIndex: number }
@@ -76,6 +84,11 @@ function reducer(state: EditorState, action: Action): EditorState {
         ...state,
         days: state.days.map((d, i) => (i === action.dayIndex ? addBlock(d, action.draft) : d)),
       };
+    case "setDay":
+      return {
+        ...state,
+        days: state.days.map((d, i) => (i === action.dayIndex ? action.day : d)),
+      };
     case "removeBlock":
       return {
         ...state,
@@ -90,11 +103,15 @@ function reducer(state: EditorState, action: Action): EditorState {
       };
     case "toggleDayOff": {
       const has = state.daysOff.includes(action.dayIndex);
+      const nextDay: DayState = has
+        ? { blocks: [] }
+        : { blocks: [{ start: 0, end: SLOTS_PER_DAY, kind: "unavailable" }] };
       return {
         ...state,
         daysOff: has
           ? state.daysOff.filter((d) => d !== action.dayIndex)
           : [...state.daysOff, action.dayIndex],
+        days: state.days.map((d, i) => (i === action.dayIndex ? nextDay : d)),
       };
     }
     case "focusDay":
@@ -146,20 +163,34 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
 
   const contextLabel = `${focusedIsOff ? "Day off" : "Workday"} · ${WEEKDAY_LABELS[focusedDay]}`;
 
+  const commitPaint = (dayIndex: number, candidate: DayState, failed: string) => {
+    const fixed = blockSubMinAvailability(candidate, config);
+    if (firstNewFailure(days[dayIndex], fixed, config, !daysOff.includes(dayIndex)) === null) {
+      dispatch({ type: "setDay", dayIndex, day: fixed });
+    }
+    triggerShake(failed, dayIndex);
+  };
+
   const handleAddBlock = (dayIndex: number, draft: Block) => {
     const current = days[dayIndex];
     const candidate = addBlock(current, draft);
     const failed = firstNewFailure(current, candidate, config, !daysOff.includes(dayIndex));
-    if (failed) return triggerShake(failed, dayIndex);
-    dispatch({ type: "addBlock", dayIndex, draft });
+    if (!failed) {
+      dispatch({ type: "addBlock", dayIndex, draft });
+      return;
+    }
+    commitPaint(dayIndex, candidate, failed);
   };
 
   const handleResizeBlock = (dayIndex: number, index: number, start: number, end: number) => {
     const current = days[dayIndex];
     const candidate = resizeBlock(current, index, start, end);
     const failed = firstNewFailure(current, candidate, config, !daysOff.includes(dayIndex));
-    if (failed) return triggerShake(failed, dayIndex);
-    dispatch({ type: "resizeBlock", dayIndex, index, start, end });
+    if (!failed) {
+      dispatch({ type: "resizeBlock", dayIndex, index, start, end });
+      return;
+    }
+    commitPaint(dayIndex, candidate, failed);
   };
 
   const handleFillDay = (dayIndex: number) => {

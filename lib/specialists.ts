@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { SLOTS_PER_DAY } from "@/lib/availability/constants";
 import { configFor } from "@/lib/availability/rules";
 import type { DayState, RuleConfig, SpecialistType } from "@/lib/availability/types";
 
@@ -26,20 +27,12 @@ export interface Specialist {
   daysOff: number[];
 }
 
-const emptyDays = (): DayState[] => Array.from({ length: 7 }, () => ({ blocks: [] }));
-
-// Configured week: unavailable before 08:00 and after 20:00 → available 08:00–20:00.
-function configuredWeek(): DayState[] {
-  const d = emptyDays();
-  for (let i = 0; i < 5; i++) {
-    d[i] = {
-      blocks: [
-        { start: 0, end: 8, kind: "unavailable" as const },
-        { start: 56, end: 72, kind: "unavailable" as const },
-      ],
-    };
-  }
-  return d;
+export function seedDays(daysOff: number[]): DayState[] {
+  return Array.from({ length: 7 }, (_, i) =>
+    daysOff.includes(i)
+      ? { blocks: [{ start: 0, end: SLOTS_PER_DAY, kind: "unavailable" as const }] }
+      : { blocks: [] },
+  );
 }
 
 function make(
@@ -48,7 +41,6 @@ function make(
   role: SpecialistType,
   email: string,
   status: SpecialistStatus,
-  days: DayState[],
   daysOff: number[] = [5, 6],
 ): Specialist {
   const initials = name
@@ -57,15 +49,15 @@ function make(
     .slice(0, 2)
     .join("")
     .toUpperCase();
-  return { id, name, role, email, status, initials, config: configFor(role), days, daysOff };
+  return { id, name, role, email, status, initials, config: configFor(role), days: seedDays(daysOff), daysOff };
 }
 
 const SEED: Specialist[] = [
-  make("sp-1", "Alex Rivera", "therapist", "alex.rivera@pulse.health", "onsite", configuredWeek()),
-  make("sp-2", "Maya Chen", "therapist", "maya.chen@pulse.health", "remote", emptyDays()),
-  make("sp-3", "Daniel Okoro", "therapist", "daniel.okoro@pulse.health", "onsite", emptyDays()),
-  make("sp-4", "Priya Nair", "analyst", "priya.nair@pulse.health", "remote", emptyDays()),
-  make("sp-5", "Tom Becker", "analyst", "tom.becker@pulse.health", "vacation", emptyDays()),
+  make("sp-1", "Alex Rivera", "therapist", "alex.rivera@pulse.health", "onsite"),
+  make("sp-2", "Maya Chen", "therapist", "maya.chen@pulse.health", "remote"),
+  make("sp-3", "Daniel Okoro", "therapist", "daniel.okoro@pulse.health", "onsite"),
+  make("sp-4", "Priya Nair", "analyst", "priya.nair@pulse.health", "remote"),
+  make("sp-5", "Tom Becker", "analyst", "tom.becker@pulse.health", "vacation"),
 ];
 
 interface SpecialistStore {

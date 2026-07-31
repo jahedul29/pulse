@@ -44,7 +44,9 @@ export function SpecialistsTable() {
           </TableHeader>
           <TableBody>
             {specialists.map((s) => {
-              const configured = s.days.some((d) => d.blocks.length > 0);
+              const configured = s.days.some(
+                (d, i) => !s.daysOff.includes(i) && d.blocks.length > 0,
+              );
               return (
                 <TableRow key={s.id}>
                   <TableCell>

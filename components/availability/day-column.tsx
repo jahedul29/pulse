@@ -4,19 +4,22 @@ import { useRef, useState } from "react";
 import { Ban, Video, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SLOTS_PER_DAY, SLOT_MINS, slotToTime, fmtDuration } from "@/lib/availability/constants";
+import { placeMinUnavailable } from "@/lib/availability/rules";
 import type { Block, DayState, MarkKind, RuleConfig } from "@/lib/availability/types";
 
 export const SLOT_PX = 28;
 
 type Resize = { index: number; edge: "top" | "bottom"; start: number; end: number };
 
-function clickSpanSlots(kind: MarkKind): number {
-  return kind === "online" ? 2 : 4; // 30m online, 1h unavailable
+function minPaintSlots(kind: MarkKind, config: RuleConfig): number {
+  const mins = kind === "online" ? config.minBlockOnlineMins : config.minBreakMins;
+  return Math.max(1, Math.round(mins / SLOT_MINS));
 }
 
 export function DayColumn({
   dayIndex,
   day,
+  config,
   activeKind,
   offending,
   onAddBlock,
@@ -71,6 +74,19 @@ export function DayColumn({
     }
     if (draft) setDraft({ anchor: draft.anchor, current: slotAt(e.clientY) });
   };
+  const computePlacement = (s: number, e: number): { start: number; end: number } => {
+    if (activeKind === "unavailable") {
+      const T = minPaintSlots("unavailable", config);
+      return e - s < T ? placeMinUnavailable(day, s, e, config) : { start: s, end: e };
+    }
+    const min = minPaintSlots("online", config);
+    if (e - s < min) {
+      const end = Math.min(SLOTS_PER_DAY, s + min);
+      return { start: Math.max(0, end - min), end };
+    }
+    return { start: s, end: e };
+  };
+
   const onPointerUp = () => {
     if (resize) {
       onResizeBlock(dayIndex, resize.index, resize.start, resize.end);
@@ -78,19 +94,18 @@ export function DayColumn({
       return;
     }
     if (!draft) return;
-    let s = Math.min(draft.anchor, draft.current);
-    let e = Math.max(draft.anchor, draft.current) + 1;
-    if (e - s <= 1) {
-      const span = clickSpanSlots(activeKind);
-      e = Math.min(SLOTS_PER_DAY, s + span);
-      s = Math.max(0, e - span);
-    }
-    onAddBlock(dayIndex, { start: s, end: e, kind: activeKind });
+    const s = Math.min(draft.anchor, draft.current);
+    const e = Math.max(draft.anchor, draft.current) + 1;
+    const p = computePlacement(s, e);
+    onAddBlock(dayIndex, { start: p.start, end: p.end, kind: activeKind });
     setDraft(null);
   };
 
   const draftRange = draft
-    ? { start: Math.min(draft.anchor, draft.current), end: Math.max(draft.anchor, draft.current) + 1 }
+    ? computePlacement(
+        Math.min(draft.anchor, draft.current),
+        Math.max(draft.anchor, draft.current) + 1,
+      )
     : null;
   const draftOnline = activeKind === "online";
 

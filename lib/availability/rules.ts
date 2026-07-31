@@ -17,8 +17,6 @@ export function configFor(type: SpecialistType): RuleConfig {
   return type === "therapist" ? { ...THERAPIST_DEFAULTS } : { ...ANALYST_DEFAULTS };
 }
 
-// Painted-block edits (blocks mean UNAVAILABLE or ONLINE-only; uncovered = available).
-
 function sortBlocks(blocks: Block[]): Block[] {
   return [...blocks].sort((a, b) => a.start - b.start);
 }
@@ -68,10 +66,70 @@ export function resizeBlock(day: DayState, index: number, start: number, end: nu
   return addBlock(removeBlock(day, index), { start, end, kind: b.kind });
 }
 
-// Per-slot availability state derived from painted blocks.
-const AVAILABLE = 0; // gray — in-person + online
-const ONLINE = 1; // green — online only
-const UNAVAIL = 2; // red
+export function placeMinUnavailable(
+  day: DayState,
+  selStart: number,
+  selEnd: number,
+  config: RuleConfig,
+): { start: number; end: number } {
+  const T = Math.max(1, Math.round(config.minBreakMins / SLOT_MINS));
+  const s0 = Math.max(0, Math.min(selStart, selEnd));
+  const e0 = Math.min(SLOTS_PER_DAY, Math.max(selStart, selEnd));
+
+  const st = buildStates(day);
+  const run = runsWhere(st, (v) => v !== UNAVAIL).find((r) => r.start < e0 && r.end > s0);
+  if (!run) {
+    const start = Math.max(0, Math.min(s0, SLOTS_PER_DAY - T));
+    return { start, end: start + T };
+  }
+
+  const { start: A, end: B } = run;
+  if (B - A <= T) return { start: A, end: B };
+
+  const MAB = Math.round(config.minBlockInPersonMins / SLOT_MINS);
+  const lo = Math.max(A, e0 - T);
+  const hi = Math.min(s0, B - T);
+  let best = lo;
+  let bestScore = -1;
+  for (let s = lo; s <= hi; s++) {
+    const above = s - A;
+    const below = B - (s + T);
+    const score = (above >= MAB ? above : 0) + (below >= MAB ? below : 0);
+    if (score > bestScore) {
+      bestScore = score;
+      best = s;
+    }
+  }
+  return { start: best, end: best + T };
+}
+
+export function blockSubMinAvailability(day: DayState, config: RuleConfig): DayState {
+  let result = day;
+  for (let guard = 0; guard < 8; guard++) {
+    const st = buildStates(result);
+    let changed = false;
+    for (const r of runsWhere(st, (v) => v === AVAILABLE)) {
+      if ((r.end - r.start) * SLOT_MINS < config.minBlockInPersonMins) {
+        result = addBlock(result, { start: r.start, end: r.end, kind: "unavailable" });
+        changed = true;
+      }
+    }
+    if (config.supportsOnline) {
+      for (const r of runsWhere(st, (v) => v === ONLINE)) {
+        if ((r.end - r.start) * SLOT_MINS < config.minBlockOnlineMins) {
+          result = addBlock(result, { start: r.start, end: r.end, kind: "unavailable" });
+          changed = true;
+        }
+      }
+    }
+    if (!changed) break;
+  }
+  return result;
+}
+
+const AVAILABLE = 0;
+const ONLINE = 1;
+const UNAVAIL = 2;
 
 function buildStates(day: DayState): Uint8Array {
   const st = new Uint8Array(SLOTS_PER_DAY);
@@ -106,10 +164,9 @@ export function validateDay(
 ): RuleResult[] {
   const st = buildStates(day);
   const inPersonRuns = runsWhere(st, (v) => v === AVAILABLE);
-  const availableRuns = runsWhere(st, (v) => v !== UNAVAIL); // in-person OR online
+  const availableRuns = runsWhere(st, (v) => v !== UNAVAIL);
   const results: RuleResult[] = [];
 
-  // In-person (or, for therapist, plain) availability blocks ≥ min.
   {
     const short = inPersonRuns.filter((r) => runMins(r) < config.minBlockInPersonMins);
     const shortest = inPersonRuns.length ? Math.min(...inPersonRuns.map(runMins)) : 0;
@@ -126,7 +183,6 @@ export function validateDay(
     });
   }
 
-  // Online-only (green) availability blocks ≥ min (analyst only).
   if (config.supportsOnline) {
     const onlineRuns = runsWhere(st, (v) => v === ONLINE);
     const short = onlineRuns.filter((r) => runMins(r) < config.minBlockOnlineMins);
@@ -140,7 +196,6 @@ export function validateDay(
     });
   }
 
-  // Breaks: unavailable (red) gaps between availability. Interior ≥ minBreak, edges ≥ minAdjacent.
   {
     const offending: number[] = [];
     let minInterior = Infinity;
@@ -164,7 +219,6 @@ export function validateDay(
     });
   }
 
-  // Continuous window: longest available (in-person or online) run ≥ requirement.
   if (opts.isWorkday) {
     const longest = availableRuns.length ? Math.max(...availableRuns.map(runMins)) : 0;
     results.push({
