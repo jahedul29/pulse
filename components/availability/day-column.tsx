@@ -1,27 +1,24 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { MapPin, Video, X } from "lucide-react";
+import { Ban, Video, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SLOTS_PER_DAY, SLOT_MINS, slotToTime, fmtDuration } from "@/lib/availability/constants";
-import type { Block, BlockType, DayState, RuleConfig } from "@/lib/availability/types";
+import type { Block, DayState, MarkKind, RuleConfig } from "@/lib/availability/types";
 
-export const SLOT_PX = 15;
+export const SLOT_PX = 28;
 
 type Resize = { index: number; edge: "top" | "bottom"; start: number; end: number };
 
-function minBlockSlots(type: BlockType, config: RuleConfig): number {
-  const mins = type === "online" ? config.minBlockOnlineMins : config.minBlockInPersonMins;
-  return Math.max(1, Math.round(mins / SLOT_MINS));
+function clickSpanSlots(kind: MarkKind): number {
+  return kind === "online" ? 2 : 4; // 30m online, 1h unavailable
 }
 
 export function DayColumn({
   dayIndex,
   day,
-  config,
-  activeBlockType,
+  activeKind,
   offending,
-  focused,
   onAddBlock,
   onRemoveBlock,
   onResizeBlock,
@@ -30,9 +27,8 @@ export function DayColumn({
   dayIndex: number;
   day: DayState;
   config: RuleConfig;
-  activeBlockType: BlockType;
+  activeKind: MarkKind;
   offending: Set<number>;
-  focused: boolean;
   onAddBlock: (dayIndex: number, draft: Block) => void;
   onRemoveBlock: (dayIndex: number, index: number) => void;
   onResizeBlock: (dayIndex: number, index: number, start: number, end: number) => void;
@@ -85,18 +81,18 @@ export function DayColumn({
     let s = Math.min(draft.anchor, draft.current);
     let e = Math.max(draft.anchor, draft.current) + 1;
     if (e - s <= 1) {
-      const span = minBlockSlots(activeBlockType, config);
+      const span = clickSpanSlots(activeKind);
       e = Math.min(SLOTS_PER_DAY, s + span);
       s = Math.max(0, e - span);
     }
-    onAddBlock(dayIndex, { start: s, end: e, type: activeBlockType });
+    onAddBlock(dayIndex, { start: s, end: e, kind: activeKind });
     setDraft(null);
   };
 
   const draftRange = draft
     ? { start: Math.min(draft.anchor, draft.current), end: Math.max(draft.anchor, draft.current) + 1 }
     : null;
-  const draftOnline = activeBlockType === "online";
+  const draftOnline = activeKind === "online";
 
   return (
     <div
@@ -104,7 +100,7 @@ export function DayColumn({
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      className="relative cursor-crosshair touch-none border-l border-border/70 bg-zinc-50 select-none"
+      className="relative cursor-crosshair touch-none border-l border-border/70 select-none"
       style={{
         height: SLOTS_PER_DAY * SLOT_PX,
         backgroundImage: [
@@ -115,13 +111,13 @@ export function DayColumn({
     >
       {day.blocks.map((b, i) => {
         const bad = offending.has(i);
-        const online = b.type === "online";
+        const online = b.kind === "online";
         const live = resize && resize.index === i ? resize : b;
         const start = live.start;
         const end = live.end;
         return (
           <div
-            key={`${b.start}-${b.end}-${b.type}`}
+            key={`${b.start}-${b.end}-${b.kind}`}
             className={cn(
               "group/block absolute inset-x-1 overflow-hidden rounded-sm px-1.5 py-0.5 text-[10px] leading-tight shadow-sm ring-1",
               online
@@ -132,7 +128,7 @@ export function DayColumn({
             style={{ top: start * SLOT_PX, height: (end - start) * SLOT_PX }}
           >
             <div className="flex items-center gap-1 font-medium">
-              {online ? <Video className="size-3" /> : <MapPin className="size-3" />}
+              {online ? <Video className="size-3" /> : <Ban className="size-3" />}
               <span className="tabular truncate">
                 {slotToTime(start)}–{slotToTime(end)}
               </span>
@@ -141,7 +137,7 @@ export function DayColumn({
               <div
                 className={cn(online ? "text-success-foreground/80" : "text-danger-foreground/85", "tabular")}
               >
-                {fmtDuration((end - start) * SLOT_MINS)} · {online ? "online" : "in-person"}
+                {fmtDuration((end - start) * SLOT_MINS)} · {online ? "online only" : "unavailable"}
               </div>
             )}
 
@@ -166,7 +162,7 @@ export function DayColumn({
                 onRemoveBlock(dayIndex, i);
               }}
               className="absolute top-0.5 right-0.5 grid size-4 place-items-center rounded text-current opacity-0 transition-opacity group-hover/block:opacity-100 hover:bg-black/20"
-              aria-label="Remove block"
+              aria-label="Remove"
             >
               <X className="size-3" />
             </button>

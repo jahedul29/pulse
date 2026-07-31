@@ -28,9 +28,17 @@ export interface Specialist {
 
 const emptyDays = (): DayState[] => Array.from({ length: 7 }, () => ({ blocks: [] }));
 
-function therapistWeek(): DayState[] {
+// Configured week: unavailable before 08:00 and after 20:00 → available 08:00–20:00.
+function configuredWeek(): DayState[] {
   const d = emptyDays();
-  for (let i = 0; i < 5; i++) d[i] = { blocks: [{ start: 12, end: 36, type: "in_person" as const }] };
+  for (let i = 0; i < 5; i++) {
+    d[i] = {
+      blocks: [
+        { start: 0, end: 8, kind: "unavailable" as const },
+        { start: 56, end: 72, kind: "unavailable" as const },
+      ],
+    };
+  }
   return d;
 }
 
@@ -53,7 +61,7 @@ function make(
 }
 
 const SEED: Specialist[] = [
-  make("sp-1", "Alex Rivera", "therapist", "alex.rivera@pulse.health", "onsite", therapistWeek()),
+  make("sp-1", "Alex Rivera", "therapist", "alex.rivera@pulse.health", "onsite", configuredWeek()),
   make("sp-2", "Maya Chen", "therapist", "maya.chen@pulse.health", "remote", emptyDays()),
   make("sp-3", "Daniel Okoro", "therapist", "daniel.okoro@pulse.health", "onsite", emptyDays()),
   make("sp-4", "Priya Nair", "analyst", "priya.nair@pulse.health", "remote", emptyDays()),

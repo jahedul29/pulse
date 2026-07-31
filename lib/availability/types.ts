@@ -1,11 +1,12 @@
 export type SpecialistType = "therapist" | "analyst";
 
-export type BlockType = "in_person" | "online";
+// What a painted block means. Uncovered slots = available (in-person + online).
+export type MarkKind = "unavailable" | "online";
 
 export interface Block {
   start: number;
   end: number;
-  type: BlockType;
+  kind: MarkKind;
 }
 
 export interface DayState {

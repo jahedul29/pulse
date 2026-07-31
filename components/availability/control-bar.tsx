@@ -1,44 +1,42 @@
 "use client";
 
-import { MapPin, RotateCcw, Save, SlidersHorizontal, Video } from "lucide-react";
+import { Ban, RotateCcw, Save, SlidersHorizontal, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { fmtDuration } from "@/lib/availability/constants";
-import type { BlockType, RuleConfig } from "@/lib/availability/types";
+import type { MarkKind, RuleConfig } from "@/lib/availability/types";
 
 export function ControlBar({
   config,
-  activeBlockType,
-  onActiveBlockTypeChange,
+  activeKind,
+  onActiveKindChange,
   onOpenRules,
   onReset,
   onSave,
 }: {
   config: RuleConfig;
-  activeBlockType: BlockType;
-  onActiveBlockTypeChange: (type: BlockType) => void;
+  activeKind: MarkKind;
+  onActiveKindChange: (kind: MarkKind) => void;
   onOpenRules: () => void;
   onReset: () => void;
   onSave: () => void;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
-      {config.supportsOnline && (
+      {config.supportsOnline ? (
         <div className="flex items-center gap-1 rounded-lg border bg-card p-0.5">
-          <span className="px-1.5 text-xs text-muted-foreground">Paint:</span>
-          <SegButton
-            active={activeBlockType === "in_person"}
-            onClick={() => onActiveBlockTypeChange("in_person")}
-          >
-            <MapPin className="size-3.5" /> In-person
+          <span className="px-1.5 text-xs text-muted-foreground">Mark:</span>
+          <SegButton active={activeKind === "unavailable"} onClick={() => onActiveKindChange("unavailable")}>
+            <Ban className="size-3.5" /> Unavailable
           </SegButton>
-          <SegButton
-            active={activeBlockType === "online"}
-            onClick={() => onActiveBlockTypeChange("online")}
-          >
-            <Video className="size-3.5" /> Online
+          <SegButton active={activeKind === "online"} onClick={() => onActiveKindChange("online")}>
+            <Video className="size-3.5" /> Online only
           </SegButton>
         </div>
+      ) : (
+        <span className="text-xs text-muted-foreground">
+          Drag on a day to mark <span className="font-medium text-danger">unavailable</span> time.
+        </span>
       )}
 
       <div className="hidden flex-wrap items-center gap-1.5 md:flex">

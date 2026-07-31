@@ -1,6 +1,5 @@
 import type {
   Block,
-  BlockType,
   DayState,
   RuleConfig,
   RuleResult,
@@ -18,12 +17,7 @@ export function configFor(type: SpecialistType): RuleConfig {
   return type === "therapist" ? { ...THERAPIST_DEFAULTS } : { ...ANALYST_DEFAULTS };
 }
 
-const slotsToMins = (slots: number) => slots * SLOT_MINS;
-const minsToSlots = (mins: number) => Math.round(mins / SLOT_MINS);
-
-function minBlockMins(type: BlockType, config: RuleConfig): number {
-  return type === "online" ? config.minBlockOnlineMins : config.minBlockInPersonMins;
-}
+// Painted-block edits (blocks mean UNAVAILABLE or ONLINE-only; uncovered = available).
 
 function sortBlocks(blocks: Block[]): Block[] {
   return [...blocks].sort((a, b) => a.start - b.start);
@@ -42,12 +36,12 @@ function clearSpan(blocks: Block[], s: number, e: number): Block[] {
   return out;
 }
 
-function mergeSameType(blocks: Block[]): Block[] {
+function mergeSameKind(blocks: Block[]): Block[] {
   const sorted = sortBlocks(blocks).filter((b) => b.end > b.start);
   const out: Block[] = [];
   for (const b of sorted) {
     const last = out[out.length - 1];
-    if (last && last.type === b.type && b.start <= last.end) {
+    if (last && last.kind === b.kind && b.start <= last.end) {
       last.end = Math.max(last.end, b.end);
     } else {
       out.push({ ...b });
@@ -61,7 +55,7 @@ export function addBlock(day: DayState, draft: Block): DayState {
   let e = Math.min(SLOTS_PER_DAY, Math.max(draft.start, draft.end));
   if (e <= s) e = Math.min(SLOTS_PER_DAY, s + 1);
   const cleared = clearSpan(day.blocks, s, e);
-  return { blocks: mergeSameType([...cleared, { start: s, end: e, type: draft.type }]) };
+  return { blocks: mergeSameKind([...cleared, { start: s, end: e, kind: draft.kind }]) };
 }
 
 export function removeBlock(day: DayState, index: number): DayState {
@@ -71,94 +65,114 @@ export function removeBlock(day: DayState, index: number): DayState {
 export function resizeBlock(day: DayState, index: number, start: number, end: number): DayState {
   const b = day.blocks[index];
   if (!b) return day;
-  return addBlock(removeBlock(day, index), { start, end, type: b.type });
+  return addBlock(removeBlock(day, index), { start, end, kind: b.kind });
 }
 
-export function blockMins(block: Block): number {
-  return slotsToMins(block.end - block.start);
-}
+// Per-slot availability state derived from painted blocks.
+const AVAILABLE = 0; // gray — in-person + online
+const ONLINE = 1; // green — online only
+const UNAVAIL = 2; // red
 
-// Largest contiguous stretch of the day that could still hold a continuous
-// availability window — i.e. the day minus the committed breaks (gaps between
-// two availability blocks). Empty edges and empty middle count as room, so an
-// empty or partly-filled day still passes; only fragmenting the day with breaks
-// below the required window makes it fail.
-function maxOpenWindowMins(sorted: Block[]): number {
-  if (sorted.length === 0) return SLOTS_PER_DAY * SLOT_MINS;
-  const blocked = new Array<boolean>(SLOTS_PER_DAY).fill(false);
-  for (let i = 1; i < sorted.length; i++) {
-    for (let s = sorted[i - 1].end; s < sorted[i].start; s++) blocked[s] = true;
+function buildStates(day: DayState): Uint8Array {
+  const st = new Uint8Array(SLOTS_PER_DAY);
+  for (const b of day.blocks) {
+    const v = b.kind === "unavailable" ? UNAVAIL : ONLINE;
+    for (let s = b.start; s < b.end && s < SLOTS_PER_DAY; s++) st[s] = v;
   }
-  let longest = 0;
-  let cur = 0;
-  for (let s = 0; s < SLOTS_PER_DAY; s++) {
-    if (!blocked[s]) {
-      cur++;
-      if (cur > longest) longest = cur;
-    } else {
-      cur = 0;
+  return st;
+}
+
+function runsWhere(st: Uint8Array, pred: (v: number) => boolean): Array<{ start: number; end: number }> {
+  const out: Array<{ start: number; end: number }> = [];
+  let cur = -1;
+  for (let s = 0; s < st.length; s++) {
+    if (pred(st[s])) {
+      if (cur < 0) cur = s;
+    } else if (cur >= 0) {
+      out.push({ start: cur, end: s });
+      cur = -1;
     }
   }
-  return slotsToMins(longest);
+  if (cur >= 0) out.push({ start: cur, end: st.length });
+  return out;
 }
+
+const runMins = (r: { start: number; end: number }) => (r.end - r.start) * SLOT_MINS;
 
 export function validateDay(
   day: DayState,
   config: RuleConfig,
   opts: { isWorkday: boolean },
 ): RuleResult[] {
-  const blocks = sortBlocks(day.blocks);
+  const st = buildStates(day);
+  const inPersonRuns = runsWhere(st, (v) => v === AVAILABLE);
+  const availableRuns = runsWhere(st, (v) => v !== UNAVAIL); // in-person OR online
   const results: RuleResult[] = [];
 
-  const tooShort: number[] = [];
-  let smallest = Infinity;
-  blocks.forEach((b, i) => {
-    const mins = blockMins(b);
-    smallest = Math.min(smallest, mins);
-    if (mins < minBlockMins(b.type, config)) tooShort.push(i);
-  });
-  const minReq = config.supportsOnline
-    ? `${fmtDuration(config.minBlockInPersonMins)} in-person / ${fmtDuration(config.minBlockOnlineMins)} online`
-    : fmtDuration(config.minBlockInPersonMins);
-  results.push({
-    id: "min-block",
-    label: "Minimum block length",
-    pass: tooShort.length === 0,
-    actual: blocks.length ? `shortest ${fmtDuration(smallest)}` : "no blocks yet",
-    message: `Each availability block must be at least ${minReq}.`,
-    offending: tooShort,
-  });
-
-  const badGaps = new Set<number>();
-  let minGap = Infinity;
-  for (let i = 1; i < blocks.length; i++) {
-    const gap = slotsToMins(blocks[i].start - blocks[i - 1].end);
-    if (gap <= 0) continue;
-    minGap = Math.min(minGap, gap);
-    if (gap < config.minBreakMins) {
-      badGaps.add(i - 1);
-      badGaps.add(i);
-    }
+  // In-person (or, for therapist, plain) availability blocks ≥ min.
+  {
+    const short = inPersonRuns.filter((r) => runMins(r) < config.minBlockInPersonMins);
+    const shortest = inPersonRuns.length ? Math.min(...inPersonRuns.map(runMins)) : 0;
+    results.push({
+      id: "min-block",
+      label: config.supportsOnline ? "In-person availability block" : "Minimum availability block",
+      pass: short.length === 0,
+      actual: inPersonRuns.length
+        ? `shortest ${fmtDuration(shortest)}`
+        : config.supportsOnline
+          ? "no in-person availability"
+          : "no availability yet",
+      message: `Each ${config.supportsOnline ? "in-person " : ""}availability block must be at least ${fmtDuration(config.minBlockInPersonMins)}.`,
+    });
   }
-  results.push({
-    id: "breaks",
-    label: config.specialist === "therapist" ? "Break ≥ travel time" : "Break between blocks",
-    pass: badGaps.size === 0,
-    actual: minGap === Infinity ? "no breaks" : `shortest ${fmtDuration(minGap)}`,
-    message: `Breaks between availability blocks must be at least ${fmtDuration(config.minBreakMins)}${
-      config.specialist === "therapist" ? " (your travel time)" : ""
-    }.`,
-    offending: [...badGaps],
-  });
 
+  // Online-only (green) availability blocks ≥ min (analyst only).
+  if (config.supportsOnline) {
+    const onlineRuns = runsWhere(st, (v) => v === ONLINE);
+    const short = onlineRuns.filter((r) => runMins(r) < config.minBlockOnlineMins);
+    const shortest = onlineRuns.length ? Math.min(...onlineRuns.map(runMins)) : 0;
+    results.push({
+      id: "online-block",
+      label: "Online-only availability block",
+      pass: short.length === 0,
+      actual: onlineRuns.length ? `shortest ${fmtDuration(shortest)}` : "none set",
+      message: `Each online-only availability block must be at least ${fmtDuration(config.minBlockOnlineMins)}.`,
+    });
+  }
+
+  // Breaks: unavailable (red) gaps between availability. Interior ≥ minBreak, edges ≥ minAdjacent.
+  {
+    const offending: number[] = [];
+    let minInterior = Infinity;
+    day.blocks.forEach((b, i) => {
+      if (b.kind !== "unavailable") return;
+      const isEdge = b.start === 0 || b.end === SLOTS_PER_DAY;
+      const req = isEdge ? config.minAdjacentUnavailMins : config.minBreakMins;
+      const mins = (b.end - b.start) * SLOT_MINS;
+      if (!isEdge) minInterior = Math.min(minInterior, mins);
+      if (mins < req) offending.push(i);
+    });
+    results.push({
+      id: "breaks",
+      label: config.specialist === "therapist" ? "Break ≥ travel time" : "Break between availability",
+      pass: offending.length === 0,
+      actual: minInterior === Infinity ? "no breaks" : `shortest ${fmtDuration(minInterior)}`,
+      message: `Breaks between availability must be at least ${fmtDuration(config.minBreakMins)}${
+        config.specialist === "therapist" ? " (your travel time)" : ""
+      }; edges may be ${fmtDuration(config.minAdjacentUnavailMins)}.`,
+      offending,
+    });
+  }
+
+  // Continuous window: longest available (in-person or online) run ≥ requirement.
   if (opts.isWorkday) {
-    const room = maxOpenWindowMins(blocks);
+    const longest = availableRuns.length ? Math.max(...availableRuns.map(runMins)) : 0;
     results.push({
       id: "window",
       label: "Continuous availability window",
-      pass: room >= config.continuousWindowMins,
-      actual: `${fmtDuration(room)} open`,
-      message: `Keep room for one continuous window of at least ${fmtDuration(config.continuousWindowMins)} — breaks can't fragment the day below it.`,
+      pass: longest >= config.continuousWindowMins,
+      actual: `${fmtDuration(longest)} open`,
+      message: `Workdays need one continuous availability window of at least ${fmtDuration(config.continuousWindowMins)}.`,
     });
   }
 

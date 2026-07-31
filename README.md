@@ -1,4 +1,4 @@
-# Pulse — Admin & BI
+# ABAPRO — Admin & BI
 
 A demo admin & business-intelligence console for a physiotherapy / orthopedic telehealth platform, built from the **Clients & Profiles** section of the source workbook.
 
@@ -65,7 +65,7 @@ npm run start
 ```
 app/(dashboard)/            layout (sticky sidebar + topbar), section pages
 app/(dashboard)/clients/    dashboard + [id] account detail (client-rendered from store)
-app/icon.svg                favicon (Pulse heartbeat mark)
+app/icon.svg                favicon (ABAPRO heartbeat mark)
 components/clients/          KPI, charts, map, table, account panel, profile tabs,
                              client form dialog (add/edit), client actions, date field
 components/nav/              sidebar, topbar, mobile nav

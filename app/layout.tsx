@@ -19,8 +19,8 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Pulse — Admin & BI",
-  description: "Clients & Profiles console for the Pulse physiotherapy platform.",
+  title: "ABAPRO — Admin & BI",
+  description: "Clients & Profiles console for the ABAPRO physiotherapy platform.",
 };
 
 export default function RootLayout({

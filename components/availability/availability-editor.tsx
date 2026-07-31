@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useReducer, useRef, useState } from "react";
-import { addDays, format } from "date-fns";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SLOTS_PER_DAY, WEEKDAY_LABELS } from "@/lib/availability/constants";
 import { addBlock, removeBlock, resizeBlock, validateDay, weekPasses } from "@/lib/availability/rules";
-import type { Block, BlockType, DayState, RuleConfig } from "@/lib/availability/types";
+import type { Block, DayState, MarkKind, RuleConfig } from "@/lib/availability/types";
 import { ROLE_BADGE, ROLE_LABEL, useSpecialistStore, type Specialist } from "@/lib/specialists";
 import { cn } from "@/lib/utils";
 import { ControlBar } from "./control-bar";
@@ -13,12 +13,10 @@ import { Legend } from "./legend";
 import { RulesConfigDialog } from "./rules-config-dialog";
 import { RulesPanel } from "./rules-panel";
 import { WeekGrid } from "./week-grid";
-import { WeekNav, mondayOf } from "./week-nav";
 
 interface EditorState {
   config: RuleConfig;
-  activeBlockType: BlockType;
-  weekStart: Date;
+  activeKind: MarkKind;
   days: DayState[];
   daysOff: number[];
   focusedDay: number;
@@ -27,23 +25,31 @@ interface EditorState {
 type Action =
   | { type: "setConfig"; config: RuleConfig }
   | { type: "resetSchedule" }
-  | { type: "setActiveBlockType"; blockType: BlockType }
-  | { type: "setWeekStart"; weekStart: Date }
+  | { type: "setActiveKind"; kind: MarkKind }
   | { type: "addBlock"; dayIndex: number; draft: Block }
   | { type: "removeBlock"; dayIndex: number; index: number }
   | { type: "resizeBlock"; dayIndex: number; index: number; start: number; end: number }
+  | { type: "toggleFullDay"; dayIndex: number }
   | { type: "toggleDayOff"; dayIndex: number }
   | { type: "focusDay"; dayIndex: number };
 
 function initState(specialist: Specialist): EditorState {
   return {
     config: specialist.config,
-    activeBlockType: "in_person",
-    weekStart: mondayOf(new Date()),
+    activeKind: "unavailable",
     days: specialist.days,
     daysOff: specialist.daysOff,
     focusedDay: 0,
   };
+}
+
+function isFullyUnavailable(day: DayState): boolean {
+  return (
+    day.blocks.length === 1 &&
+    day.blocks[0].start === 0 &&
+    day.blocks[0].end === SLOTS_PER_DAY &&
+    day.blocks[0].kind === "unavailable"
+  );
 }
 
 function reducer(state: EditorState, action: Action): EditorState {
@@ -52,10 +58,19 @@ function reducer(state: EditorState, action: Action): EditorState {
       return { ...state, config: action.config };
     case "resetSchedule":
       return { ...state, days: state.days.map(() => ({ blocks: [] })) };
-    case "setActiveBlockType":
-      return { ...state, activeBlockType: action.blockType };
-    case "setWeekStart":
-      return { ...state, weekStart: action.weekStart };
+    case "setActiveKind":
+      return { ...state, activeKind: action.kind };
+    case "toggleFullDay": {
+      const full = isFullyUnavailable(state.days[action.dayIndex]);
+      const next: DayState = full
+        ? { blocks: [] }
+        : { blocks: [{ start: 0, end: SLOTS_PER_DAY, kind: "unavailable" }] };
+      return {
+        ...state,
+        days: state.days.map((d, i) => (i === action.dayIndex ? next : d)),
+        focusedDay: action.dayIndex,
+      };
+    }
     case "addBlock":
       return {
         ...state,
@@ -123,14 +138,13 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
     setShake({ ruleId, nonce: shakeSeq.current });
   };
 
-  const { config, activeBlockType, weekStart, days, daysOff, focusedDay } = state;
+  const { config, activeKind, days, daysOff, focusedDay } = state;
 
   const focusedIsOff = daysOff.includes(focusedDay);
   const results = validateDay(days[focusedDay], config, { isWorkday: !focusedIsOff });
   const weekValid = weekPasses({ days, daysOff, config });
 
-  const focusedDate = format(addDays(weekStart, focusedDay), "EEE d MMM");
-  const contextLabel = focusedIsOff ? `Day off · ${focusedDate}` : `Workday · ${focusedDate}`;
+  const contextLabel = `${focusedIsOff ? "Day off" : "Workday"} · ${WEEKDAY_LABELS[focusedDay]}`;
 
   const handleAddBlock = (dayIndex: number, draft: Block) => {
     const current = days[dayIndex];
@@ -146,6 +160,10 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
     const failed = firstNewFailure(current, candidate, config, !daysOff.includes(dayIndex));
     if (failed) return triggerShake(failed, dayIndex);
     dispatch({ type: "resizeBlock", dayIndex, index, start, end });
+  };
+
+  const handleFillDay = (dayIndex: number) => {
+    dispatch({ type: "toggleFullDay", dayIndex });
   };
 
   const handleToggleDayOff = (dayIndex: number) => {
@@ -175,28 +193,25 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="grid size-11 place-items-center rounded-full bg-primary/12 font-heading text-sm font-semibold text-primary ring-1 ring-primary/20">
-            {specialist.initials}
-          </div>
-          <div>
-            <div className="font-heading text-base font-semibold leading-tight">{specialist.name}</div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span className={cn("rounded-full px-2 py-0.5 font-medium", ROLE_BADGE[specialist.role])}>
-                {ROLE_LABEL[specialist.role]}
-              </span>
-              Weekly availability
-            </div>
+      <div className="flex items-center gap-3">
+        <div className="grid size-11 place-items-center rounded-full bg-primary/12 font-heading text-sm font-semibold text-primary ring-1 ring-primary/20">
+          {specialist.initials}
+        </div>
+        <div>
+          <div className="font-heading text-base font-semibold leading-tight">{specialist.name}</div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className={cn("rounded-full px-2 py-0.5 font-medium", ROLE_BADGE[specialist.role])}>
+              {ROLE_LABEL[specialist.role]}
+            </span>
+            Weekly availability
           </div>
         </div>
-        <WeekNav weekStart={weekStart} onChange={(d) => dispatch({ type: "setWeekStart", weekStart: d })} />
       </div>
 
       <ControlBar
         config={config}
-        activeBlockType={activeBlockType}
-        onActiveBlockTypeChange={(t) => dispatch({ type: "setActiveBlockType", blockType: t })}
+        activeKind={activeKind}
+        onActiveKindChange={(k) => dispatch({ type: "setActiveKind", kind: k })}
         onOpenRules={() => setRulesOpen(true)}
         onReset={() => dispatch({ type: "resetSchedule" })}
         onSave={handleSave}
@@ -205,16 +220,16 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="flex flex-col gap-3">
           <WeekGrid
-            weekStart={weekStart}
             days={days}
             daysOff={daysOff}
             config={config}
-            activeBlockType={activeBlockType}
+            activeKind={activeKind}
             focusedDay={focusedDay}
             onAddBlock={handleAddBlock}
             onRemoveBlock={(dayIndex, index) => dispatch({ type: "removeBlock", dayIndex, index })}
             onResizeBlock={handleResizeBlock}
             onToggleDayOff={handleToggleDayOff}
+            onFillDay={handleFillDay}
             onFocusDay={(dayIndex) => dispatch({ type: "focusDay", dayIndex })}
           />
           <Legend supportsOnline={config.supportsOnline} />

@@ -15,7 +15,7 @@ export function Sidebar() {
           <Activity className="size-5" />
         </span>
         <div className="leading-tight">
-          <div className="font-heading text-base font-semibold">Pulse</div>
+          <div className="font-heading text-base font-semibold">ABAPRO</div>
           <div className="text-xs text-muted-foreground">Admin &amp; BI</div>
         </div>
       </div>

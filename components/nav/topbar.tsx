@@ -20,7 +20,7 @@ export function Topbar() {
     <header className="sticky top-0 z-20 flex flex-wrap items-center gap-3 border-b bg-background/85 px-5 py-3 backdrop-blur">
       <div className="mr-auto">
         <div className="font-heading text-lg font-semibold leading-tight">{section.label}</div>
-        <div className="text-xs text-muted-foreground">Pulse · Experience Center</div>
+        <div className="text-xs text-muted-foreground">ABAPRO · Experience Center</div>
       </div>
       <label className="relative hidden items-center md:flex">
         <Search className="pointer-events-none absolute left-2.5 size-4 text-muted-foreground" />
