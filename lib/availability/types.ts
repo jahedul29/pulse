@@ -2,6 +2,8 @@ export type SpecialistType = "therapist" | "analyst";
 
 export type MarkKind = "unavailable" | "online";
 
+export type PaintStatus = "available" | "unavailable" | "online";
+
 export interface Block {
   start: number;
   end: number;

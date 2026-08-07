@@ -1,287 +1,169 @@
 "use client";
 
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useState } from "react";
+import { Info, RotateCcw, Save, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { SLOTS_PER_DAY, WEEKDAY_LABELS } from "@/lib/availability/constants";
-import {
-  addBlock,
-  blockSubMinAvailability,
-  removeBlock,
-  resizeBlock,
-  validateDay,
-  weekPasses,
-} from "@/lib/availability/rules";
-import type { Block, DayState, MarkKind, RuleConfig } from "@/lib/availability/types";
+import { addBlock, setAvailable, validateDay } from "@/lib/availability/rules";
+import type { DayState, PaintStatus, RuleConfig } from "@/lib/availability/types";
 import { ROLE_BADGE, ROLE_LABEL, useSpecialistStore, type Specialist } from "@/lib/specialists";
 import { cn } from "@/lib/utils";
-import { ControlBar } from "./control-bar";
-import { Legend } from "./legend";
+import { PaintControls } from "./control-bar";
+import { GuidelinesDialog } from "./guidelines-dialog";
+import { NoticeDialog, NoticeHl } from "./notice-dialog";
 import { RulesConfigDialog } from "./rules-config-dialog";
-import { RulesPanel } from "./rules-panel";
 import { WeekGrid } from "./week-grid";
 
-interface EditorState {
-  config: RuleConfig;
-  activeKind: MarkKind;
-  days: DayState[];
-  daysOff: number[];
-  focusedDay: number;
+function fullDay(): DayState {
+  return { blocks: [{ start: 0, end: SLOTS_PER_DAY, kind: "unavailable" }] };
 }
 
-type Action =
-  | { type: "setConfig"; config: RuleConfig }
-  | { type: "resetSchedule" }
-  | { type: "setActiveKind"; kind: MarkKind }
-  | { type: "addBlock"; dayIndex: number; draft: Block }
-  | { type: "setDay"; dayIndex: number; day: DayState }
-  | { type: "removeBlock"; dayIndex: number; index: number }
-  | { type: "resizeBlock"; dayIndex: number; index: number; start: number; end: number }
-  | { type: "toggleFullDay"; dayIndex: number }
-  | { type: "toggleDayOff"; dayIndex: number }
-  | { type: "focusDay"; dayIndex: number };
-
-function initState(specialist: Specialist): EditorState {
-  return {
-    config: specialist.config,
-    activeKind: "unavailable",
-    days: specialist.days,
-    daysOff: specialist.daysOff,
-    focusedDay: 0,
-  };
-}
-
-function isFullyUnavailable(day: DayState): boolean {
-  return (
-    day.blocks.length === 1 &&
-    day.blocks[0].start === 0 &&
-    day.blocks[0].end === SLOTS_PER_DAY &&
-    day.blocks[0].kind === "unavailable"
-  );
-}
-
-function reducer(state: EditorState, action: Action): EditorState {
-  switch (action.type) {
-    case "setConfig":
-      return { ...state, config: action.config };
-    case "resetSchedule":
-      return { ...state, days: state.days.map(() => ({ blocks: [] })) };
-    case "setActiveKind":
-      return { ...state, activeKind: action.kind };
-    case "toggleFullDay": {
-      const full = isFullyUnavailable(state.days[action.dayIndex]);
-      const next: DayState = full
-        ? { blocks: [] }
-        : { blocks: [{ start: 0, end: SLOTS_PER_DAY, kind: "unavailable" }] };
-      return {
-        ...state,
-        days: state.days.map((d, i) => (i === action.dayIndex ? next : d)),
-        focusedDay: action.dayIndex,
-      };
-    }
-    case "addBlock":
-      return {
-        ...state,
-        days: state.days.map((d, i) => (i === action.dayIndex ? addBlock(d, action.draft) : d)),
-      };
-    case "setDay":
-      return {
-        ...state,
-        days: state.days.map((d, i) => (i === action.dayIndex ? action.day : d)),
-      };
-    case "removeBlock":
-      return {
-        ...state,
-        days: state.days.map((d, i) => (i === action.dayIndex ? removeBlock(d, action.index) : d)),
-      };
-    case "resizeBlock":
-      return {
-        ...state,
-        days: state.days.map((d, i) =>
-          i === action.dayIndex ? resizeBlock(d, action.index, action.start, action.end) : d,
-        ),
-      };
-    case "toggleDayOff": {
-      const has = state.daysOff.includes(action.dayIndex);
-      const nextDay: DayState = has
-        ? { blocks: [] }
-        : { blocks: [{ start: 0, end: SLOTS_PER_DAY, kind: "unavailable" }] };
-      return {
-        ...state,
-        daysOff: has
-          ? state.daysOff.filter((d) => d !== action.dayIndex)
-          : [...state.daysOff, action.dayIndex],
-        days: state.days.map((d, i) => (i === action.dayIndex ? nextDay : d)),
-      };
-    }
-    case "focusDay":
-      return { ...state, focusedDay: action.dayIndex };
-    default:
-      return state;
+function weekIssues(days: DayState[], daysOff: number[], config: RuleConfig): string[] {
+  const issues: string[] = [];
+  const workday = validateDay(days[0], config, { isWorkday: true }).find((r) => !r.pass);
+  if (workday) issues.push(`Mon–Fri — ${workday.label.toLowerCase()}`);
+  for (const d of [5, 6]) {
+    const off = daysOff.includes(d);
+    const fail = validateDay(days[d], config, { isWorkday: !off }).find((r) => !r.pass);
+    if (fail) issues.push(`${WEEKDAY_LABELS[d]} — ${fail.label.toLowerCase()}`);
   }
-}
-
-function firstNewFailure(
-  before: DayState,
-  after: DayState,
-  config: RuleConfig,
-  isWorkday: boolean,
-): string | null {
-  const b = validateDay(before, config, { isWorkday });
-  const a = validateDay(after, config, { isWorkday });
-  for (const r of a) {
-    const prev = b.find((x) => x.id === r.id);
-    if (!r.pass && prev?.pass) return r.id;
-  }
-  return null;
+  return issues;
 }
 
 export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
-  const [state, dispatch] = useReducer(reducer, specialist, initState);
   const saveAvailability = useSpecialistStore((s) => s.saveAvailability);
+  const [config, setConfig] = useState<RuleConfig>(specialist.config);
+  const [days, setDays] = useState<DayState[]>(specialist.days);
+  const [daysOff, setDaysOff] = useState<number[]>(specialist.daysOff);
   const [rulesOpen, setRulesOpen] = useState(false);
-  const [shake, setShake] = useState<{ ruleId: string; nonce: number } | null>(null);
-  const shakeSeq = useRef(0);
+  const [guidelinesOpen, setGuidelinesOpen] = useState(false);
+  const [controlsExpanded, setControlsExpanded] = useState(false);
+  const [showViolations, setShowViolations] = useState(false);
+  const [notice, setNotice] = useState<"max-availability" | "travel" | null>(null);
 
-  useEffect(() => {
-    if (!shake) return;
-    const t = setTimeout(() => setShake(null), 600);
-    return () => clearTimeout(t);
-  }, [shake]);
-
-  const triggerShake = (ruleId: string, dayIndex?: number) => {
-    shakeSeq.current += 1;
-    if (dayIndex !== undefined) dispatch({ type: "focusDay", dayIndex });
-    setShake({ ruleId, nonce: shakeSeq.current });
-  };
-
-  const { config, activeKind, days, daysOff, focusedDay } = state;
-
-  const focusedIsOff = daysOff.includes(focusedDay);
-  const results = validateDay(days[focusedDay], config, { isWorkday: !focusedIsOff });
-  const weekValid = weekPasses({ days, daysOff, config });
-
-  const contextLabel = `${focusedIsOff ? "Day off" : "Workday"} · ${WEEKDAY_LABELS[focusedDay]}`;
-
-  const commitPaint = (dayIndex: number, candidate: DayState, failed: string) => {
-    const fixed = blockSubMinAvailability(candidate, config);
-    if (firstNewFailure(days[dayIndex], fixed, config, !daysOff.includes(dayIndex)) === null) {
-      dispatch({ type: "setDay", dayIndex, day: fixed });
-    }
-    triggerShake(failed, dayIndex);
-  };
-
-  const handleAddBlock = (dayIndex: number, draft: Block) => {
-    const current = days[dayIndex];
-    const candidate = addBlock(current, draft);
-    const failed = firstNewFailure(current, candidate, config, !daysOff.includes(dayIndex));
-    if (!failed) {
-      dispatch({ type: "addBlock", dayIndex, draft });
-      return;
-    }
-    commitPaint(dayIndex, candidate, failed);
-  };
-
-  const handleResizeBlock = (dayIndex: number, index: number, start: number, end: number) => {
-    const current = days[dayIndex];
-    const candidate = resizeBlock(current, index, start, end);
-    const failed = firstNewFailure(current, candidate, config, !daysOff.includes(dayIndex));
-    if (!failed) {
-      dispatch({ type: "resizeBlock", dayIndex, index, start, end });
-      return;
-    }
-    commitPaint(dayIndex, candidate, failed);
-  };
-
-  const handleFillDay = (dayIndex: number) => {
-    dispatch({ type: "toggleFullDay", dayIndex });
+  const handlePaint = (dayIndex: number, start: number, end: number, status: PaintStatus) => {
+    const apply = (d: DayState): DayState =>
+      status === "available" ? setAvailable(d, start, end) : addBlock(d, { start, end, kind: status });
+    const weekday = dayIndex <= 4;
+    setDays((prev) => prev.map((d, i) => ((weekday ? i <= 4 : i === dayIndex) ? apply(d) : d)));
+    setShowViolations(false);
   };
 
   const handleToggleDayOff = (dayIndex: number) => {
-    const adding = !daysOff.includes(dayIndex);
-    if (adding && daysOff.length >= config.maxDaysOff) {
-      triggerShake("days-off");
-      toast.error(`Up to ${config.maxDaysOff} days off per week`);
-      return;
-    }
-    dispatch({ type: "toggleDayOff", dayIndex });
+    const off = daysOff.includes(dayIndex);
+    setDaysOff((prev) => (off ? prev.filter((x) => x !== dayIndex) : [...prev, dayIndex]));
+    setDays((prev) => prev.map((d, i) => (i === dayIndex ? (off ? { blocks: [] } : fullDay()) : d)));
+    setShowViolations(false);
   };
 
-  const handleSaveRules = (next: RuleConfig, travelChanged: boolean) => {
-    dispatch({ type: "setConfig", config: next });
-    if (travelChanged) {
-      dispatch({ type: "resetSchedule" });
-      toast.info("Travel time changed — calendar reset");
-    } else {
-      toast.success("Calendar rules updated");
-    }
+  const handleTravel = (mins: number) => {
+    if (mins === config.travelTimeMins) return;
+    setConfig({ ...config, travelTimeMins: mins, minBreakMins: mins });
+    setDays((prev) => prev.map((_, i) => (daysOff.includes(i) ? fullDay() : { blocks: [] })));
+    setShowViolations(false);
+    toast.info("Travel time updated — calendar reset");
   };
+
+  const handleSaveRules = (next: RuleConfig) => {
+    setConfig(next);
+    setShowViolations(false);
+    toast.success("Calendar rules updated");
+  };
+
+  const handleReset = () => {
+    setDays((prev) => prev.map((_, i) => (daysOff.includes(i) ? fullDay() : { blocks: [] })));
+    setShowViolations(false);
+  };
+
+  const isMaxAvailability =
+    daysOff.length === 0 && days.every((d) => d.blocks.length === 0);
 
   const handleSave = () => {
-    saveAvailability(specialist.id, { config, days, daysOff });
-    toast.success(`Availability saved for ${specialist.name}`);
+    // Therapist: not "defined" until a travel time is picked.
+    if (specialist.role === "therapist" && config.travelTimeMins === 0) {
+      setNotice("travel");
+      return;
+    }
+
+    const issues = weekIssues(days, daysOff, config);
+    if (issues.length) {
+      setShowViolations(true);
+      toast.error(`Can't save — ${issues.join(" · ")}`);
+      return;
+    }
+
+    saveAvailability(specialist.id, { config, days, daysOff, defined: true });
+    setShowViolations(false);
+
+    if (specialist.role === "analyst" && isMaxAvailability) {
+      setNotice("max-availability");
+    } else {
+      toast.success(`Availability saved for ${specialist.name}`);
+    }
   };
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex items-center gap-3">
-        <div className="grid size-11 place-items-center rounded-full bg-primary/12 font-heading text-sm font-semibold text-primary ring-1 ring-primary/20">
-          {specialist.initials}
-        </div>
-        <div>
-          <div className="font-heading text-base font-semibold leading-tight">{specialist.name}</div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className={cn("rounded-full px-2 py-0.5 font-medium", ROLE_BADGE[specialist.role])}>
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="grid size-10 place-items-center rounded-full bg-primary/12 font-heading text-sm font-semibold text-primary ring-1 ring-primary/20">
+            {specialist.initials}
+          </div>
+          <div>
+            <div className="font-heading text-sm font-semibold leading-tight">{specialist.name}</div>
+            <span
+              className={cn("rounded-full px-2 py-0.5 text-xs font-medium", ROLE_BADGE[specialist.role])}
+            >
               {ROLE_LABEL[specialist.role]}
             </span>
-            Weekly availability
           </div>
         </div>
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <Button variant="outline" size="sm" onClick={() => setRulesOpen(true)}>
+            <SlidersHorizontal className="size-3.5" />
+            <span className="hidden sm:inline">Rules</span>
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleReset}>
+            <RotateCcw className="size-3.5" />
+            <span className="hidden sm:inline">Reset</span>
+          </Button>
+          <Button size="sm" onClick={handleSave}>
+            <Save className="size-3.5" />
+            <span className="hidden sm:inline">Save</span>
+          </Button>
+        </div>
       </div>
 
-      <ControlBar
+      <div className="flex flex-col items-center gap-1 text-center">
+        <h2 className="font-heading text-xl font-bold">
+          Select your weekly business hours as a {ROLE_LABEL[specialist.role]}
+        </h2>
+        <button
+          type="button"
+          onClick={() => setGuidelinesOpen(true)}
+          className="inline-flex cursor-pointer items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
+          We recommend checking these guidelines
+          <Info className="size-4 text-violet-700" />
+        </button>
+      </div>
+
+      <PaintControls
         config={config}
-        activeKind={activeKind}
-        onActiveKindChange={(k) => dispatch({ type: "setActiveKind", kind: k })}
-        onOpenRules={() => setRulesOpen(true)}
-        onReset={() => dispatch({ type: "resetSchedule" })}
-        onSave={handleSave}
+        expanded={controlsExpanded}
+        onTravelChange={handleTravel}
+        onToggleExpanded={() => setControlsExpanded((v) => !v)}
       />
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="flex flex-col gap-3">
-          <WeekGrid
-            days={days}
-            daysOff={daysOff}
-            config={config}
-            activeKind={activeKind}
-            focusedDay={focusedDay}
-            onAddBlock={handleAddBlock}
-            onRemoveBlock={(dayIndex, index) => dispatch({ type: "removeBlock", dayIndex, index })}
-            onResizeBlock={handleResizeBlock}
-            onToggleDayOff={handleToggleDayOff}
-            onFillDay={handleFillDay}
-            onFocusDay={(dayIndex) => dispatch({ type: "focusDay", dayIndex })}
-          />
-          <Legend supportsOnline={config.supportsOnline} />
-        </div>
-
-        <Card size="sm" className="h-fit">
-          <CardHeader>
-            <CardTitle>Rule check</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RulesPanel
-              contextLabel={contextLabel}
-              results={results}
-              daysOffCount={daysOff.length}
-              maxDaysOff={config.maxDaysOff}
-              weekValid={weekValid}
-              shake={shake}
-            />
-          </CardContent>
-        </Card>
-      </div>
+      <WeekGrid
+        days={days}
+        daysOff={daysOff}
+        config={config}
+        showViolations={showViolations}
+        onPaint={handlePaint}
+        onToggleDayOff={handleToggleDayOff}
+      />
 
       <RulesConfigDialog
         open={rulesOpen}
@@ -289,6 +171,32 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
         config={config}
         onSave={handleSaveRules}
       />
+
+      <GuidelinesDialog
+        open={guidelinesOpen}
+        onOpenChange={setGuidelinesOpen}
+        role={specialist.role}
+        config={config}
+      />
+
+      <NoticeDialog
+        open={notice === "max-availability"}
+        onOpenChange={(o) => !o && setNotice(null)}
+        title="Business hours set to maximum availability"
+      >
+        Your weekly business hours are set to{" "}
+        <NoticeHl>maximum availability 06:00–24:00, MO–SU</NoticeHl>. You can change them until the
+        first booking for your services is confirmed.
+      </NoticeDialog>
+
+      <NoticeDialog
+        open={notice === "travel"}
+        onOpenChange={(o) => !o && setNotice(null)}
+        title="Select a travel time"
+      >
+        Please select for the Therapist your preferred <NoticeHl>TRAVEL TIME</NoticeHl> option. You
+        can change it later until the first booking for your services is confirmed.
+      </NoticeDialog>
     </div>
   );
 }

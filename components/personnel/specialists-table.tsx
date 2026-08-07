@@ -38,15 +38,12 @@ export function SpecialistsTable() {
             <TableRow>
               <TableHead>Specialist</TableHead>
               <TableHead>Role</TableHead>
-              <TableHead>Availability</TableHead>
+              <TableHead>Business hours</TableHead>
               <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {specialists.map((s) => {
-              const configured = s.days.some(
-                (d, i) => !s.daysOff.includes(i) && d.blocks.length > 0,
-              );
               return (
                 <TableRow key={s.id}>
                   <TableCell>
@@ -71,12 +68,12 @@ export function SpecialistsTable() {
                     </span>
                   </TableCell>
                   <TableCell>
-                    {configured ? (
+                    {s.defined ? (
                       <span className="inline-flex items-center gap-1.5 text-xs text-success">
-                        <span className="size-1.5 rounded-full bg-success" /> Configured
+                        <span className="size-1.5 rounded-full bg-success" /> Defined
                       </span>
                     ) : (
-                      <span className="text-xs text-muted-foreground">Not set</span>
+                      <span className="text-xs text-muted-foreground">Not defined</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right">

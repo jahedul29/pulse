@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { RotateCcw, TriangleAlert } from "lucide-react";
+import { useState } from "react";
+import { RotateCcw } from "lucide-react";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -23,7 +24,6 @@ import { fmtDuration } from "@/lib/availability/constants";
 import { configFor } from "@/lib/availability/rules";
 import type { RuleConfig } from "@/lib/availability/types";
 
-const TRAVEL_OPTIONS = [45, 60, 75, 90, 105, 120];
 const THERAPIST_BLOCK_OPTIONS = [30, 45, 60, 90, 120];
 const INPERSON_OPTIONS = [30, 45, 60, 90, 120];
 const ONLINE_OPTIONS = [15, 30, 45, 60];
@@ -40,16 +40,16 @@ export function RulesConfigDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   config: RuleConfig;
-  onSave: (config: RuleConfig, travelChanged: boolean) => void;
+  onSave: (config: RuleConfig) => void;
 }) {
   const [draft, setDraft] = useState<RuleConfig>(config);
-
-  useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) setDraft(config);
-  }, [open, config]);
+  }
 
   const isTherapist = draft.specialist === "therapist";
-  const travelChanged = isTherapist && draft.travelTimeMins !== config.travelTimeMins;
 
   const handleSave = () => {
     const next: RuleConfig = { ...draft };
@@ -57,7 +57,7 @@ export function RulesConfigDialog({
       next.minBreakMins = next.travelTimeMins;
       next.minBlockOnlineMins = next.minBlockInPersonMins;
     }
-    onSave(next, travelChanged);
+    onSave(next);
     onOpenChange(false);
   };
 
@@ -72,22 +72,14 @@ export function RulesConfigDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <DialogBody className="grid gap-4 sm:grid-cols-2">
           {isTherapist ? (
-            <>
-              <MinutesField
-                label="Travel time"
-                value={draft.travelTimeMins}
-                options={TRAVEL_OPTIONS}
-                onChange={(v) => setDraft({ ...draft, travelTimeMins: v })}
-              />
-              <MinutesField
-                label="Min availability block"
-                value={draft.minBlockInPersonMins}
-                options={THERAPIST_BLOCK_OPTIONS}
-                onChange={(v) => setDraft({ ...draft, minBlockInPersonMins: v })}
-              />
-            </>
+            <MinutesField
+              label="Min availability block"
+              value={draft.minBlockInPersonMins}
+              options={THERAPIST_BLOCK_OPTIONS}
+              onChange={(v) => setDraft({ ...draft, minBlockInPersonMins: v })}
+            />
           ) : (
             <>
               <MinutesField
@@ -136,14 +128,7 @@ export function RulesConfigDialog({
               </SelectContent>
             </Select>
           </div>
-        </div>
-
-        {travelChanged && (
-          <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning-muted/60 p-2.5 text-xs text-warning">
-            <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-            <span>Changing travel time resets the calendar — all availability will be cleared.</span>
-          </div>
-        )}
+        </DialogBody>
 
         <DialogFooter>
           <Button

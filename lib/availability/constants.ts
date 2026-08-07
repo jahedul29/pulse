@@ -18,10 +18,6 @@ export function slotToTime(slot: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-export function minutesToSlot(mins: number): number {
-  return Math.round((mins - DAY_START_HOUR * 60) / SLOT_MINS);
-}
-
 export function fmtDuration(mins: number): string {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
@@ -34,10 +30,10 @@ export const THERAPIST_DEFAULTS: RuleConfig = {
   specialist: "therapist",
   minBlockInPersonMins: 60,
   minBlockOnlineMins: 60,
-  minBreakMins: 45,
+  minBreakMins: 0,
   continuousWindowMins: 360,
   maxDaysOff: 2,
-  travelTimeMins: 45,
+  travelTimeMins: 0,
   minAdjacentUnavailMins: 15,
   supportsOnline: false,
 };

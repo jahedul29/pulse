@@ -7,6 +7,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -135,7 +136,11 @@ export function ClientFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 sm:grid-cols-2">
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        >
+          <DialogBody className="grid gap-4 sm:grid-cols-2">
           <Field label="Full name" error={errors.fullName?.message} className="sm:col-span-2">
             <Controller
               control={control}
@@ -253,8 +258,9 @@ export function ClientFormDialog({
               )}
             />
           </Field>
+          </DialogBody>
 
-          <DialogFooter className="sm:col-span-2">
+          <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>

@@ -1,33 +1,97 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Search } from "lucide-react";
+import { ChevronRight, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 import { SECTIONS } from "@/lib/nav";
 import { PeriodToggle } from "@/components/common/period-toggle";
+import { useClientStore } from "@/lib/store";
+import { useSpecialistStore } from "@/lib/specialists";
+import { useUiStore } from "@/lib/ui-store";
 
-function currentSection(pathname: string) {
-  const match = SECTIONS.find(
-    (s) => pathname === `/${s.slug}` || pathname.startsWith(`/${s.slug}/`),
-  );
-  return match ?? SECTIONS[2];
-}
+type Crumb = { label: string; href?: string };
 
 export function Topbar() {
   const pathname = usePathname();
-  const section = currentSection(pathname);
+  const setMobileOpen = useUiStore((s) => s.setMobileOpen);
+  const collapsed = useUiStore((s) => s.collapsed);
+  const toggleCollapsed = useUiStore((s) => s.toggleCollapsed);
+
+  const segments = pathname.split("/").filter(Boolean);
+  const section = SECTIONS.find((s) => s.slug === segments[0]) ?? SECTIONS[2];
+  const detailId = segments[1];
+
+  const specialistName = useSpecialistStore((s) =>
+    section.slug === "personnel" && detailId
+      ? s.specialists.find((x) => x.id === detailId)?.name
+      : undefined,
+  );
+  const clientName = useClientStore((s) =>
+    section.slug === "clients" && detailId
+      ? s.clients.find((c) => c.id === detailId)?.fullName
+      : undefined,
+  );
+  const detailName = detailId ? (specialistName ?? clientName ?? "Details") : undefined;
+
+  const trail: Crumb[] = [{ label: "ABAPRO", href: "/" }];
+  if (detailName) {
+    trail.push({ label: section.label, href: `/${section.slug}` });
+    trail.push({ label: detailName });
+  } else {
+    trail.push({ label: section.label });
+  }
+
+  const title = detailName ?? section.label;
   const showPeriod = pathname === "/clients";
+
   return (
-    <header className="sticky top-0 z-20 flex flex-wrap items-center gap-3 border-b bg-background/85 px-5 py-3 backdrop-blur">
-      <div className="mr-auto">
-        <div className="font-heading text-lg font-semibold leading-tight">{section.label}</div>
-        <div className="text-xs text-muted-foreground">ABAPRO · Experience Center</div>
+    <header className="sticky top-0 z-20 flex flex-wrap items-center gap-3 border-b bg-background/85 px-4 py-3 backdrop-blur md:px-5">
+      <button
+        type="button"
+        onClick={() => setMobileOpen(true)}
+        aria-label="Open menu"
+        className="grid size-9 cursor-pointer place-items-center rounded-lg border text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden"
+      >
+        <Menu className="size-5" />
+      </button>
+
+      <button
+        type="button"
+        onClick={toggleCollapsed}
+        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        className="hidden size-9 cursor-pointer place-items-center rounded-lg border text-muted-foreground hover:bg-muted hover:text-foreground lg:grid"
+      >
+        {collapsed ? <PanelLeftOpen className="size-5" /> : <PanelLeftClose className="size-5" />}
+      </button>
+
+      <div className="mr-auto min-w-0">
+        <div className="truncate font-heading text-lg leading-tight font-semibold">{title}</div>
+        <nav
+          aria-label="Breadcrumb"
+          className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"
+        >
+          {trail.map((c, i) => (
+            <span key={`${c.label}-${i}`} className="flex min-w-0 items-center gap-1">
+              {i > 0 && <ChevronRight className="size-3 shrink-0 text-muted-foreground/60" />}
+              {c.href ? (
+                <Link href={c.href} className="truncate transition-colors hover:text-primary">
+                  {c.label}
+                </Link>
+              ) : (
+                <span className="truncate font-medium text-foreground">{c.label}</span>
+              )}
+            </span>
+          ))}
+        </nav>
       </div>
+
       <label className="relative hidden items-center md:flex">
         <Search className="pointer-events-none absolute left-2.5 size-4 text-muted-foreground" />
         <input
           type="search"
           placeholder="Universal search"
-          className="h-9 w-56 rounded-lg border bg-card pl-8 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          className="h-9 w-56 rounded-lg border bg-card pr-3 pl-8 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         />
       </label>
       {showPeriod && <PeriodToggle />}
