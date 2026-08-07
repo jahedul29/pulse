@@ -15,7 +15,7 @@ export function NavItems({
   const pathname = usePathname();
   return (
     <nav className="flex flex-1 flex-col gap-0.5 px-3 py-2">
-      {SECTIONS.map((s) => {
+      {SECTIONS.filter((s) => s.slug === "personnel").map((s) => {
         const href = `/${s.slug}`;
         const active = pathname === href || pathname.startsWith(`${href}/`);
         const Icon = s.icon;

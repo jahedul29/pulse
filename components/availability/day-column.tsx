@@ -29,16 +29,18 @@ export function DayColumn({
   day,
   config,
   offending,
+  shakeKey = 0,
   onPaint,
 }: {
   dayIndex: number;
   day: DayState;
   config: RuleConfig;
   offending: Set<number>;
+  shakeKey?: number;
   onPaint: (dayIndex: number, start: number, end: number, status: PaintStatus) => void;
 }) {
   const bodyRef = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ anchor: number; status: PaintStatus; moved: boolean } | null>(null);
+  const drag = useRef<{ anchor: number; paint: PaintStatus; moved: boolean } | null>(null);
   const [draft, setDraft] = useState<{ start: number; end: number; status: PaintStatus } | null>(null);
 
   const slotAt = (clientY: number) => {
@@ -52,7 +54,8 @@ export function DayColumn({
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
     const slot = slotAt(e.clientY);
-    drag.current = { anchor: slot, status: stateToStatus(states[slot]), moved: false };
+    const next = cycleStatus(stateToStatus(states[slot]), config.supportsOnline);
+    drag.current = { anchor: slot, paint: next, moved: false };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
   const onPointerMove = (e: React.PointerEvent) => {
@@ -61,7 +64,7 @@ export function DayColumn({
     const slot = slotAt(e.clientY);
     if (slot !== d.anchor) d.moved = true;
     if (d.moved) {
-      setDraft({ start: Math.min(d.anchor, slot), end: Math.max(d.anchor, slot) + 1, status: d.status });
+      setDraft({ start: Math.min(d.anchor, slot), end: Math.max(d.anchor, slot) + 1, status: d.paint });
     }
   };
   const onPointerUp = () => {
@@ -70,19 +73,23 @@ export function DayColumn({
     setDraft(null);
     if (!d) return;
     if (d.moved && draft) {
-      onPaint(dayIndex, draft.start, draft.end, d.status);
+      onPaint(dayIndex, draft.start, draft.end, d.paint);
     } else {
-      onPaint(dayIndex, d.anchor, d.anchor + 1, cycleStatus(d.status, config.supportsOnline));
+      onPaint(dayIndex, d.anchor, d.anchor + 1, d.paint);
     }
   };
 
   return (
     <div
+      key={shakeKey}
       ref={bodyRef}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      className="relative flex cursor-pointer touch-none flex-col select-none"
+      className={cn(
+        "relative flex cursor-pointer touch-none flex-col select-none",
+        shakeKey > 0 && "animate-rule-shake motion-reduce:animate-none",
+      )}
       style={{ height: `calc(var(--slot) * ${SLOTS_PER_DAY})` }}
     >
       {Array.from({ length: SLOTS_PER_DAY }, (_, i) => {
