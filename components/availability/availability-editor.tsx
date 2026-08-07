@@ -41,19 +41,44 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
   const [controlsExpanded, setControlsExpanded] = useState(false);
   const [showViolations, setShowViolations] = useState(false);
   const [notice, setNotice] = useState<"max-availability" | "travel" | null>(null);
+  const [shake, setShake] = useState<{ cols: number[]; nonce: number }>({ cols: [], nonce: 0 });
+
+  const needsTravel = specialist.role === "therapist" && config.travelTimeMins === 0;
 
   const handlePaint = (dayIndex: number, start: number, end: number, status: PaintStatus) => {
+    if (needsTravel) {
+      setNotice("travel");
+      return;
+    }
+    if (daysOff.includes(dayIndex)) return;
     const apply = (d: DayState): DayState =>
       status === "available" ? setAvailable(d, start, end) : addBlock(d, { start, end, kind: status });
-    const weekday = dayIndex <= 4;
-    setDays((prev) => prev.map((d, i) => ((weekday ? i <= 4 : i === dayIndex) ? apply(d) : d)));
+    const workdays = days.map((_, i) => i).filter((i) => !daysOff.includes(i));
+    const fail = validateDay(apply(days[dayIndex]), config, { isWorkday: true }).find((r) => !r.pass);
+    if (fail) {
+      setShake((s) => ({ cols: workdays, nonce: s.nonce + 1 }));
+      toast.error(fail.message);
+      return;
+    }
+    setDays((prev) => prev.map((d, i) => (workdays.includes(i) ? apply(d) : d)));
     setShowViolations(false);
   };
 
   const handleToggleDayOff = (dayIndex: number) => {
+    if (needsTravel) {
+      setNotice("travel");
+      return;
+    }
     const off = daysOff.includes(dayIndex);
+    if (!off && daysOff.length >= config.maxDaysOff) {
+      setShake((s) => ({ cols: [dayIndex], nonce: s.nonce + 1 }));
+      toast.error(`Maximum ${config.maxDaysOff} ${config.maxDaysOff === 1 ? "day" : "days"} off allowed`);
+      return;
+    }
+    const template = days.find((_, i) => !daysOff.includes(i) && i !== dayIndex);
+    const restored: DayState = template ? { blocks: template.blocks.map((b) => ({ ...b })) } : { blocks: [] };
     setDaysOff((prev) => (off ? prev.filter((x) => x !== dayIndex) : [...prev, dayIndex]));
-    setDays((prev) => prev.map((d, i) => (i === dayIndex ? (off ? { blocks: [] } : fullDay()) : d)));
+    setDays((prev) => prev.map((d, i) => (i === dayIndex ? (off ? restored : fullDay()) : d)));
     setShowViolations(false);
   };
 
@@ -105,7 +130,7 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 hidden">
         <div className="flex items-center gap-3">
           <div className="grid size-10 place-items-center rounded-full bg-primary/12 font-heading text-sm font-semibold text-primary ring-1 ring-primary/20">
             {specialist.initials}
@@ -161,6 +186,8 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
         daysOff={daysOff}
         config={config}
         showViolations={showViolations}
+        shakeCols={shake.cols}
+        shakeNonce={shake.nonce}
         onPaint={handlePaint}
         onToggleDayOff={handleToggleDayOff}
       />

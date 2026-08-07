@@ -55,10 +55,7 @@ function make(id: string, name: string, role: SpecialistType, email: string): Sp
 
 const SEED: Specialist[] = [
   make("sp-1", "Alex Rivera", "therapist", "alex.rivera@pulse.health"),
-  make("sp-2", "Maya Chen", "therapist", "maya.chen@pulse.health"),
-  make("sp-3", "Daniel Okoro", "therapist", "daniel.okoro@pulse.health"),
   make("sp-4", "Priya Nair", "analyst", "priya.nair@pulse.health"),
-  make("sp-5", "Tom Becker", "analyst", "tom.becker@pulse.health"),
 ];
 
 interface SpecialistStore {
