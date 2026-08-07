@@ -56,75 +56,10 @@ export function addBlock(day: DayState, draft: Block): DayState {
   return { blocks: mergeSameKind([...cleared, { start: s, end: e, kind: draft.kind }]) };
 }
 
-export function removeBlock(day: DayState, index: number): DayState {
-  return { blocks: day.blocks.filter((_, i) => i !== index) };
-}
-
-export function resizeBlock(day: DayState, index: number, start: number, end: number): DayState {
-  const b = day.blocks[index];
-  if (!b) return day;
-  return addBlock(removeBlock(day, index), { start, end, kind: b.kind });
-}
-
-export function placeMinUnavailable(
-  day: DayState,
-  selStart: number,
-  selEnd: number,
-  config: RuleConfig,
-): { start: number; end: number } {
-  const T = Math.max(1, Math.round(config.minBreakMins / SLOT_MINS));
-  const s0 = Math.max(0, Math.min(selStart, selEnd));
-  const e0 = Math.min(SLOTS_PER_DAY, Math.max(selStart, selEnd));
-
-  const st = buildStates(day);
-  const run = runsWhere(st, (v) => v !== UNAVAIL).find((r) => r.start < e0 && r.end > s0);
-  if (!run) {
-    const start = Math.max(0, Math.min(s0, SLOTS_PER_DAY - T));
-    return { start, end: start + T };
-  }
-
-  const { start: A, end: B } = run;
-  if (B - A <= T) return { start: A, end: B };
-
-  const MAB = Math.round(config.minBlockInPersonMins / SLOT_MINS);
-  const lo = Math.max(A, e0 - T);
-  const hi = Math.min(s0, B - T);
-  let best = lo;
-  let bestScore = -1;
-  for (let s = lo; s <= hi; s++) {
-    const above = s - A;
-    const below = B - (s + T);
-    const score = (above >= MAB ? above : 0) + (below >= MAB ? below : 0);
-    if (score > bestScore) {
-      bestScore = score;
-      best = s;
-    }
-  }
-  return { start: best, end: best + T };
-}
-
-export function blockSubMinAvailability(day: DayState, config: RuleConfig): DayState {
-  let result = day;
-  for (let guard = 0; guard < 8; guard++) {
-    const st = buildStates(result);
-    let changed = false;
-    for (const r of runsWhere(st, (v) => v === AVAILABLE)) {
-      if ((r.end - r.start) * SLOT_MINS < config.minBlockInPersonMins) {
-        result = addBlock(result, { start: r.start, end: r.end, kind: "unavailable" });
-        changed = true;
-      }
-    }
-    if (config.supportsOnline) {
-      for (const r of runsWhere(st, (v) => v === ONLINE)) {
-        if ((r.end - r.start) * SLOT_MINS < config.minBlockOnlineMins) {
-          result = addBlock(result, { start: r.start, end: r.end, kind: "unavailable" });
-          changed = true;
-        }
-      }
-    }
-    if (!changed) break;
-  }
-  return result;
+export function setAvailable(day: DayState, start: number, end: number): DayState {
+  const s = Math.max(0, Math.min(start, end));
+  const e = Math.min(SLOTS_PER_DAY, Math.max(start, end));
+  return { blocks: clearSpan(day.blocks, s, e) };
 }
 
 const AVAILABLE = 0;
@@ -156,6 +91,14 @@ function runsWhere(st: Uint8Array, pred: (v: number) => boolean): Array<{ start:
 }
 
 const runMins = (r: { start: number; end: number }) => (r.end - r.start) * SLOT_MINS;
+const slotsOf = (r: { start: number; end: number }): number[] =>
+  Array.from({ length: r.end - r.start }, (_, k) => r.start + k);
+
+export function cycleStatus(current: "available" | "unavailable" | "online", supportsOnline: boolean) {
+  if (current === "available") return "unavailable" as const;
+  if (current === "unavailable") return supportsOnline ? ("online" as const) : ("available" as const);
+  return "available" as const;
+}
 
 export function validateDay(
   day: DayState,
@@ -180,6 +123,7 @@ export function validateDay(
           ? "no in-person availability"
           : "no availability yet",
       message: `Each ${config.supportsOnline ? "in-person " : ""}availability block must be at least ${fmtDuration(config.minBlockInPersonMins)}.`,
+      offending: short.flatMap(slotsOf),
     });
   }
 
@@ -193,19 +137,20 @@ export function validateDay(
       pass: short.length === 0,
       actual: onlineRuns.length ? `shortest ${fmtDuration(shortest)}` : "none set",
       message: `Each online-only availability block must be at least ${fmtDuration(config.minBlockOnlineMins)}.`,
+      offending: short.flatMap(slotsOf),
     });
   }
 
   {
     const offending: number[] = [];
     let minInterior = Infinity;
-    day.blocks.forEach((b, i) => {
+    day.blocks.forEach((b) => {
       if (b.kind !== "unavailable") return;
       const isEdge = b.start === 0 || b.end === SLOTS_PER_DAY;
       const req = isEdge ? config.minAdjacentUnavailMins : config.minBreakMins;
       const mins = (b.end - b.start) * SLOT_MINS;
       if (!isEdge) minInterior = Math.min(minInterior, mins);
-      if (mins < req) offending.push(i);
+      if (mins < req) for (let s = b.start; s < b.end; s++) offending.push(s);
     });
     results.push({
       id: "breaks",
@@ -231,26 +176,4 @@ export function validateDay(
   }
 
   return results;
-}
-
-export function dayPasses(
-  day: DayState,
-  config: RuleConfig,
-  opts: { isWorkday: boolean },
-): boolean {
-  return validateDay(day, config, opts).every((r) => r.pass);
-}
-
-export function weekPasses(args: {
-  days: DayState[];
-  daysOff: number[];
-  config: RuleConfig;
-}): boolean {
-  const { days, daysOff, config } = args;
-  if (daysOff.length > config.maxDaysOff) return false;
-  for (let d = 0; d < days.length; d++) {
-    const isWorkday = !daysOff.includes(d);
-    if (!dayPasses(days[d] ?? { blocks: [] }, config, { isWorkday })) return false;
-  }
-  return true;
 }
