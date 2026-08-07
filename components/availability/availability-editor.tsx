@@ -53,14 +53,14 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
     if (daysOff.includes(dayIndex)) return;
     const apply = (d: DayState): DayState =>
       status === "available" ? setAvailable(d, start, end) : addBlock(d, { start, end, kind: status });
-    const workdays = days.map((_, i) => i).filter((i) => !daysOff.includes(i));
+    const weekday = dayIndex <= 4;
     const fail = validateDay(apply(days[dayIndex]), config, { isWorkday: true }).find((r) => !r.pass);
     if (fail) {
-      setShake((s) => ({ cols: workdays, nonce: s.nonce + 1 }));
+      setShake((s) => ({ cols: weekday ? [0, 1, 2, 3, 4] : [dayIndex], nonce: s.nonce + 1 }));
       toast.error(fail.message);
       return;
     }
-    setDays((prev) => prev.map((d, i) => (workdays.includes(i) ? apply(d) : d)));
+    setDays((prev) => prev.map((d, i) => ((weekday ? i <= 4 : i === dayIndex) ? apply(d) : d)));
     setShowViolations(false);
   };
 
@@ -70,15 +70,8 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
       return;
     }
     const off = daysOff.includes(dayIndex);
-    if (!off && daysOff.length >= config.maxDaysOff) {
-      setShake((s) => ({ cols: [dayIndex], nonce: s.nonce + 1 }));
-      toast.error(`Maximum ${config.maxDaysOff} ${config.maxDaysOff === 1 ? "day" : "days"} off allowed`);
-      return;
-    }
-    const template = days.find((_, i) => !daysOff.includes(i) && i !== dayIndex);
-    const restored: DayState = template ? { blocks: template.blocks.map((b) => ({ ...b })) } : { blocks: [] };
     setDaysOff((prev) => (off ? prev.filter((x) => x !== dayIndex) : [...prev, dayIndex]));
-    setDays((prev) => prev.map((d, i) => (i === dayIndex ? (off ? restored : fullDay()) : d)));
+    setDays((prev) => prev.map((d, i) => (i === dayIndex ? (off ? { blocks: [] } : fullDay()) : d)));
     setShowViolations(false);
   };
 

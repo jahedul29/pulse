@@ -49,22 +49,30 @@ export function WeekGrid({
           <div />
           {WEEKDAY_LABELS.map((label, d) => {
             const isOff = daysOff.includes(d);
+            const weekend = d === 5 || d === 6;
             const base =
               "mx-0.5 rounded-sm py-1 text-center text-xs font-bold uppercase tracking-wide transition-colors sm:mx-1 sm:text-base";
+            if (weekend) {
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => onToggleDayOff(d)}
+                  title={isOff ? "Set as working day" : "Mark day off"}
+                  className={cn(
+                    base,
+                    "cursor-pointer",
+                    isOff ? "bg-[#e8134e] text-white" : "text-violet-700 hover:bg-violet-50",
+                  )}
+                >
+                  {label.slice(0, 2)}
+                </button>
+              );
+            }
             return (
-              <button
-                key={label}
-                type="button"
-                onClick={() => onToggleDayOff(d)}
-                title={isOff ? "Set as working day" : "Mark day off"}
-                className={cn(
-                  base,
-                  "cursor-pointer",
-                  isOff ? "bg-[#e8134e] text-white" : "text-violet-700 hover:bg-violet-50",
-                )}
-              >
+              <div key={label} className={cn(base, "text-violet-700")}>
                 {label.slice(0, 2)}
-              </button>
+              </div>
             );
           })}
         </div>
