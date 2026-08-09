@@ -25,5 +25,5 @@ export function fmtDelta(n: number): string {
 
 export function fmtDate(iso: string): string {
   const [y, m, d] = iso.split("-");
-  return y && m && d ? `${m}/${d}/${y}` : iso;
+  return y && m && d ? `${d}/${m}/${y}` : iso;
 }
