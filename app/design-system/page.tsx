@@ -23,6 +23,8 @@ import {
   MoreVertical,
   PanelLeftClose,
   PanelLeftOpen,
+  Package,
+  PauseCircle,
   Pencil,
   Phone,
   Plus,
@@ -31,7 +33,10 @@ import {
   SlidersHorizontal,
   Sun,
   Trash2,
+  TrendingDown,
+  TrendingUp,
   Upload,
+  Users,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -96,8 +101,15 @@ import { Alert } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Pagination } from "@/components/common/pagination";
 import { TrendChart } from "@/components/clients/trend-chart";
+import { BarChart } from "@/components/clients/bar-chart";
 import { Donut } from "@/components/clients/donut";
 import { Sparkline } from "@/components/clients/sparkline";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const BRAND = [
   "--primary",
@@ -151,6 +163,29 @@ const SPLIT = [
   { name: "Quarterly", value: 28, fill: "var(--color-chart-2)" },
   { name: "Weekly", value: 17, fill: "var(--color-chart-3)" },
   { name: "One-off", value: 9, fill: "var(--color-chart-4)" },
+];
+const STATS: {
+  slug: string;
+  label: string;
+  value: string;
+  delta: string;
+  tone: "success" | "danger";
+  color: string;
+  icon: typeof Users;
+}[] = [
+  { slug: "new", label: "New clients", value: "1.3K", delta: "+7%", tone: "success", color: "var(--color-chart-1)", icon: Users },
+  { slug: "active", label: "Active packages", value: "862", delta: "+9%", tone: "success", color: "var(--color-chart-2)", icon: Package },
+  { slug: "susp", label: "Suspended", value: "37", delta: "+71%", tone: "danger", color: "var(--color-chart-4)", icon: PauseCircle },
+  { slug: "del", label: "Deleted", value: "21", delta: "+68%", tone: "danger", color: "var(--color-chart-5)", icon: Trash2 },
+];
+const BARS = [
+  { label: "Mon", value: 42 },
+  { label: "Tue", value: 55 },
+  { label: "Wed", value: 48 },
+  { label: "Thu", value: 61 },
+  { label: "Fri", value: 70 },
+  { label: "Sat", value: 30 },
+  { label: "Sun", value: 18 },
 ];
 const TYPE_SCALE = [
   ["Display / H1", "text-4xl font-bold", "font-heading", "Page hero"],
@@ -208,14 +243,15 @@ const HEAD =
 const CELL = "whitespace-nowrap border-b px-3 py-2 align-middle group-hover:bg-muted";
 const FREEZE_SHADOW = "shadow-[4px_0_6px_-4px_rgba(0,0,0,0.18)]";
 
-function Swatch({ token }: { token: string }) {
+function Swatch({ token, hex }: { token: string; hex?: string }) {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1">
       <div
         className="h-14 w-full rounded-lg ring-1 ring-foreground/10"
         style={{ background: `var(${token})` }}
       />
       <div className="font-mono text-[11px] text-muted-foreground">{token.slice(2)}</div>
+      <div className="font-mono text-[10px] text-foreground/70 uppercase">{hex || "—"}</div>
     </div>
   );
 }
@@ -266,6 +302,47 @@ function Tile({ kind }: { kind: "available" | "unavailable" | "online" | "offend
     >
       {kind === "online" && <span className="size-2 rounded-full bg-emerald-500" />}
     </div>
+  );
+}
+
+function StatCard({ stat }: { stat: (typeof STATS)[number] }) {
+  const Icon = stat.icon;
+  const rising = stat.delta.trim().startsWith("+");
+  return (
+    <Card
+      size="sm"
+      className="group relative overflow-hidden transition duration-200 hover:-translate-y-0.5 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+    >
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 opacity-90 transition-opacity duration-200 group-hover:opacity-100">
+        <Sparkline id={stat.slug} data={TREND} color={stat.color} />
+      </div>
+      <CardContent className="relative flex flex-col gap-2 pb-11">
+        <div className="flex items-center justify-between">
+          <span
+            className="grid size-8 place-items-center rounded-lg"
+            style={{
+              backgroundColor: `color-mix(in oklab, ${stat.color}, transparent 86%)`,
+              color: stat.color,
+            }}
+          >
+            <Icon className="size-4" />
+          </span>
+          <span
+            className={cn(
+              "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-medium",
+              stat.tone === "success" ? "bg-success-muted text-success" : "bg-danger-muted text-danger",
+            )}
+          >
+            {rising ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
+            {stat.delta}
+          </span>
+        </div>
+        <div className="font-heading text-3xl leading-none font-bold tabular-nums">{stat.value}</div>
+        <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+          {stat.label}
+        </span>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -611,6 +688,7 @@ export default function DesignSystemPage() {
   const [active, setActive] = useState("foundations");
   const [page, setPage] = useState(2);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [hexes, setHexes] = useState<Record<string, string>>({});
 
   const perPage = 10;
   const total = 96;
@@ -626,6 +704,15 @@ export default function DesignSystemPage() {
       el.classList.remove("theme-violet");
       el.classList.remove("dark");
     };
+  }, [theme, dark]);
+
+  useEffect(() => {
+    const cs = getComputedStyle(document.documentElement);
+    const tokens = [...BRAND, ...NEUTRALS, ...SEMANTIC, ...CHARTS];
+    const map: Record<string, string> = {};
+    tokens.forEach((t) => (map[t] = cs.getPropertyValue(t).trim()));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHexes(map);
   }, [theme, dark]);
 
   useEffect(() => {
@@ -729,28 +816,28 @@ export default function DesignSystemPage() {
                 <Sub label="Brand">
                   <div className="grid w-full grid-cols-3 gap-3 sm:grid-cols-6">
                     {BRAND.map((t) => (
-                      <Swatch key={t} token={t} />
+                      <Swatch key={t} token={t} hex={hexes[t]} />
                     ))}
                   </div>
                 </Sub>
                 <Sub label="Neutrals">
                   <div className="grid w-full grid-cols-3 gap-3 sm:grid-cols-6">
                     {NEUTRALS.map((t) => (
-                      <Swatch key={t} token={t} />
+                      <Swatch key={t} token={t} hex={hexes[t]} />
                     ))}
                   </div>
                 </Sub>
                 <Sub label="Semantic">
                   <div className="grid w-full grid-cols-3 gap-3 sm:grid-cols-6">
                     {SEMANTIC.map((t) => (
-                      <Swatch key={t} token={t} />
+                      <Swatch key={t} token={t} hex={hexes[t]} />
                     ))}
                   </div>
                 </Sub>
                 <Sub label="Charts">
                   <div className="grid w-full grid-cols-3 gap-3 sm:grid-cols-6">
                     {CHARTS.map((t) => (
-                      <Swatch key={t} token={t} />
+                      <Swatch key={t} token={t} hex={hexes[t]} />
                     ))}
                   </div>
                 </Sub>
@@ -1219,11 +1306,17 @@ export default function DesignSystemPage() {
             </div>
           </Section>
 
-          <Section id="data" title="Data display" desc="Stats, charts, tabs, tables, avatars, progress.">
+          <Section id="data" title="Data display" desc="Stat cards, charts, tabs, tables, avatars, progress.">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {STATS.map((s) => (
+                <StatCard key={s.slug} stat={s} />
+              ))}
+            </div>
+
             <Card>
               <CardHeader>
                 <CardTitle>Charts</CardTitle>
-                <CardDescription>Area, donut, and sparkline — all driven by chart tokens.</CardDescription>
+                <CardDescription>Area, bar, donut, and sparkline — all driven by chart tokens.</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-6 lg:grid-cols-2">
                 <div className="flex flex-col gap-2">
@@ -1232,17 +1325,23 @@ export default function DesignSystemPage() {
                   </div>
                   <TrendChart data={TREND} />
                 </div>
+                <div className="flex flex-col gap-2">
+                  <div className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                    Sessions by day · bar
+                  </div>
+                  <BarChart data={BARS} />
+                </div>
                 <div className="flex flex-col gap-3">
                   <div className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                     Package split · donut
                   </div>
                   <Donut data={SPLIT} />
-                  <div className="flex flex-col gap-1.5">
-                    <div className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                      Sessions · sparkline
-                    </div>
-                    <Sparkline id="ds" data={TREND} />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <div className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                    Sessions · sparkline
                   </div>
+                  <Sparkline id="ds" data={TREND} />
                 </div>
               </CardContent>
             </Card>
@@ -1501,14 +1600,14 @@ export default function DesignSystemPage() {
                   </Popover>
                 </Sub>
                 <Sub label="Tooltip">
-                  <span className="group relative inline-flex">
-                    <Button variant="outline" size="icon">
-                      <MoreVertical className="size-4" />
-                    </Button>
-                    <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 scale-95 rounded-md bg-foreground px-2 py-1 text-xs whitespace-nowrap text-background opacity-0 transition group-hover:scale-100 group-hover:opacity-100">
-                      More actions
-                    </span>
-                  </span>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger render={<Button variant="outline" size="icon" />}>
+                        <MoreVertical className="size-4" />
+                      </TooltipTrigger>
+                      <TooltipContent>More actions</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   <span className="text-xs text-muted-foreground">Hover the button →</span>
                 </Sub>
                 <Sub label="Dialogs">
