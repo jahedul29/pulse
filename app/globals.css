@@ -261,3 +261,12 @@
 .animate-rule-shake {
   animation: rule-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
+
+.recharts-wrapper:focus,
+.recharts-wrapper:focus-visible,
+.recharts-surface:focus,
+.recharts-surface:focus-visible,
+.recharts-wrapper *:focus,
+.recharts-wrapper *:focus-visible {
+  outline: none;
+}
