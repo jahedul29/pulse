@@ -131,8 +131,8 @@ const SEMANTIC = [
 const CHARTS = ["--chart-1", "--chart-2", "--chart-3", "--chart-4", "--chart-5"];
 const TRAVEL = [45, 60, 75, 90, 105];
 const THEMES = [
-  { id: "teal", name: "Clinical Teal" },
   { id: "violet", name: "Regal Violet" },
+  { id: "teal", name: "Clinical Teal" },
 ] as const;
 type ThemeId = (typeof THEMES)[number]["id"];
 
@@ -675,7 +675,7 @@ function DateRangePicker() {
 
 export default function DesignSystemPage() {
   const [dark, setDark] = useState(false);
-  const [theme, setTheme] = useState<ThemeId>("teal");
+  const [theme, setTheme] = useState<ThemeId>("violet");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
   const [guidelinesOpen, setGuidelinesOpen] = useState(false);

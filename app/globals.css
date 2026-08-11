@@ -144,15 +144,15 @@
 
 .theme-violet {
   --background: #ffffff;
-  --foreground: #201826;
+  --foreground: #000000;
   --card: #ffffff;
-  --card-foreground: #201826;
+  --card-foreground: #000000;
   --popover: #ffffff;
-  --popover-foreground: #201826;
+  --popover-foreground: #000000;
   --primary: #4f008b;
   --primary-foreground: #ffffff;
   --secondary: #f2f2f2;
-  --secondary-foreground: #2a1a38;
+  --secondary-foreground: #000000;
   --muted: #f2f2f2;
   --muted-foreground: #7f7f7f;
   --accent: #efe3fa;
@@ -176,7 +176,7 @@
   --danger-foreground: #ffffff;
   --danger-muted: #ffe1e8;
   --sidebar: #ffffff;
-  --sidebar-foreground: #201826;
+  --sidebar-foreground: #000000;
   --sidebar-primary: #4f008b;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #efe3fa;
