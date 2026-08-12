@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 export function NoticeHl({ children }: { children: ReactNode }) {
-  return <span className="font-semibold text-violet-700">{children}</span>;
+  return <span className="font-semibold text-primary">{children}</span>;
 }
 
 export function NoticeDialog({
@@ -27,14 +27,14 @@ export function NoticeDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent showCloseButton={false} className="sm:max-w-sm">
+      <DialogContent showCloseButton={false} className="sm:max-w-sm font-manrope theme-violet">
         <DialogTitle className="sr-only">{title}</DialogTitle>
-        <DialogBody className="py-6 text-center text-sm leading-relaxed text-foreground/90">
+        <DialogBody className="py-6 text-center text-sm font-semibold leading-relaxed text-foreground/90">
           {children}
         </DialogBody>
         <DialogFooter>
           <Button
-            className="w-full rounded-full bg-[#2f1a63] hover:bg-[#231149]"
+            className="w-full rounded-full bg-primary hover:bg-primary/90"
             onClick={() => onOpenChange(false)}
           >
             OK

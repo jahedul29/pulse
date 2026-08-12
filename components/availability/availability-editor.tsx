@@ -64,7 +64,7 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
     );
     if (fail) {
       setShake((s) => ({ cols: targets, nonce: s.nonce + 1 }));
-      toast.error(fail.message);
+      toast.error(fail.message, { style: { whiteSpace: "pre-line" } });
       return;
     }
     setDays((prev) => prev.map((d, i) => (targets.includes(i) ? apply(d) : d)));
@@ -136,7 +136,7 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="theme-violet flex flex-col gap-4 font-manrope text-foreground">
       <div className="flex items-center justify-between gap-3 hidden">
         <div className="flex items-center gap-3">
           <div className="grid size-10 place-items-center rounded-full bg-primary/12 font-heading text-sm font-semibold text-primary ring-1 ring-primary/20">
@@ -168,16 +168,16 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
       </div>
 
       <div className="flex flex-col items-center gap-1 text-center">
-        <h2 className="font-heading text-xl font-bold">
+        <h2 className="font-heading text-xl font-semibold">
           Select your weekly business hours as a {ROLE_LABEL[specialist.role]}
         </h2>
         <button
           type="button"
           onClick={() => setGuidelinesOpen(true)}
-          className="inline-flex cursor-pointer items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground md:text-sm"
         >
           We recommend checking these guidelines
-          <Info className="size-4 text-violet-700" />
+          <Info className="size-4 text-primary" />
         </button>
       </div>
 
@@ -228,8 +228,9 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
         onOpenChange={(o) => !o && setNotice(null)}
         title="Select a travel time"
       >
-        Please select for the Therapist your preferred <NoticeHl>TRAVEL TIME</NoticeHl> option. You
-        can change it later until the first booking for your services is confirmed.
+        Please select for the Therapist your preferred <NoticeHl>TRAVEL TIME</NoticeHl> option.
+        <br/> 
+        <p>You can change it later until the first booking for your services is confirmed.</p>
       </NoticeDialog>
     </div>
   );
