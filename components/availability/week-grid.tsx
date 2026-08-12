@@ -50,7 +50,7 @@ export function WeekGrid({
           {WEEKDAY_LABELS.map((label, d) => {
             const isOff = daysOff.includes(d);
             const base =
-              "mx-0.5 rounded-sm py-1 text-center text-xs font-bold uppercase tracking-wide transition-colors sm:mx-1 sm:text-base";
+              "mx-0.5 rounded-sm py-1 text-center text-[10px] font-semibold uppercase tracking-wide transition-colors sm:mx-1 md:text-base";
             return (
               <button
                 key={label}
@@ -60,7 +60,7 @@ export function WeekGrid({
                 className={cn(
                   base,
                   "cursor-pointer",
-                  isOff ? "bg-[#e8134e] text-white" : "text-violet-700 hover:bg-violet-50",
+                  isOff ? "bg-danger text-danger-foreground" : "text-primary hover:bg-primary/10",
                 )}
               >
                 {label.slice(0, 2)}
@@ -74,7 +74,7 @@ export function WeekGrid({
             {Array.from({ length: SLOTS_PER_DAY }, (_, i) => (
               <div
                 key={i}
-                className="tabular absolute inset-x-0 flex items-center pl-0.5 text-[8px] leading-none font-medium text-violet-700 sm:pl-1 sm:text-[11px]"
+                className="tabular absolute inset-x-0 flex items-center pl-0.5 text-[8px] leading-none text-primary sm:pl-1 md:text-[11px]"
                 style={{ top: `calc(var(--slot) * ${i})`, height: "var(--slot)" }}
               >
                 {slotToTime(i)} - {slotToTime(i + 1)}

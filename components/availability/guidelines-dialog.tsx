@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { CalendarCheck, Clock, Settings2, X } from "lucide-react";
+import { X } from "lucide-react";
 import {
   Dialog,
   DialogBody,
@@ -11,20 +11,25 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { fmtDuration } from "@/lib/availability/constants";
+import { cn } from "@/lib/utils";
 import type { RuleConfig, SpecialistType } from "@/lib/availability/types";
 
 function Hl({ children }: { children: ReactNode }) {
-  return <span className="font-semibold text-violet-700">{children}</span>;
+  return <span className="font-semibold text-primary">{children}</span>;
 }
 
-function windowLabel(mins: number): string {
-  return mins % 60 === 0 ? `${mins / 60}-hour` : fmtDuration(mins);
+function GIcon({ src }: { src: string }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={`/icons/guidelines/${src}.svg`} alt="" className="size-8 shrink-0" />;
+}
+
+function Dot({ className }: { className: string }) {
+  return <span className={cn("inline-block size-3 rounded-full align-middle", className)} />;
 }
 
 const ROLE_TITLE: Record<SpecialistType, string> = {
   therapist: "Setting up Therapist weekly business hours",
-  analyst: "Setting up Analyst weekly business hours",
+  analyst: "Setting up Analyst annual work calendar",
 };
 
 export function GuidelinesDialog({
@@ -42,92 +47,151 @@ export function GuidelinesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent showCloseButton={false} className="sm:max-w-md">
+      <DialogContent
+        showCloseButton={false}
+        className="w-[345px] max-w-[345px] font-manrope theme-violet sm:max-w-[345px] md:w-full md:max-w-md"
+      >
         <div className="relative shrink-0 border-b px-12 pt-4 pb-3">
           <DialogTitle className="text-center text-lg leading-snug font-bold text-balance text-foreground">
             {ROLE_TITLE[role]}
           </DialogTitle>
           <DialogClose
             aria-label="Close"
-            className="absolute top-3 right-3 grid size-7 cursor-pointer place-items-center rounded-full bg-[#2f1a63] text-white transition-colors hover:bg-[#231149] focus-visible:ring-2 focus-visible:ring-[#2f1a63]/40 focus-visible:outline-none"
+            className="absolute top-3 right-3 grid size-7 cursor-pointer place-items-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
           >
             <X className="size-4" />
           </DialogClose>
         </div>
 
-        <DialogBody className="flex flex-col gap-4 text-center text-sm text-foreground/80">
-          <p>
-            We strive to make you and your Clients happy. That&apos;s why setting up your
-            availability correctly throughout the day is crucial.
-          </p>
-
+        <DialogBody className="flex flex-col gap-4 p-5 text-center text-xs font-semibold text-foreground/80 md:text-sm">
           {therapist ? (
-            <p>
-              Pick how long you need to get between clients (min. <Hl>00h45m</Hl>&nbsp;for your
-              location). Do this first! Changing it later resets your calendar settings.
-            </p>
+            <>
+              <p>
+                We strive to make you and your Clients happy.
+                <br />
+                That&apos;s why setting up your availability correctly
+                <br />
+                throughout the day is crucial.
+              </p>
+              <p>
+                Pick how long you need to get between clients
+                <br />
+                (min. <Hl>00h45m</Hl> for your location). Do this first!
+                <br />
+                Changing it later resets your calendar settings.
+                <br />
+                Travel time becomes locked after your first booking.
+              </p>
+              <p>
+                Need a break? Grab up to {config.maxDaysOff} any <Hl>DAYS OFF</Hl> a week.
+                <br />
+                You can set custom work hours for these days if you
+                <br />
+                want. For other days your workday rules will apply.
+              </p>
+
+              <GuidelineCard icon={<GIcon src="clock-dollar" />}>
+                Schedule for all <Hl>WORKDAYS</Hl> will be the
+                <br />
+                same. Make sure your workdays have at
+                <br />
+                least one{" "}
+                <Hl>
+                  continuous window of at least 6
+                  <br />
+                  hours
+                </Hl>{" "}
+                when you&apos;re available for bookings.
+              </GuidelineCard>
+
+              <GuidelineCard icon={<GIcon src="clock-cog" />}>
+                Any other <Hl>availability</Hl> slots must be{" "}
+                <Hl>
+                  at least
+                  <br />1 hour
+                </Hl>{" "}
+                long. Also, the <Hl>breaks</Hl> you take
+                <br />
+                between your availability slots cannot be
+                <br />
+                shorter than your chosen travel time.
+              </GuidelineCard>
+
+              <GuidelineCard icon={<GIcon src="calendar-star" />}>
+                To keep your rating high and prevent
+                <br />
+                double-booking, we automatically{" "}
+                <Hl>
+                  add
+                  <br />
+                  travel time
+                </Hl>{" "}
+                to every session. You&apos;ll only
+                <br />
+                ever be booked for <Hl>one client at a time</Hl>.
+              </GuidelineCard>
+            </>
           ) : (
-            <p>
-              As an analyst, select whether you&apos;ll supervise <Hl>in-person</Hl>&nbsp;at the
-              client&apos;s location, <Hl>online</Hl>&nbsp;from anywhere, or a mix of both. You can
-              combine both types throughout your day.
-            </p>
+            <>
+              <p>
+                We strive to make you and your Clients happy.
+                <br />
+                Thus, each calendar year you can select
+                <br />
+                <Hl>up to 56 calendar days (MO-SU) as days off</Hl>
+                <br />
+                to make yourself unavailable for booking.
+              </p>
+
+              <GuidelineCard icon={<GIcon src="calendar-day-off" />}>
+                You can take a{" "}
+                <Hl>
+                  maximum of
+                  <br />
+                  28 consecutive days off
+                </Hl>
+              </GuidelineCard>
+
+              <GuidelineCard icon={<GIcon src="calendar-agenda" />}>
+                The interval between any non-consecutive
+                <br />
+                days off must be at least{" "}
+                <Hl>
+                  4 full calendar
+                  <br />
+                  weeks from MO to SU
+                </Hl>
+              </GuidelineCard>
+
+              <GuidelineCard icon={<GIcon src="calendar-dots" />}>
+                You can select days off only in the future
+                <br />
+                and only in those weeks during which you
+                <br />
+                have <Hl>no bookings</Hl>, completed <Dot className="bg-chart-3 rounded-[4px]" /> or
+                <br />
+                scheduled <Dot className="bg-primary rounded-[4px]" />
+              </GuidelineCard>
+
+              <GuidelineCard icon={<GIcon src="users" />}>
+                While you can adjust your annual work
+                <br />
+                calendar at any time, we recommend that
+                <br />
+                you always{" "}
+                <Hl>
+                  discuss and agree on vacation
+                  <br />
+                  times with your Clients
+                </Hl>
+              </GuidelineCard>
+            </>
           )}
-
-          <p>
-            {therapist ? "Need a break? Grab up to " : "First, if you need a weekly break, select up to "}
-            <Hl>
-              {config.maxDaysOff} {config.maxDaysOff === 1 ? "DAY OFF" : "DAYS OFF"}
-            </Hl>
-            &nbsp;a week. You can set custom work hours for these days if you like. For all other
-            days, your {therapist ? "" : "personalized "}workday rules will apply.
-          </p>
-
-          <GuidelineCard icon={<Clock className="size-6" />}>
-            For <Hl>WORKDAYS</Hl>&nbsp;your schedule will be the same. Ensure your workdays have at
-            least one <Hl>continuous {windowLabel(config.continuousWindowMins)} window</Hl>
-            {therapist
-              ? " when you're available for bookings."
-              : " available for supervision (in-person or online)."}
-          </GuidelineCard>
-
-          <GuidelineCard icon={<Settings2 className="size-6" />}>
-            {therapist ? (
-              <>
-                Any availability slots must be at least{" "}
-                <Hl>{fmtDuration(config.minBlockInPersonMins)}</Hl>&nbsp;long. Any breaks between your
-                availability slots can&apos;t be shorter than your chosen <Hl>travel time</Hl>.
-              </>
-            ) : (
-              <>
-                Any availability slots must be at least{" "}
-                <Hl>{fmtDuration(config.minBlockInPersonMins)}</Hl>&nbsp;for in-person and{" "}
-                <Hl>{fmtDuration(config.minBlockOnlineMins)}</Hl>&nbsp;for online supervision. Any
-                breaks between availability slots can be{" "}
-                <Hl>{fmtDuration(config.minBreakMins)}</Hl>&nbsp;or longer.
-              </>
-            )}
-          </GuidelineCard>
-
-          <GuidelineCard icon={<CalendarCheck className="size-6" />}>
-            {therapist ? (
-              <>
-                To keep your rating high and prevent double-booking, we automatically add travel time
-                to every session. You&apos;ll only ever be booked for <Hl>one client at a time</Hl>.
-              </>
-            ) : (
-              <>
-                We prevent double-booking, but sessions can be <Hl>back-to-back</Hl>. Please plan
-                your schedule to ensure you arrive on time at the client&apos;s location for
-                in-person sessions.
-              </>
-            )}
-          </GuidelineCard>
         </DialogBody>
 
         <DialogFooter>
           <Button
-            className="w-full rounded-full bg-[#2f1a63] hover:bg-[#231149]"
+            className="w-full rounded-full bg-primary hover:bg-primary/90"
             onClick={() => onOpenChange(false)}
           >
             OK
@@ -140,9 +204,9 @@ export function GuidelinesDialog({
 
 function GuidelineCard({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border p-3 text-left">
-      <span className="mt-0.5 shrink-0 text-violet-700">{icon}</span>
-      <p className="text-[13px] leading-snug text-foreground">{children}</p>
+    <div className="flex items-center gap-2 rounded-xl border py-3 pr-2 pl-1.5 text-left">
+      {icon}
+      <p className="text-xs leading-snug text-foreground md:text-sm">{children}</p>
     </div>
   );
 }

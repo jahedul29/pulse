@@ -103,13 +103,13 @@ export function DayColumn({
             <div
               className={cn(
                 "flex h-full items-center justify-center rounded-[12px] transition-colors duration-150 ease-out motion-reduce:transition-none",
-                unavail ? "bg-[#e8134e]" : "bg-zinc-200/70",
+                unavail ? "bg-danger" : "bg-muted",
                 bad && "ring-2 ring-amber-500",
                 inDraft && "opacity-80 ring-2 ring-inset ring-black/20",
               )}
             >
               {online && (
-                <span className="size-2 rounded-full bg-emerald-500 shadow-sm duration-150 animate-in zoom-in-50 sm:size-3.5" />
+                <span className="size-2 rounded-full bg-chart-3 shadow-sm duration-150 animate-in zoom-in-50 sm:size-3.5" />
               )}
             </div>
           </div>

@@ -50,10 +50,10 @@ export function PaintControls({
   const statuses = statusesFor(config);
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center gap-3 font-semibold">
       {config.specialist === "therapist" && (
         <div className="flex flex-col items-center gap-2">
-          <span className="text-center text-sm text-muted-foreground">
+          <span className="text-center text-xs text-muted-foreground md:text-sm">
             Choose the optimal travel time between your clients
           </span>
           <div className="flex flex-wrap justify-center gap-2">
@@ -65,10 +65,10 @@ export function PaintControls({
                   type="button"
                   onClick={() => onTravelChange(mins)}
                   className={cn(
-                    "tabular w-16 cursor-pointer rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+                    "tabular flex h-[30px] w-16 cursor-pointer items-center justify-center rounded-[10px] border px-3 text-xs font-semibold transition-colors",
                     active
-                      ? "border-[#2f1a63] bg-[#2f1a63] text-white"
-                      : "border-border bg-card text-foreground hover:bg-muted",
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border-strong bg-muted text-muted-foreground hover:bg-muted/70",
                   )}
                 >
                   {fmtHM(mins)}
@@ -79,7 +79,7 @@ export function PaintControls({
         </div>
       )}
 
-      <span className="text-center text-sm text-muted-foreground">
+      <span className="text-center text-xs text-muted-foreground md:text-sm">
         Click a time slot to change its status; drag to paint several
       </span>
 
@@ -102,7 +102,7 @@ export function PaintControls({
       >
         <ChevronDown
           className={cn(
-            "size-5 stroke-[2.5] text-violet-700 transition-transform duration-300 ease-out motion-reduce:transition-none",
+            "size-5 stroke-[2.5] text-primary transition-transform duration-300 ease-out motion-reduce:transition-none",
             expanded && "rotate-180",
           )}
         />
@@ -118,11 +118,13 @@ function LegendItem({ meta, showDesc }: { meta: StatusMeta; showDesc: boolean })
     <div className="flex w-full flex-col items-center text-center">
       <div
         className={cn(
-          "flex min-h-[2.75rem] w-full items-center justify-center gap-1 rounded-xl px-2 py-2 text-center text-xs leading-tight font-semibold sm:min-h-0 sm:gap-1.5 sm:rounded-2xl sm:px-4 sm:py-2.5 sm:text-sm",
-          unavailable ? "bg-[#e8134e] text-white" : "bg-zinc-200 text-foreground",
+          "flex h-10 w-full items-center justify-center gap-1 rounded-[10px] px-2 text-center text-xs leading-tight font-semibold sm:gap-1.5 sm:px-4 md:text-sm",
+          unavailable
+            ? "bg-danger text-danger-foreground"
+            : "bg-muted text-muted-foreground ring-1 ring-inset ring-border-strong",
         )}
       >
-        {online && <span className="size-2.5 shrink-0 rounded-full bg-emerald-500 sm:size-3.5" />}
+        {online && <span className="size-2.5 shrink-0 rounded-full bg-chart-3 sm:size-3.5" />}
         {meta.label}
       </div>
       <div
@@ -133,7 +135,7 @@ function LegendItem({ meta, showDesc }: { meta: StatusMeta; showDesc: boolean })
       >
         <p
           className={cn(
-            "min-h-0 overflow-hidden pt-1.5 text-[11px] leading-snug text-muted-foreground transition-opacity duration-300 motion-reduce:transition-none",
+            "min-h-0 overflow-hidden pt-1.5 text-[10px] leading-snug md:text-xs text-muted-foreground transition-opacity duration-300 motion-reduce:transition-none",
             showDesc ? "opacity-100" : "opacity-0",
           )}
         >

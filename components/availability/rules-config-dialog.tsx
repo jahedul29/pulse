@@ -63,7 +63,7 @@ export function RulesConfigDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md font-manrope theme-violet">
         <DialogHeader>
           <DialogTitle>Update calendar rules</DialogTitle>
           <DialogDescription>
