@@ -42,7 +42,7 @@ export function WeekGrid({
       <div>
         <div
           className={cn(
-            "sticky top-16 z-10 mb-1.5 grid gap-0.5 rounded-sm bg-card py-1 shadow-md ring-1 ring-foreground/5 sm:gap-1",
+            "sticky top-16 z-10 mb-1.5 grid gap-0.5 overflow-hidden rounded-sm bg-card py-1 shadow-md ring-1 ring-foreground/5 sm:gap-1",
             COLS,
           )}
         >
@@ -50,7 +50,7 @@ export function WeekGrid({
           {WEEKDAY_LABELS.map((label, d) => {
             const isOff = daysOff.includes(d);
             const base =
-              "mx-0.5 rounded-sm py-1 text-center text-[10px] font-semibold uppercase tracking-wide transition-colors sm:mx-1 md:text-base";
+              "py-1 text-center text-[10px] font-semibold uppercase tracking-wide transition-colors md:text-base";
             return (
               <button
                 key={label}
