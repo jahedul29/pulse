@@ -27,14 +27,15 @@ export function NoticeDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent showCloseButton={false} className="sm:max-w-sm font-manrope theme-violet">
+      <DialogContent showCloseButton={false} className="font-manrope theme-violet sm:w-[390px] sm:max-w-[390px]">
         <DialogTitle className="sr-only">{title}</DialogTitle>
         <DialogBody className="py-6 text-center text-sm font-semibold leading-relaxed text-foreground/90">
           {children}
         </DialogBody>
         <DialogFooter>
           <Button
-            className="w-full rounded-full bg-primary hover:bg-primary/90"
+            size="lg"
+            className="mx-auto h-9 w-[200px] rounded-full bg-primary font-semibold text-primary-foreground hover:bg-primary/90 sm:h-10 sm:w-[250px]"
             onClick={() => onOpenChange(false)}
           >
             OK

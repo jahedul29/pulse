@@ -49,17 +49,17 @@ export function GuidelinesDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="w-[345px] max-w-[345px] font-manrope theme-violet sm:max-w-[345px] md:w-full md:max-w-md"
+        className="w-[345px] max-w-[345px] font-manrope theme-violet sm:max-w-[345px] md:w-[390px] md:max-w-[390px]"
       >
-        <div className="relative shrink-0 border-b px-12 pt-4 pb-3">
-          <DialogTitle className="text-center text-lg leading-snug font-bold text-balance text-foreground">
+        <div className="relative shrink-0 border-b px-4 pt-6 pb-3">
+          <DialogTitle className="text-center text-sm leading-snug font-bold text-balance text-foreground md:text-base">
             {ROLE_TITLE[role]}
           </DialogTitle>
           <DialogClose
             aria-label="Close"
-            className="absolute top-3 right-3 grid size-7 cursor-pointer place-items-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
+            className="absolute top-1.5 right-1.5 grid size-5 cursor-pointer place-items-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none md:size-6"
           >
-            <X className="size-4" />
+            <X className="size-3.5 md:size-4" />
           </DialogClose>
         </div>
 
@@ -191,7 +191,8 @@ export function GuidelinesDialog({
 
         <DialogFooter>
           <Button
-            className="w-full rounded-full bg-primary hover:bg-primary/90"
+            size="lg"
+            className="mx-auto h-9 w-[200px] rounded-full bg-primary font-semibold text-primary-foreground hover:bg-primary/90 sm:h-10 sm:w-[250px]"
             onClick={() => onOpenChange(false)}
           >
             OK
