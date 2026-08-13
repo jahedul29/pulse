@@ -157,9 +157,9 @@ export function validateDay(
       label: config.specialist === "therapist" ? "Break ≥ travel time" : "Break between availability",
       pass: offending.length === 0,
       actual: minInterior === Infinity ? "no breaks" : `shortest ${fmtDuration(minInterior)}`,
-      message: `Breaks between availability must be at least ${fmtDuration(config.minBreakMins)}${
+      message: `Breaks between availability must be\nat least ${fmtDuration(config.minBreakMins)}${
         config.specialist === "therapist" ? " (your travel time)" : ""
-      }; edges may be ${fmtDuration(config.minAdjacentUnavailMins)}.`,
+      }.\nEdges may be ${fmtDuration(config.minAdjacentUnavailMins)}.`,
       offending,
     });
   }
