@@ -11,6 +11,7 @@ export function Sidebar() {
 
   return (
     <aside
+      data-no-os
       className={cn(
         "sticky top-0 hidden h-screen shrink-0 flex-col overflow-y-auto border-r bg-sidebar transition-[width] duration-200 lg:flex",
         collapsed ? "w-16" : "w-64",

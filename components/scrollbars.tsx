@@ -27,6 +27,10 @@ const DENY_SELECTOR = ".leaflet-container,.recharts-wrapper,[data-no-os]";
 
 function initEl(el: HTMLElement) {
   if (el.closest(DENY_SELECTOR)) return;
+  const display = getComputedStyle(el).display;
+  if (display === "flex" || display === "grid" || display === "inline-flex" || display === "inline-grid") {
+    return;
+  }
   if (OverlayScrollbars(el)) return;
   OverlayScrollbars(el, OS_OPTIONS);
 }
