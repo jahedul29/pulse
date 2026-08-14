@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Hanken_Grotesk, JetBrains_Mono, Manrope } from "next/font/google";
+import "overlayscrollbars/overlayscrollbars.css";
 import "./globals.css";
+import { AppScroll } from "@/components/scrollbars";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -38,7 +40,9 @@ export default function RootLayout({
       lang="en"
       className={`${display.variable} ${body.variable} ${mono.variable} ${manrope.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <AppScroll>{children}</AppScroll>
+      </body>
     </html>
   );
 }
