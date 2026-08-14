@@ -30,7 +30,7 @@ export function NoticeDialog({
       <DialogContent showCloseButton={false} className="font-manrope theme-violet sm:w-[390px] sm:max-w-[390px]">
         <DialogTitle className="sr-only">{title}</DialogTitle>
         <DialogBody className="py-6 text-center text-sm font-semibold leading-relaxed text-foreground/90">
-          {children}
+          <div className="flex flex-col gap-3">{children}</div>
         </DialogBody>
         <DialogFooter>
           <Button

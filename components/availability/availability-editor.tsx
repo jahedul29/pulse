@@ -228,8 +228,9 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
         onOpenChange={(o) => !o && setNotice(null)}
         title="Select a travel time"
       >
-        Please select for the Therapist your preferred <NoticeHl>TRAVEL TIME</NoticeHl> option.
-        <br/> 
+        <p>
+          Please select for the Therapist your preferred <NoticeHl>TRAVEL TIME</NoticeHl> option.
+        </p>
         <p>You can change it later until the first booking for your services is confirmed.</p>
       </NoticeDialog>
     </div>
