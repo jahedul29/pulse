@@ -11,7 +11,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import type { RuleConfig, SpecialistType } from "@/lib/availability/types";
 
 function Hl({ children }: { children: ReactNode }) {
@@ -23,13 +22,9 @@ function GIcon({ src }: { src: string }) {
   return <img src={`/icons/guidelines/${src}.svg`} alt="" className="size-8 shrink-0" />;
 }
 
-function Dot({ className }: { className: string }) {
-  return <span className={cn("inline-block size-3 rounded-full align-middle", className)} />;
-}
-
 const ROLE_TITLE: Record<SpecialistType, string> = {
   therapist: "Setting up Therapist weekly business hours",
-  analyst: "Setting up Analyst annual work calendar",
+  analyst: "Setting up Analyst weekly business hours",
 };
 
 export function GuidelinesDialog({
@@ -63,7 +58,8 @@ export function GuidelinesDialog({
           </DialogClose>
         </div>
 
-        <DialogBody className="flex flex-col gap-4 p-5 text-center text-xs font-semibold text-foreground/80 md:text-sm">
+        <DialogBody className="p-5 text-center text-xs font-semibold text-foreground/80 md:text-sm">
+          <div className="flex flex-col gap-4">
           {therapist ? (
             <>
               <p>
@@ -136,57 +132,61 @@ export function GuidelinesDialog({
               <p>
                 We strive to make you and your Clients happy.
                 <br />
-                Thus, each calendar year you can select
+                That&apos;s why setting up your availability correctly
                 <br />
-                <Hl>up to 56 calendar days (MO-SU) as days off</Hl>
+                throughout the day is crucial.
+              </p>
+              <p>
+                As an analyst, select whether you&apos;ll supervise
                 <br />
-                to make yourself unavailable for booking.
+                <Hl>in-person</Hl> at the client&apos;s location, <Hl>online</Hl> from
+                <br />
+                anywhere, or a mix of both. You can combine both
+                <br />
+                types throughout your day.
+              </p>
+              <p>
+                First, if you need a weekly break, select up to
+                <br />
+                {config.maxDaysOff} <Hl>DAYS OFF</Hl>. You can still set custom work hours for
+                <br />
+                these days if you like. For all other days, your
+                <br />
+                personalized workday rules will apply.
               </p>
 
-              <GuidelineCard icon={<GIcon src="calendar-day-off" />}>
-                You can take a{" "}
-                <Hl>
-                  maximum of
-                  <br />
-                  28 consecutive days off
-                </Hl>
+              <GuidelineCard icon={<GIcon src="clock-dollar" />}>
+                For <Hl>WORKDAYS</Hl> your schedule will be the
+                <br />
+                same. Ensure your workdays have at least
+                <br />
+                one <Hl>continuous 3-hour window</Hl> available
+                <br />
+                for supervision (in-person or online).
               </GuidelineCard>
 
-              <GuidelineCard icon={<GIcon src="calendar-agenda" />}>
-                The interval between any non-consecutive
+              <GuidelineCard icon={<GIcon src="clock-cog" />}>
+                Any availability slots must be at least
                 <br />
-                days off must be at least{" "}
-                <Hl>
-                  4 full calendar
-                  <br />
-                  weeks from MO to SU
-                </Hl>
+                <Hl>1 hour</Hl> for in-person and <Hl>30 min</Hl> for online
+                <br />
+                supervision. Any breaks between
+                <br />
+                availability slots can be <Hl>15 min</Hl> or longer.
               </GuidelineCard>
 
-              <GuidelineCard icon={<GIcon src="calendar-dots" />}>
-                You can select days off only in the future
+              <GuidelineCard icon={<GIcon src="calendar-clock" />}>
+                We prevent double-booking, but sessions
                 <br />
-                and only in those weeks during which you
+                can be <Hl>back-to-back</Hl>. Please plan your
                 <br />
-                have <Hl>no bookings</Hl>, completed <Dot className="bg-chart-3 rounded-[4px]" /> or
+                schedule to ensure you arrive on time at
                 <br />
-                scheduled <Dot className="bg-primary rounded-[4px]" />
-              </GuidelineCard>
-
-              <GuidelineCard icon={<GIcon src="users" />}>
-                While you can adjust your annual work
-                <br />
-                calendar at any time, we recommend that
-                <br />
-                you always{" "}
-                <Hl>
-                  discuss and agree on vacation
-                  <br />
-                  times with your Clients
-                </Hl>
+                the client&apos;s location for in-person sessions.
               </GuidelineCard>
             </>
           )}
+          </div>
         </DialogBody>
 
         <DialogFooter>
