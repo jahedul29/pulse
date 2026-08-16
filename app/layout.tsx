@@ -38,7 +38,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${display.variable} ${body.variable} ${mono.variable} ${manrope.variable} h-full antialiased`}
+      className={`theme-violet ${display.variable} ${body.variable} ${mono.variable} ${manrope.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <AppScroll>{children}</AppScroll>
