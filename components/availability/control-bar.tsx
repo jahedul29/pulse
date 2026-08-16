@@ -17,7 +17,7 @@ function statusesFor(config: RuleConfig): StatusMeta[] {
   const base: StatusMeta[] = [
     {
       status: "available",
-      label: "Available",
+      label: "Available In-person",
       desc: `Clients who need ${care} during these hours will be able to find you`,
     },
     {
