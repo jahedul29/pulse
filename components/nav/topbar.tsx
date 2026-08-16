@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
+import { ChevronRight, Menu, Search } from "lucide-react";
 import { SECTIONS } from "@/lib/nav";
 import { PeriodToggle } from "@/components/common/period-toggle";
 import { useClientStore } from "@/lib/store";
@@ -14,8 +14,6 @@ type Crumb = { label: string; href?: string };
 export function Topbar() {
   const pathname = usePathname();
   const setMobileOpen = useUiStore((s) => s.setMobileOpen);
-  const collapsed = useUiStore((s) => s.collapsed);
-  const toggleCollapsed = useUiStore((s) => s.toggleCollapsed);
 
   const segments = pathname.split("/").filter(Boolean);
   const section = SECTIONS.find((s) => s.slug === segments[0]) ?? SECTIONS[2];
@@ -53,16 +51,6 @@ export function Topbar() {
         className="grid size-9 cursor-pointer place-items-center rounded-lg border text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden"
       >
         <Menu className="size-5" />
-      </button>
-
-      <button
-        type="button"
-        onClick={toggleCollapsed}
-        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className="hidden size-9 cursor-pointer place-items-center rounded-lg border text-muted-foreground hover:bg-muted hover:text-foreground lg:grid"
-      >
-        {collapsed ? <PanelLeftOpen className="size-5" /> : <PanelLeftClose className="size-5" />}
       </button>
 
       <div className="mr-auto min-w-0">
