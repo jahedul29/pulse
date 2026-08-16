@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Info, RotateCcw, Save, SlidersHorizontal } from "lucide-react";
+import { useEffect, useState } from "react";
+import { HelpCircle, Info, RotateCcw, Save, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SLOTS_PER_DAY, WEEKDAY_LABELS } from "@/lib/availability/constants";
@@ -9,6 +9,7 @@ import { addBlock, setAvailable, validateDay } from "@/lib/availability/rules";
 import type { DayState, PaintStatus, RuleConfig } from "@/lib/availability/types";
 import { ROLE_BADGE, ROLE_LABEL, useSpecialistStore, type Specialist } from "@/lib/specialists";
 import { cn } from "@/lib/utils";
+import { CoachDialog } from "./coach-dialog";
 import { PaintControls } from "./control-bar";
 import { GuidelinesDialog } from "./guidelines-dialog";
 import { NoticeDialog, NoticeHl } from "./notice-dialog";
@@ -44,6 +45,11 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
   const [showViolations, setShowViolations] = useState(false);
   const [notice, setNotice] = useState<"max-availability" | "travel" | null>(null);
   const [shake, setShake] = useState<{ cols: number[]; nonce: number }>({ cols: [], nonce: 0 });
+  const [coachOpen, setCoachOpen] = useState(false);
+
+  useEffect(() => {
+    setCoachOpen(true);
+  }, []);
 
   const needsTravel = specialist.role === "therapist" && config.travelTimeMins === 0;
 
@@ -92,7 +98,8 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
   const handleTravel = (mins: number) => {
     if (mins === config.travelTimeMins) return;
     setConfig({ ...config, travelTimeMins: mins, minBreakMins: mins });
-    setDays((prev) => prev.map((_, i) => (daysOff.includes(i) ? fullDay() : { blocks: [] })));
+    setDaysOff([]);
+    setDays((prev) => prev.map(() => ({ blocks: [] })));
     setShowViolations(false);
     toast.info("Travel time updated — calendar reset");
   };
@@ -171,14 +178,24 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
         <h2 className="font-heading text-xl font-semibold">
           Select your weekly business hours as a {ROLE_LABEL[specialist.role]}
         </h2>
-        <button
-          type="button"
-          onClick={() => setGuidelinesOpen(true)}
-          className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground md:text-sm"
-        >
-          We recommend checking these guidelines
-          <Info className="size-4 text-primary" />
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setGuidelinesOpen(true)}
+            className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground md:text-sm"
+          >
+            We recommend checking these guidelines
+            <Info className="size-4 text-primary" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setCoachOpen(true)}
+            aria-label="How editing works"
+            className="inline-flex size-6 cursor-pointer items-center justify-center rounded-full text-primary transition-colors hover:bg-primary/10"
+          >
+            <HelpCircle className="size-4" />
+          </button>
+        </div>
       </div>
 
       <PaintControls
@@ -212,6 +229,8 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
         role={specialist.role}
         config={config}
       />
+
+      <CoachDialog open={coachOpen} onOpenChange={setCoachOpen} role={specialist.role} />
 
       <NoticeDialog
         open={notice === "max-availability"}
