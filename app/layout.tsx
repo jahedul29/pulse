@@ -1,22 +1,11 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Hanken_Grotesk, JetBrains_Mono, Manrope } from "next/font/google";
+import { JetBrains_Mono, Manrope } from "next/font/google";
 import "overlayscrollbars/overlayscrollbars.css";
 import "./globals.css";
 import { AppScroll } from "@/components/scrollbars";
 
 const manrope = Manrope({
   variable: "--font-manrope",
-  subsets: ["latin"],
-});
-
-const display = Bricolage_Grotesque({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-});
-
-const body = Hanken_Grotesk({
-  variable: "--font-body",
   subsets: ["latin"],
 });
 
@@ -38,7 +27,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`theme-violet ${display.variable} ${body.variable} ${mono.variable} ${manrope.variable} h-full antialiased`}
+      className={`theme-violet ${mono.variable} ${manrope.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <AppScroll>{children}</AppScroll>

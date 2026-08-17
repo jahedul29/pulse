@@ -797,8 +797,8 @@ export default function DesignSystemPage() {
               identical.
             </p>
             <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-              <span className="rounded-md bg-muted px-2 py-1">Display · Bricolage Grotesque</span>
-              <span className="rounded-md bg-muted px-2 py-1">Body · Hanken Grotesk</span>
+              <span className="rounded-md bg-muted px-2 py-1">Display · Manrope</span>
+              <span className="rounded-md bg-muted px-2 py-1">Body · Manrope</span>
               <span className="rounded-md bg-muted px-2 py-1">Data · JetBrains Mono</span>
               <span className="rounded-md bg-muted px-2 py-1">Radius · 0.7rem</span>
             </div>
@@ -868,7 +868,7 @@ export default function DesignSystemPage() {
               <CardHeader>
                 <CardTitle>Typography</CardTitle>
                 <CardDescription>
-                  Display: Bricolage Grotesque · Body: Hanken Grotesk · Data: JetBrains Mono
+                  Display: Manrope · Body: Manrope · Data: JetBrains Mono
                 </CardDescription>
               </CardHeader>
               <CardContent>
