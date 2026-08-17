@@ -23,6 +23,7 @@ export interface Specialist {
   config: RuleConfig;
   days: DayState[];
   daysOff: number[];
+  annualOff: string[];
 }
 
 export function seedDays(daysOff: number[]): DayState[] {
@@ -50,6 +51,7 @@ function make(id: string, name: string, role: SpecialistType, email: string): Sp
     config: configFor(role),
     days: seedDays([]),
     daysOff: [],
+    annualOff: [],
   };
 }
 
@@ -64,6 +66,7 @@ interface SpecialistStore {
     id: string,
     patch: Pick<Specialist, "config" | "days" | "daysOff" | "defined">,
   ) => void;
+  saveAnnual: (id: string, annualOff: string[]) => void;
 }
 
 export const useSpecialistStore = create<SpecialistStore>((set) => ({
@@ -71,5 +74,9 @@ export const useSpecialistStore = create<SpecialistStore>((set) => ({
   saveAvailability: (id, patch) =>
     set((state) => ({
       specialists: state.specialists.map((s) => (s.id === id ? { ...s, ...patch } : s)),
+    })),
+  saveAnnual: (id, annualOff) =>
+    set((state) => ({
+      specialists: state.specialists.map((s) => (s.id === id ? { ...s, annualOff } : s)),
     })),
 }));
