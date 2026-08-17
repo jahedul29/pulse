@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Pencil, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +21,7 @@ import { useClientStore } from "@/lib/store";
 import type { Client } from "@/lib/types";
 
 export function ClientActions({ client }: { client: Client }) {
+  const t = useTranslations();
   const router = useRouter();
   const deleteClient = useClientStore((s) => s.deleteClient);
   const [editOpen, setEditOpen] = useState(false);
@@ -28,7 +30,7 @@ export function ClientActions({ client }: { client: Client }) {
   const onDelete = () => {
     deleteClient(client.id);
     setDeleteOpen(false);
-    toast.success(`${client.fullName} deleted`);
+    toast.success(t("clients.deletedToast", { name: client.fullName }));
     router.push("/clients");
   };
 
@@ -36,11 +38,11 @@ export function ClientActions({ client }: { client: Client }) {
     <div className="flex items-center gap-2">
       <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
         <Pencil />
-        Edit
+        {t("common.edit")}
       </Button>
       <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
         <Trash2 />
-        Delete
+        {t("common.delete")}
       </Button>
 
       <ClientFormDialog mode="edit" client={client} open={editOpen} onOpenChange={setEditOpen} />
@@ -48,16 +50,15 @@ export function ClientActions({ client }: { client: Client }) {
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {client.fullName}?</AlertDialogTitle>
+            <AlertDialogTitle>{t("clients.deleteTitle", { name: client.fullName })}</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently removes the account and its {client.profiles.length} profile(s). This
-              can&apos;t be undone.
+              {t("clients.deleteBody", { count: client.profiles.length })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction variant="destructive" onClick={onDelete}>
-              Delete
+              {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,9 +1,11 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { slotToTime } from "@/lib/availability/constants";
+import { weekdayShortLabels } from "@/lib/i18n/calendar";
 import { cn } from "@/lib/utils";
 import type { SpecialistType } from "@/lib/availability/types";
 
@@ -25,6 +27,8 @@ export function CoachDialog({
   onOpenChange: (open: boolean) => void;
   role: SpecialistType;
 }) {
+  const t = useTranslations("coach");
+  const weekdays = weekdayShortLabels(useLocale());
   const supportsOnline = role === "analyst";
   const stageRef = useRef<HTMLDivElement>(null);
   const dayRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -178,7 +182,7 @@ export function CoachDialog({
         initialFocus={stageRef}
         className="theme-violet font-manrope sm:w-[390px] sm:max-w-[390px]"
       >
-        <DialogTitle className="sr-only">How to edit your availability</DialogTitle>
+        <DialogTitle className="sr-only">{t("title")}</DialogTitle>
 
         <div ref={stageRef} tabIndex={-1} className="relative p-4 pt-5 outline-none" style={{ "--cslot": "16px" } as CSSProperties}>
           <div
@@ -201,7 +205,7 @@ export function CoachDialog({
                   offDays.includes(i) ? "bg-danger text-danger-foreground" : "text-primary",
                 )}
               >
-                {d.slice(0, 2)}
+                {weekdays[i]}
               </button>
             ))}
           </div>
@@ -210,7 +214,7 @@ export function CoachDialog({
             {Array.from({ length: VISIBLE_SLOTS }, (_, r) => (
               <Fragment key={r}>
                 <div
-                  className="tabular flex items-center justify-end whitespace-nowrap pr-1.5 text-[8px] leading-none text-primary"
+                  className="tabular flex items-center justify-end whitespace-nowrap pe-1.5 text-[8px] leading-none text-primary"
                   style={{ height: "var(--cslot)" }}
                 >
                   {slotToTime(r)} - {slotToTime(r + 1)}
@@ -283,14 +287,14 @@ export function CoachDialog({
             className="h-9 rounded-full sm:h-10 flex-1"
             onClick={run}
           >
-            Replay
+            {t("replay")}
           </Button>
           <Button
             size="lg"
             className="h-9 rounded-full bg-primary font-semibold text-primary-foreground hover:bg-primary/90 sm:h-10 flex-1"
             onClick={() => onOpenChange(false)}
           >
-            Got it
+            {t("gotIt")}
           </Button>
         </div>
       </DialogContent>

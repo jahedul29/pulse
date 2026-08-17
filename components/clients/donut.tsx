@@ -9,7 +9,7 @@ function DonutTooltip({ active, payload }: { active?: boolean; payload?: { paylo
   return (
     <div className="rounded-md border bg-popover px-2.5 py-1.5 text-xs shadow-sm">
       <span className="font-medium">{d.name}</span>
-      <span className="ml-2 font-mono text-muted-foreground">{d.value}%</span>
+      <span className="ms-2 font-mono text-muted-foreground">{d.value}%</span>
     </div>
   );
 }

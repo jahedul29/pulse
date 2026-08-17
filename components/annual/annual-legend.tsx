@@ -1,22 +1,8 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-
-const ITEMS = [
-  {
-    key: "available",
-    label: "Available",
-    sub: "(as per weekly business hours)",
-    desc: "Clients that need Therapy during these days will be able to find and book you",
-  },
-  {
-    key: "unavailable",
-    label: "Unavailable",
-    sub: null,
-    desc: "Clients that need Therapy during these days will not be able to find you",
-  },
-] as const;
 
 export function AnnualLegend({
   expanded,
@@ -25,10 +11,25 @@ export function AnnualLegend({
   expanded: boolean;
   onToggleExpanded: () => void;
 }) {
+  const t = useTranslations("annual.legend");
+  const items = [
+    {
+      key: "available",
+      label: t("availableLabel"),
+      sub: t("availableSub"),
+      desc: t("availableDesc"),
+    },
+    {
+      key: "unavailable",
+      label: t("unavailableLabel"),
+      sub: null as string | null,
+      desc: t("unavailableDesc"),
+    },
+  ];
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="grid w-full max-w-2xl grid-cols-2 gap-2 sm:gap-3">
-        {ITEMS.map((item) => {
+        {items.map((item) => {
           const unavailable = item.key === "unavailable";
           return (
             <div key={item.key} className="flex w-full flex-col items-center text-center">

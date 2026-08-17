@@ -1,6 +1,7 @@
 "use client";
 
 import { CalendarDays, Globe, MapPin, Video } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Map } from "@/components/clients/map";
@@ -25,11 +26,13 @@ function Meta({
 }
 
 export function ProfileTabs({ profiles }: { profiles: Profile[] }) {
+  const t = useTranslations("clients");
+  const locale = useLocale();
   if (profiles.length === 0) {
     return (
       <Card>
         <CardContent className="py-10 text-center text-sm text-muted-foreground">
-          This account has no profiles.
+          {t("profile.noProfiles")}
         </CardContent>
       </Card>
     );
@@ -52,7 +55,11 @@ export function ProfileTabs({ profiles }: { profiles: Profile[] }) {
               <CardHeader>
                 <CardTitle>{p.name}</CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  {p.gender} · {p.age} yrs · added {fmtDate(p.createdAt)}
+                  {t("profile.meta", {
+                    gender: t(`form.gender${p.gender}`),
+                    age: p.age,
+                    date: fmtDate(p.createdAt, locale),
+                  })}
                 </p>
               </CardHeader>
               <CardContent className="flex flex-col gap-2.5">
@@ -64,12 +71,14 @@ export function ProfileTabs({ profiles }: { profiles: Profile[] }) {
                   {p.location.address}, {p.location.region}
                 </Meta>
                 <Meta icon={Video}>
-                  Online sessions {p.onlineAvailable ? "available" : "unavailable"}
+                  {p.onlineAvailable
+                    ? t("profile.onlineAvailable")
+                    : t("profile.onlineUnavailable")}
                 </Meta>
-                <Meta icon={CalendarDays}>DOB {fmtDate(p.dob)}</Meta>
+                <Meta icon={CalendarDays}>{t("profile.dobLabel", { date: fmtDate(p.dob, locale) })}</Meta>
                 <div className="mt-1 flex flex-col gap-2">
                   <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                    Assigned specialists
+                    {t("profile.assignedSpecialists")}
                   </span>
                   <div className="flex flex-col gap-1.5">
                     {p.specialists.map((s) => (
@@ -78,7 +87,7 @@ export function ProfileTabs({ profiles }: { profiles: Profile[] }) {
                         <span className="flex items-center gap-2">
                           <span>{s.name}</span>
                           <StatusBadge tone={s.active ? "success" : "neutral"}>
-                            {s.active ? "Active" : "Inactive"}
+                            {s.active ? t("profile.active") : t("profile.inactive")}
                           </StatusBadge>
                         </span>
                       </div>
@@ -90,7 +99,7 @@ export function ProfileTabs({ profiles }: { profiles: Profile[] }) {
 
             <Card className="overflow-hidden">
               <CardHeader>
-                <CardTitle>Profile location</CardTitle>
+                <CardTitle>{t("profile.location")}</CardTitle>
                 <p className="text-xs text-muted-foreground">{p.location.region}</p>
               </CardHeader>
               <CardContent>
@@ -115,7 +124,7 @@ export function ProfileTabs({ profiles }: { profiles: Profile[] }) {
 
           <div>
             <h3 className="mb-2 text-sm font-medium tracking-wide text-muted-foreground uppercase">
-              Service balances
+              {t("profile.serviceBalances")}
             </h3>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {p.balances.map((b) => (
@@ -126,26 +135,26 @@ export function ProfileTabs({ profiles }: { profiles: Profile[] }) {
 
           <Card>
             <CardHeader>
-              <CardTitle>Service usage history</CardTitle>
+              <CardTitle>{t("profile.serviceUsageHistory")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-xs tracking-wide text-muted-foreground uppercase">
-                      <th className="pb-2 font-medium">Scope</th>
-                      <th className="pb-2 text-right font-medium">Completed</th>
-                      <th className="pb-2 text-right font-medium">Scheduled</th>
-                      <th className="pb-2 text-right font-medium">Canceled</th>
+                    <tr className="text-start text-xs tracking-wide text-muted-foreground uppercase">
+                      <th className="pb-2 font-medium">{t("profile.colScope")}</th>
+                      <th className="pb-2 text-end font-medium">{t("profile.colCompleted")}</th>
+                      <th className="pb-2 text-end font-medium">{t("profile.colScheduled")}</th>
+                      <th className="pb-2 text-end font-medium">{t("profile.colCanceled")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {p.usage.map((u) => (
                       <tr key={u.scope} className="border-t">
                         <td className="py-2">{u.scope}</td>
-                        <td className="py-2 text-right font-mono tabular">{u.completed}</td>
-                        <td className="py-2 text-right font-mono tabular">{u.scheduled}</td>
-                        <td className="py-2 text-right font-mono tabular">{u.canceled}</td>
+                        <td className="py-2 text-end font-mono tabular">{u.completed}</td>
+                        <td className="py-2 text-end font-mono tabular">{u.scheduled}</td>
+                        <td className="py-2 text-end font-mono tabular">{u.canceled}</td>
                       </tr>
                     ))}
                   </tbody>

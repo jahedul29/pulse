@@ -14,5 +14,7 @@ export interface AnnualRuleResult {
   label: string;
   pass: boolean;
   message: string;
+  messageKey: string;
+  values?: Record<string, string | number>;
   offending?: string[];
 }

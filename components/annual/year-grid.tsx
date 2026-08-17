@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { eachDayOfInterval, format, parseISO } from "date-fns";
+import { useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
-import { MONTH_LABELS, WEEKDAY_LABELS } from "@/lib/annual/constants";
 import { buildYearGrid, dayAt, isoOf } from "@/lib/annual/grid";
+import { monthShortLabels, weekdayShortLabels } from "@/lib/i18n/calendar";
 
 const VARS =
   "[--awc-lead:53px] [--awc-col:26px] [--awc-row:20px] [--awc-pill:18px] " +
@@ -33,6 +34,9 @@ export function YearGrid({
   onCommit: (dates: string[], makeUnavailable: boolean) => void;
   onYearClick: () => void;
 }) {
+  const locale = useLocale();
+  const monthLabels = useMemo(() => monthShortLabels(locale), [locale]);
+  const weekdayLabels = useMemo(() => weekdayShortLabels(locale), [locale]);
   const grid = useMemo(() => buildYearGrid(year), [year]);
   const drag = useRef<{
     anchor: string;
@@ -101,7 +105,7 @@ export function YearGrid({
             weekend && "bg-[#e7e6e6]",
           )}
         >
-          {WEEKDAY_LABELS[wd]}
+          {weekdayLabels[wd]}
         </span>
       </div>,
     );
@@ -159,10 +163,10 @@ export function YearGrid({
         >
           {year}
         </button>
-        {MONTH_LABELS.map((label) => (
+        {monthLabels.map((label, m) => (
           <div
-            key={label}
-            className="text-center text-[10px] font-semibold tracking-tight text-primary sm:text-[11px] md:text-[13px]"
+            key={m}
+            className="truncate px-0.5 text-center text-[10px] font-semibold tracking-tight text-primary sm:text-[11px] md:text-[13px]"
           >
             {label}
           </div>

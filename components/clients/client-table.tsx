@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Plus, Search } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -13,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ACCOUNT_STATUS_LABEL, StatusBadge, accountTone } from "@/components/common/status-badge";
+import { StatusBadge, accountTone } from "@/components/common/status-badge";
 import { Pagination } from "@/components/common/pagination";
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
 import { useClientStore } from "@/lib/store";
@@ -22,6 +23,8 @@ import { fmtDate, fmtMoney } from "@/lib/format";
 const PAGE_SIZE = 8;
 
 export function ClientTable() {
+  const t = useTranslations("clients");
+  const locale = useLocale();
   const router = useRouter();
   const clients = useClientStore((s) => s.clients);
   const [query, setQuery] = useState("");
@@ -51,17 +54,17 @@ export function ClientTable() {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <label className="relative flex w-full max-w-sm items-center">
-          <Search className="pointer-events-none absolute left-2.5 size-4 text-muted-foreground" />
+          <Search className="pointer-events-none absolute start-2.5 size-4 text-muted-foreground" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name, email, code or region"
-            className="h-9 w-full rounded-lg border bg-card pl-8 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            placeholder={t("searchPlaceholder")}
+            className="h-9 w-full rounded-lg border bg-card ps-8 pe-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           />
         </label>
         <Button size="sm" onClick={() => setAddOpen(true)}>
           <Plus />
-          New client
+          {t("newClient")}
         </Button>
       </div>
 
@@ -69,12 +72,12 @@ export function ClientTable() {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Client</TableHead>
-              <TableHead>Region</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Profiles</TableHead>
-              <TableHead className="text-right">Wallet</TableHead>
-              <TableHead className="text-right">Joined</TableHead>
+              <TableHead>{t("colClient")}</TableHead>
+              <TableHead>{t("colRegion")}</TableHead>
+              <TableHead>{t("colStatus")}</TableHead>
+              <TableHead className="text-end">{t("colProfiles")}</TableHead>
+              <TableHead className="text-end">{t("colWallet")}</TableHead>
+              <TableHead className="text-end">{t("colJoined")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -90,7 +93,7 @@ export function ClientTable() {
                 }}
                 tabIndex={0}
                 role="link"
-                aria-label={`Open ${c.fullName}`}
+                aria-label={t("openAria", { name: c.fullName })}
                 className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               >
                 <TableCell>
@@ -112,28 +115,28 @@ export function ClientTable() {
                 <TableCell>
                   <div className="flex items-center gap-1.5">
                     <StatusBadge tone={accountTone(c.status)}>
-                      {ACCOUNT_STATUS_LABEL[c.status]}
+                      {t(`status.${c.status}`)}
                     </StatusBadge>
                     {c.activePackage && (
                       <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                        pkg
+                        {t("pkg")}
                       </span>
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="text-right font-mono tabular">{c.profiles.length}</TableCell>
-                <TableCell className="text-right font-mono tabular">
+                <TableCell className="text-end font-mono tabular">{c.profiles.length}</TableCell>
+                <TableCell className="text-end font-mono tabular">
                   {fmtMoney(c.wallet.balance)}
                 </TableCell>
-                <TableCell className="text-right font-mono text-xs tabular text-muted-foreground">
-                  {fmtDate(c.joinedAt)}
+                <TableCell className="text-end font-mono text-xs tabular text-muted-foreground">
+                  {fmtDate(c.joinedAt, locale)}
                 </TableCell>
               </TableRow>
             ))}
             {filtered.length === 0 && (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
-                  No clients match “{query}”.
+                  {t("noMatch", { query })}
                 </TableCell>
               </TableRow>
             )}
@@ -149,7 +152,7 @@ export function ClientTable() {
         end={Math.min(startIndex + PAGE_SIZE, filtered.length)}
         onPrev={() => setPage((p) => Math.max(1, p - 1))}
         onNext={() => setPage((p) => Math.min(pageCount, p + 1))}
-        label="clients"
+        label={t("itemsLabel")}
       />
 
       <ClientFormDialog mode="add" open={addOpen} onOpenChange={setAddOpen} />

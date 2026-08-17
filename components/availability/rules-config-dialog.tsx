@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { RotateCcw } from "lucide-react";
+import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogBody,
@@ -42,6 +43,7 @@ export function RulesConfigDialog({
   config: RuleConfig;
   onSave: (config: RuleConfig) => void;
 }) {
+  const t = useTranslations();
   const [draft, setDraft] = useState<RuleConfig>(config);
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
@@ -65,17 +67,14 @@ export function RulesConfigDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md font-manrope theme-violet">
         <DialogHeader>
-          <DialogTitle>Update calendar rules</DialogTitle>
-          <DialogDescription>
-            These parameters come from the Services module. Editing them re-checks the calendar
-            instantly.
-          </DialogDescription>
+          <DialogTitle>{t("rulesConfig.title")}</DialogTitle>
+          <DialogDescription>{t("rulesConfig.desc")}</DialogDescription>
         </DialogHeader>
 
         <DialogBody className="grid gap-4 sm:grid-cols-2">
           {isTherapist ? (
             <MinutesField
-              label="Min availability block"
+              label={t("rulesConfig.minAvailBlock")}
               value={draft.minBlockInPersonMins}
               options={THERAPIST_BLOCK_OPTIONS}
               onChange={(v) => setDraft({ ...draft, minBlockInPersonMins: v })}
@@ -83,19 +82,19 @@ export function RulesConfigDialog({
           ) : (
             <>
               <MinutesField
-                label="Min in-person block"
+                label={t("rulesConfig.minInpersonBlock")}
                 value={draft.minBlockInPersonMins}
                 options={INPERSON_OPTIONS}
                 onChange={(v) => setDraft({ ...draft, minBlockInPersonMins: v })}
               />
               <MinutesField
-                label="Min online block"
+                label={t("rulesConfig.minOnlineBlock")}
                 value={draft.minBlockOnlineMins}
                 options={ONLINE_OPTIONS}
                 onChange={(v) => setDraft({ ...draft, minBlockOnlineMins: v })}
               />
               <MinutesField
-                label="Min break between blocks"
+                label={t("rulesConfig.minBreak")}
                 value={draft.minBreakMins}
                 options={BREAK_OPTIONS}
                 onChange={(v) => setDraft({ ...draft, minBreakMins: v })}
@@ -104,25 +103,27 @@ export function RulesConfigDialog({
           )}
 
           <MinutesField
-            label="Continuous window"
+            label={t("rulesConfig.continuousWindow")}
             value={draft.continuousWindowMins}
             options={WINDOW_OPTIONS}
             onChange={(v) => setDraft({ ...draft, continuousWindowMins: v })}
           />
 
           <div className="flex flex-col gap-1.5">
-            <Label>Max days off / week</Label>
+            <Label>{t("rulesConfig.maxDaysOffWeek")}</Label>
             <Select
               value={String(draft.maxDaysOff)}
               onValueChange={(v) => setDraft({ ...draft, maxDaysOff: Number(v) })}
             >
               <SelectTrigger className="h-9 w-full">
-                <SelectValue>{(v) => `${v} ${Number(v) === 1 ? "day" : "days"}`}</SelectValue>
+                <SelectValue>
+                  {(v) => t("rulesConfig.days", { count: Number(v) })}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {DAYS_OFF_OPTIONS.map((n) => (
                   <SelectItem key={n} value={String(n)}>
-                    {n} {n === 1 ? "day" : "days"}
+                    {t("rulesConfig.days", { count: n })}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -134,14 +135,14 @@ export function RulesConfigDialog({
           <Button
             variant="ghost"
             onClick={() => setDraft(configFor(draft.specialist))}
-            className="sm:mr-auto"
+            className="sm:me-auto"
           >
-            <RotateCcw className="size-3.5" /> Reset to defaults
+            <RotateCcw className="size-3.5" /> {t("rulesConfig.reset")}
           </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("common.cancel")}
           </Button>
-          <Button onClick={handleSave}>Apply rules</Button>
+          <Button onClick={handleSave}>{t("rulesConfig.apply")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

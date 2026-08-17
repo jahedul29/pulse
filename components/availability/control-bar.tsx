@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { PaintStatus, RuleConfig } from "@/lib/availability/types";
 
@@ -11,30 +12,6 @@ function fmtHM(mins: number): string {
 }
 
 type StatusMeta = { status: PaintStatus; label: string; desc: string };
-
-function statusesFor(config: RuleConfig): StatusMeta[] {
-  const care = config.specialist === "therapist" ? "therapy" : "supervision";
-  const base: StatusMeta[] = [
-    {
-      status: "available",
-      label: "Available In-person",
-      desc: `Clients who need ${care} during these hours will be able to find you`,
-    },
-    {
-      status: "unavailable",
-      label: "Unavailable",
-      desc: `Clients who need ${care} during these hours won't be able to find you`,
-    },
-  ];
-  if (config.supportsOnline) {
-    base.push({
-      status: "online",
-      label: "Available Online-only",
-      desc: "Only clients who agreed to online supervision can find or book you during these hours",
-    });
-  }
-  return base;
-}
 
 export function PaintControls({
   config,
@@ -47,14 +24,34 @@ export function PaintControls({
   onTravelChange: (mins: number) => void;
   onToggleExpanded: () => void;
 }) {
-  const statuses = statusesFor(config);
+  const t = useTranslations("availability");
+  const care = config.specialist === "therapist" ? t("care.therapy") : t("care.supervision");
+  const statuses: StatusMeta[] = [
+    {
+      status: "available",
+      label: t("controls.availableInpersonLabel"),
+      desc: t("controls.availableInpersonDesc", { care }),
+    },
+    {
+      status: "unavailable",
+      label: t("controls.unavailableLabel"),
+      desc: t("controls.unavailableDesc", { care }),
+    },
+  ];
+  if (config.supportsOnline) {
+    statuses.push({
+      status: "online",
+      label: t("controls.onlineLabel"),
+      desc: t("controls.onlineDesc"),
+    });
+  }
 
   return (
     <div className="flex flex-col items-center gap-3 font-semibold">
       {config.specialist === "therapist" && (
         <div className="flex flex-col items-center gap-2">
           <span className="text-center text-xs text-muted-foreground md:text-sm">
-            Choose the optimal travel time between your clients
+            {t("controls.travelPrompt")}
           </span>
           <div className="flex flex-wrap justify-center gap-2">
             {TRAVEL_OPTIONS.map((mins) => {
@@ -80,7 +77,7 @@ export function PaintControls({
       )}
 
       <span className="text-center text-xs text-muted-foreground md:text-sm">
-        Click a time slot to change its status; drag to paint several
+        {t("controls.paintInstr")}
       </span>
 
       <div

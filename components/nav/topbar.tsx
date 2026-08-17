@@ -1,10 +1,12 @@
 "use client";
 
+import { ChevronRight, Menu, Search } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, Menu, Search } from "lucide-react";
 import { SECTIONS } from "@/lib/nav";
 import { PeriodToggle } from "@/components/common/period-toggle";
+import { LocaleSwitcher } from "@/components/nav/locale-switcher";
 import { useClientStore } from "@/lib/store";
 import { useSpecialistStore } from "@/lib/specialists";
 import { useUiStore } from "@/lib/ui-store";
@@ -12,11 +14,13 @@ import { useUiStore } from "@/lib/ui-store";
 type Crumb = { label: string; href?: string };
 
 export function Topbar() {
+  const t = useTranslations();
   const pathname = usePathname();
   const setMobileOpen = useUiStore((s) => s.setMobileOpen);
 
   const segments = pathname.split("/").filter(Boolean);
   const section = SECTIONS.find((s) => s.slug === segments[0]) ?? SECTIONS[2];
+  const sectionLabel = t(`nav.sections.${section.slug}`);
   const detailId = segments[1];
 
   const specialistName = useSpecialistStore((s) =>
@@ -29,17 +33,19 @@ export function Topbar() {
       ? s.clients.find((c) => c.id === detailId)?.fullName
       : undefined,
   );
-  const detailName = detailId ? (specialistName ?? clientName ?? "Details") : undefined;
+  const detailName = detailId
+    ? (specialistName ?? clientName ?? t("nav.details"))
+    : undefined;
 
-  const trail: Crumb[] = [{ label: "ABAPRO", href: "/" }];
+  const trail: Crumb[] = [{ label: t("common.appName"), href: "/" }];
   if (detailName) {
-    trail.push({ label: section.label, href: `/${section.slug}` });
+    trail.push({ label: sectionLabel, href: `/${section.slug}` });
     trail.push({ label: detailName });
   } else {
-    trail.push({ label: section.label });
+    trail.push({ label: sectionLabel });
   }
 
-  const title = detailName ?? section.label;
+  const title = detailName ?? sectionLabel;
   const showPeriod = pathname === "/clients";
 
   return (
@@ -47,13 +53,13 @@ export function Topbar() {
       <button
         type="button"
         onClick={() => setMobileOpen(true)}
-        aria-label="Open menu"
+        aria-label={t("nav.openMenu")}
         className="grid size-9 cursor-pointer place-items-center rounded-lg border text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden"
       >
         <Menu className="size-5" />
       </button>
 
-      <div className="mr-auto min-w-0">
+      <div className="me-auto min-w-0">
         <div className="truncate font-heading text-lg leading-tight font-semibold">{title}</div>
         <nav
           aria-label="Breadcrumb"
@@ -61,7 +67,9 @@ export function Topbar() {
         >
           {trail.map((c, i) => (
             <span key={`${c.label}-${i}`} className="flex min-w-0 items-center gap-1">
-              {i > 0 && <ChevronRight className="size-3 shrink-0 text-muted-foreground/60" />}
+              {i > 0 && (
+                <ChevronRight className="size-3 shrink-0 text-muted-foreground/60 rtl:-scale-x-100" />
+              )}
               {c.href ? (
                 <Link href={c.href} className="truncate transition-colors hover:text-primary">
                   {c.label}
@@ -75,14 +83,15 @@ export function Topbar() {
       </div>
 
       <label className="relative hidden items-center md:flex">
-        <Search className="pointer-events-none absolute left-2.5 size-4 text-muted-foreground" />
+        <Search className="pointer-events-none absolute start-2.5 size-4 text-muted-foreground" />
         <input
           type="search"
-          placeholder="Universal search"
-          className="h-9 w-56 rounded-lg border bg-card pr-3 pl-8 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          placeholder={t("nav.search")}
+          className="h-9 w-56 rounded-lg border bg-card pe-3 ps-8 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         />
       </label>
       {showPeriod && <PeriodToggle />}
+      <LocaleSwitcher />
     </header>
   );
 }

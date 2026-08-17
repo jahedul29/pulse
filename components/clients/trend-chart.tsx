@@ -9,6 +9,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useTranslations } from "next-intl";
 import { fmtNumber } from "@/lib/format";
 
 function TrendTooltip({
@@ -20,12 +21,13 @@ function TrendTooltip({
   payload?: { value: number }[];
   label?: string;
 }) {
+  const t = useTranslations("clients");
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-lg border bg-popover px-2.5 py-1.5 text-xs shadow-md ring-1 ring-foreground/5">
       <div className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">{label}</div>
       <span className="font-mono tabular text-sm font-medium">{fmtNumber(payload[0].value)}</span>
-      <span className="ml-1 text-muted-foreground">new clients</span>
+      <span className="ms-1 text-muted-foreground">{t("newClientsUnit")}</span>
     </div>
   );
 }

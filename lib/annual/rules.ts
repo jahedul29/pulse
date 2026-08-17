@@ -52,6 +52,8 @@ export function validateAnnual(offDates: string[], config: AnnualConfig): Annual
     label: "Maximum days off",
     pass: capFail.length === 0,
     message: `You can select up to ${config.maxDaysOff} days off per year`,
+    messageKey: "annual.rule.maxDaysOff",
+    values: { max: config.maxDaysOff },
     offending: capFail,
   });
 
@@ -64,6 +66,8 @@ export function validateAnnual(offDates: string[], config: AnnualConfig): Annual
       label: "Maximum consecutive days off",
       pass: bad.length === 0,
       message: `You can take a maximum of ${config.maxConsecutive} consecutive days off`,
+      messageKey: "annual.rule.maxConsecutive",
+      values: { max: config.maxConsecutive },
       offending: bad,
     });
   }
@@ -83,6 +87,8 @@ export function validateAnnual(offDates: string[], config: AnnualConfig): Annual
       label: "Interval between time-off blocks",
       pass: bad.size === 0,
       message: `Leave at least ${config.minGapWeeks} full calendar weeks (MO–SU) between non-consecutive days off`,
+      messageKey: "annual.rule.minGap",
+      values: { weeks: config.minGapWeeks },
       offending: Array.from(bad),
     });
   }

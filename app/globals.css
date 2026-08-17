@@ -7,10 +7,12 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-manrope);
+  --font-sans:
+    var(--font-manrope-src, ui-sans-serif), var(--font-hind, ui-sans-serif),
+    var(--font-arabic, ui-sans-serif), system-ui, sans-serif;
   --font-mono: var(--font-mono-data);
-  --font-heading: var(--font-manrope);
-  --font-manrope: var(--font-manrope);
+  --font-heading: var(--font-sans);
+  --font-manrope: var(--font-sans);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-success-muted: var(--success-muted);
@@ -246,7 +248,7 @@
     @apply font-sans;
   }
   h1, h2, h3, h4 {
-    font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-heading);
     letter-spacing: -0.015em;
   }
   .tabular {

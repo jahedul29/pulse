@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogBody,
@@ -22,11 +23,6 @@ function GIcon({ src }: { src: string }) {
   return <img src={`/icons/guidelines/${src}.svg`} alt="" className="size-8 shrink-0" />;
 }
 
-const ROLE_TITLE: Record<SpecialistType, string> = {
-  therapist: "Setting up Therapist weekly business hours",
-  analyst: "Setting up Analyst weekly business hours",
-};
-
 export function GuidelinesDialog({
   open,
   onOpenChange,
@@ -38,7 +34,10 @@ export function GuidelinesDialog({
   role: SpecialistType;
   config: RuleConfig;
 }) {
+  const t = useTranslations();
   const therapist = role === "therapist";
+  const hl = { hl: (chunks: ReactNode) => <Hl>{chunks}</Hl> };
+  const off = { ...hl, maxDaysOff: config.maxDaysOff };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -48,11 +47,11 @@ export function GuidelinesDialog({
       >
         <div className="relative shrink-0 border-b px-4 pt-6 pb-3">
           <DialogTitle className="text-center text-sm leading-snug font-bold text-balance text-foreground md:text-base">
-            {ROLE_TITLE[role]}
+            {t(therapist ? "guidelines.weeklyTitleTherapist" : "guidelines.weeklyTitleAnalyst")}
           </DialogTitle>
           <DialogClose
-            aria-label="Close"
-            className="absolute top-1.5 right-1.5 grid size-5 cursor-pointer place-items-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none md:size-6"
+            aria-label={t("common.close")}
+            className="absolute top-1.5 end-1.5 grid size-5 cursor-pointer place-items-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none md:size-6"
           >
             <X className="size-3.5 md:size-4" />
           </DialogClose>
@@ -60,132 +59,37 @@ export function GuidelinesDialog({
 
         <DialogBody className="p-5 text-center text-xs font-semibold text-foreground/80 md:text-sm">
           <div className="flex flex-col gap-4">
-          {therapist ? (
-            <>
-              <p>
-                We strive to make you and your Clients happy.
-                <br />
-                That&apos;s why setting up your availability correctly
-                <br />
-                throughout the day is crucial.
-              </p>
-              <p>
-                Pick how long you need to get between clients
-                <br />
-                (min. <Hl>00h45m</Hl> for your location). Do this first!
-                <br />
-                Changing it later resets your calendar settings.
-                <br />
-                Travel time becomes locked after your first booking.
-              </p>
-              <p>
-                Need a break? Grab up to {config.maxDaysOff} any <Hl>DAYS OFF</Hl> a week.
-                <br />
-                You can set custom work hours for these days if you
-                <br />
-                want. For other days your workday rules will apply.
-              </p>
+            <p>{t.rich("guidelines.weekly.p1", hl)}</p>
 
-              <GuidelineCard icon={<GIcon src="clock-dollar" />}>
-                Schedule for all <Hl>WORKDAYS</Hl> will be the
-                <br />
-                same. Make sure your workdays have at
-                <br />
-                least one{" "}
-                <Hl>
-                  continuous window of at least 6
-                  <br />
-                  hours
-                </Hl>{" "}
-                when you&apos;re available for bookings.
-              </GuidelineCard>
-
-              <GuidelineCard icon={<GIcon src="clock-cog" />}>
-                Any other <Hl>availability</Hl> slots must be{" "}
-                <Hl>
-                  at least
-                  <br />1 hour
-                </Hl>{" "}
-                long. Also, the <Hl>breaks</Hl> you take
-                <br />
-                between your availability slots cannot be
-                <br />
-                shorter than your chosen travel time.
-              </GuidelineCard>
-
-              <GuidelineCard icon={<GIcon src="calendar-star" />}>
-                To keep your rating high and prevent
-                <br />
-                double-booking, we automatically{" "}
-                <Hl>
-                  add
-                  <br />
-                  travel time
-                </Hl>{" "}
-                to every session. You&apos;ll only
-                <br />
-                ever be booked for <Hl>one client at a time</Hl>.
-              </GuidelineCard>
-            </>
-          ) : (
-            <>
-              <p>
-                We strive to make you and your Clients happy.
-                <br />
-                That&apos;s why setting up your availability correctly
-                <br />
-                throughout the day is crucial.
-              </p>
-              <p>
-                As an analyst, select whether you&apos;ll supervise
-                <br />
-                <Hl>in-person</Hl> at the client&apos;s location, <Hl>online</Hl> from
-                <br />
-                anywhere, or a mix of both. You can combine both
-                <br />
-                types throughout your day.
-              </p>
-              <p>
-                First, if you need a weekly break, select up to
-                <br />
-                {config.maxDaysOff} <Hl>DAYS OFF</Hl>. You can still set custom work hours for
-                <br />
-                these days if you like. For all other days, your
-                <br />
-                personalized workday rules will apply.
-              </p>
-
-              <GuidelineCard icon={<GIcon src="clock-dollar" />}>
-                For <Hl>WORKDAYS</Hl> your schedule will be the
-                <br />
-                same. Ensure your workdays have at least
-                <br />
-                one <Hl>continuous 3-hour window</Hl> available
-                <br />
-                for supervision (in-person or online).
-              </GuidelineCard>
-
-              <GuidelineCard icon={<GIcon src="clock-cog" />}>
-                Any availability slots must be at least
-                <br />
-                <Hl>1 hour</Hl> for in-person and <Hl>30 min</Hl> for online
-                <br />
-                supervision. Any breaks between
-                <br />
-                availability slots can be <Hl>15 min</Hl> or longer.
-              </GuidelineCard>
-
-              <GuidelineCard icon={<GIcon src="calendar-clock" />}>
-                We prevent double-booking, but sessions
-                <br />
-                can be <Hl>back-to-back</Hl>. Please plan your
-                <br />
-                schedule to ensure you arrive on time at
-                <br />
-                the client&apos;s location for in-person sessions.
-              </GuidelineCard>
-            </>
-          )}
+            {therapist ? (
+              <>
+                <p>{t.rich("guidelines.weekly.therapistP2", hl)}</p>
+                <p>{t.rich("guidelines.weekly.therapistP3", off)}</p>
+                <GuidelineCard icon={<GIcon src="clock-dollar" />}>
+                  {t.rich("guidelines.weekly.therapistCard1", hl)}
+                </GuidelineCard>
+                <GuidelineCard icon={<GIcon src="clock-cog" />}>
+                  {t.rich("guidelines.weekly.therapistCard2", hl)}
+                </GuidelineCard>
+                <GuidelineCard icon={<GIcon src="calendar-star" />}>
+                  {t.rich("guidelines.weekly.therapistCard3", hl)}
+                </GuidelineCard>
+              </>
+            ) : (
+              <>
+                <p>{t.rich("guidelines.weekly.analystP2", hl)}</p>
+                <p>{t.rich("guidelines.weekly.analystP3", off)}</p>
+                <GuidelineCard icon={<GIcon src="clock-dollar" />}>
+                  {t.rich("guidelines.weekly.analystCard1", hl)}
+                </GuidelineCard>
+                <GuidelineCard icon={<GIcon src="clock-cog" />}>
+                  {t.rich("guidelines.weekly.analystCard2", hl)}
+                </GuidelineCard>
+                <GuidelineCard icon={<GIcon src="calendar-clock" />}>
+                  {t.rich("guidelines.weekly.analystCard3", hl)}
+                </GuidelineCard>
+              </>
+            )}
           </div>
         </DialogBody>
 
@@ -195,7 +99,7 @@ export function GuidelinesDialog({
             className="mx-auto h-9 w-[200px] rounded-full bg-primary font-semibold text-primary-foreground hover:bg-primary/90 sm:h-10 sm:w-[250px]"
             onClick={() => onOpenChange(false)}
           >
-            OK
+            {t("common.ok")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -205,7 +109,7 @@ export function GuidelinesDialog({
 
 function GuidelineCard({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
-    <div className="flex items-center gap-2 rounded-xl border py-3 pr-2 pl-1.5 text-left">
+    <div className="flex items-center gap-2 rounded-xl border py-3 pe-2 ps-1.5 text-start">
       {icon}
       <p className="text-xs leading-snug text-foreground md:text-sm">{children}</p>
     </div>

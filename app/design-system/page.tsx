@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import {
   Activity,
   AlertCircle,
@@ -239,7 +240,7 @@ const CLIENTS: Client[] = [
 ];
 
 const HEAD =
-  "h-10 whitespace-nowrap border-b bg-card px-3 text-left align-middle font-medium text-foreground";
+  "h-10 whitespace-nowrap border-b bg-card px-3 text-start align-middle font-medium text-foreground";
 const CELL = "whitespace-nowrap border-b px-3 py-2 align-middle group-hover:bg-muted";
 const FREEZE_SHADOW = "shadow-[4px_0_6px_-4px_rgba(0,0,0,0.18)]";
 
@@ -388,18 +389,19 @@ function IconInput({
   leading,
   trailing,
   className,
+  dir,
   ...props
 }: React.ComponentProps<typeof Input> & { leading?: React.ReactNode; trailing?: React.ReactNode }) {
   return (
-    <div className="relative flex items-center">
+    <div dir={dir} className="relative flex items-center">
       {leading && (
-        <span className="pointer-events-none absolute left-2.5 top-1/2 flex -translate-y-1/2 text-muted-foreground">
+        <span className="pointer-events-none absolute start-2.5 top-1/2 flex -translate-y-1/2 text-muted-foreground">
           {leading}
         </span>
       )}
-      <Input className={cn(leading && "pl-8", trailing && "pr-8", className)} {...props} />
+      <Input className={cn(leading && "ps-8", trailing && "pe-8", className)} {...props} />
       {trailing && (
-        <span className="pointer-events-none absolute right-2.5 top-1/2 flex -translate-y-1/2 text-muted-foreground">
+        <span className="pointer-events-none absolute end-2.5 top-1/2 flex -translate-y-1/2 text-muted-foreground">
           {trailing}
         </span>
       )}
@@ -674,6 +676,8 @@ function DateRangePicker() {
 }
 
 export default function DesignSystemPage() {
+  const t = useTranslations("designSystem");
+  const locale = useLocale();
   const [dark, setDark] = useState(false);
   const [theme, setTheme] = useState<ThemeId>("violet");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -778,7 +782,7 @@ export default function DesignSystemPage() {
             </div>
             <Button variant="outline" size="sm" onClick={() => setDark((d) => !d)}>
               {dark ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
-              {dark ? "Light" : "Dark"}
+              {dark ? t("light") : t("dark")}
             </Button>
           </div>
         </header>
@@ -789,13 +793,9 @@ export default function DesignSystemPage() {
               ABAPRO UI
             </span>
             <h1 className="max-w-2xl font-heading text-3xl font-bold text-balance sm:text-4xl">
-              One component library, dressed in the current theme.
+              {t("title")}
             </h1>
-            <p className="max-w-2xl text-sm text-muted-foreground">
-              Every element below is built from the same design tokens. Switch the theme in the
-              header to see the whole system re-skin — colors change, structure and behavior stay
-              identical.
-            </p>
+            <p className="max-w-2xl text-sm text-muted-foreground">{t("intro")}</p>
             <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
               <span className="rounded-md bg-muted px-2 py-1">Display · Manrope</span>
               <span className="rounded-md bg-muted px-2 py-1">Body · Manrope</span>
@@ -804,7 +804,7 @@ export default function DesignSystemPage() {
             </div>
           </section>
 
-          <Section id="foundations" title="Foundations" desc="Color tokens, typography, and radius.">
+          <Section id="foundations" title={t("foundationsTitle")} desc={t("foundationsDesc")}>
             <Card>
               <CardHeader>
                 <CardTitle>Color tokens</CardTitle>
@@ -875,7 +875,7 @@ export default function DesignSystemPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[520px] text-sm">
                     <thead>
-                      <tr className="border-b text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                      <tr className="border-b text-start text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                         <th className="py-2 pr-4">Sample</th>
                         <th className="py-2 pr-4">Role</th>
                         <th className="py-2 pr-4">Token</th>
@@ -945,8 +945,8 @@ export default function DesignSystemPage() {
 
           <Section
             id="navigation"
-            title="Navigation"
-            desc="The app shell — top bar and sidebar in expanded and collapsed states."
+            title={t("navigationTitle")}
+            desc={t("navigationDesc")}
           >
             <Card>
               <CardHeader>
@@ -979,7 +979,7 @@ export default function DesignSystemPage() {
             </div>
           </Section>
 
-          <Section id="buttons" title="Buttons" desc="Variants, sizes, and states.">
+          <Section id="buttons" title={t("buttonsTitle")} desc={t("buttonsDesc")}>
             <Card>
               <CardContent className="flex flex-col gap-6 pt-6">
                 <Sub label="Variants">
@@ -1020,7 +1020,7 @@ export default function DesignSystemPage() {
             </Card>
           </Section>
 
-          <Section id="badges" title="Badges & pills" desc="Status and role indicators.">
+          <Section id="badges" title={t("badgesTitle")} desc={t("badgesDesc")}>
             <Card>
               <CardContent className="flex flex-col gap-6 pt-6">
                 <Sub label="Status">
@@ -1050,7 +1050,7 @@ export default function DesignSystemPage() {
             </Card>
           </Section>
 
-          <Section id="forms" title="Forms" desc="The full field set for an admin panel.">
+          <Section id="forms" title={t("formsTitle")} desc={t("formsDesc")}>
             <Card>
               <CardHeader>
                 <CardTitle>Field types</CardTitle>
@@ -1064,18 +1064,19 @@ export default function DesignSystemPage() {
                   <IconInput
                     id="f-email"
                     type="email"
+                    dir="ltr"
                     leading={<Mail className="size-4" />}
                     placeholder="jane@mail.com"
                   />
                 </Field>
                 <Field label="Password" htmlFor="f-pw" hint="At least 8 characters.">
                   <div className="relative flex items-center">
-                    <Input id="f-pw" type={showPw ? "text" : "password"} defaultValue="secret123" className="pr-9" />
+                    <Input id="f-pw" type={showPw ? "text" : "password"} defaultValue="secret123" className="pe-9" />
                     <button
                       type="button"
                       onClick={() => setShowPw((v) => !v)}
                       aria-label={showPw ? "Hide password" : "Show password"}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
+                      className="absolute end-2 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
                     >
                       {showPw ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                     </button>
@@ -1085,6 +1086,7 @@ export default function DesignSystemPage() {
                   <IconInput
                     id="f-phone"
                     type="tel"
+                    dir="ltr"
                     leading={<Phone className="size-4" />}
                     placeholder="+1 555 012 3456"
                   />
@@ -1093,13 +1095,14 @@ export default function DesignSystemPage() {
                   <IconInput
                     id="f-amt"
                     type="number"
+                    dir="ltr"
                     leading={<DollarSign className="size-4" />}
                     placeholder="0.00"
                   />
                 </Field>
                 <Field label="Website" htmlFor="f-web">
-                  <div className="flex items-center rounded-lg border border-input bg-transparent focus-within:border-ring focus-within:ring-1 focus-within:ring-ring/40">
-                    <span className="border-r border-input px-2.5 text-sm text-muted-foreground">https://</span>
+                  <div dir="ltr" className="flex items-center rounded-lg border border-input bg-transparent focus-within:border-ring focus-within:ring-1 focus-within:ring-ring/40">
+                    <span className="border-e border-input px-2.5 text-sm text-muted-foreground">https://</span>
                     <input
                       id="f-web"
                       className="h-8 w-full bg-transparent px-2.5 text-sm outline-none placeholder:text-muted-foreground"
@@ -1237,8 +1240,8 @@ export default function DesignSystemPage() {
 
           <Section
             id="feedback"
-            title="Feedback"
-            desc="Inline alerts, empty states, and loading skeletons."
+            title={t("feedbackTitle")}
+            desc={t("feedbackDesc")}
           >
             <Card>
               <CardHeader>
@@ -1306,7 +1309,7 @@ export default function DesignSystemPage() {
             </div>
           </Section>
 
-          <Section id="data" title="Data display" desc="Stat cards, charts, tabs, tables, avatars, progress.">
+          <Section id="data" title={t("dataTitle")} desc={t("dataDesc")}>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {STATS.map((s) => (
                 <StatCard key={s.slug} stat={s} />
@@ -1464,8 +1467,8 @@ export default function DesignSystemPage() {
 
           <Section
             id="tables"
-            title="Data tables"
-            desc="Long table with a locked column — it stays pinned left while the rest scrolls horizontally."
+            title={t("dataTablesTitle")}
+            desc={t("dataTablesDesc")}
           >
             <Card>
               <CardHeader className="flex-row items-center justify-between gap-3">
@@ -1551,10 +1554,10 @@ export default function DesignSystemPage() {
                             <td className={cn(CELL, "font-mono text-xs text-muted-foreground")}>{c.phone}</td>
                             <td className={cn(CELL, "text-muted-foreground")}>{c.owner}</td>
                             <td className={cn(CELL, "font-mono text-xs text-muted-foreground")}>
-                              {fmtDate(c.joined)}
+                              {fmtDate(c.joined, locale)}
                             </td>
                             <td className={cn(CELL, "font-mono text-xs text-muted-foreground")}>
-                              {fmtDate(c.lastActive)}
+                              {fmtDate(c.lastActive, locale)}
                             </td>
                           </tr>
                         );
@@ -1566,7 +1569,7 @@ export default function DesignSystemPage() {
             </Card>
           </Section>
 
-          <Section id="overlays" title="Overlays" desc="Dialogs, menus, tooltips, and toasts.">
+          <Section id="overlays" title={t("overlaysTitle")} desc={t("overlaysDesc")}>
             <Card>
               <CardContent className="flex flex-col gap-6 pt-6">
                 <Sub label="Dropdown menu">
@@ -1638,8 +1641,8 @@ export default function DesignSystemPage() {
 
           <Section
             id="availability"
-            title="Availability"
-            desc="App-specific calendar components."
+            title={t("availabilityTitle")}
+            desc={t("availabilityDesc")}
           >
             <Card>
               <CardContent className="flex flex-col gap-6 pt-6">

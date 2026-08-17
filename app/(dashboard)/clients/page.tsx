@@ -12,12 +12,14 @@ import {
   territories,
 } from "@/lib/mock/data";
 import { coercePeriod, PERIOD_LABEL } from "@/lib/period";
+import { getTranslations } from "next-intl/server";
 
 export default async function ClientsPage({
   searchParams,
 }: {
   searchParams: Promise<{ period?: string }>;
 }) {
+  const t = await getTranslations("clients");
   const period = coercePeriod((await searchParams).period);
   const newTrend = kpis.find((k) => k.key === "new")?.trends[period] ?? [];
 
@@ -32,7 +34,7 @@ export default async function ClientsPage({
       <section className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>New clients</CardTitle>
+            <CardTitle>{t("newClients")}</CardTitle>
             <p className="text-xs text-muted-foreground">{PERIOD_LABEL[period]}</p>
           </CardHeader>
           <CardContent>
@@ -41,8 +43,8 @@ export default async function ClientsPage({
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Active packages</CardTitle>
-            <p className="text-xs text-muted-foreground">Split by recurrence</p>
+            <CardTitle>{t("activePackages")}</CardTitle>
+            <p className="text-xs text-muted-foreground">{t("splitByRecurrence")}</p>
           </CardHeader>
           <CardContent>
             <Donut data={packageSplit} />
@@ -53,7 +55,7 @@ export default async function ClientsPage({
       <section className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Sessions by supervision</CardTitle>
+            <CardTitle>{t("sessionsBySupervision")}</CardTitle>
           </CardHeader>
           <CardContent>
             <Donut data={supervisionSplit} />
@@ -61,7 +63,7 @@ export default async function ClientsPage({
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Cancellations by reason</CardTitle>
+            <CardTitle>{t("cancellationsByReason")}</CardTitle>
           </CardHeader>
           <CardContent>
             <Donut data={cancellationSplit} />
@@ -73,10 +75,8 @@ export default async function ClientsPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Client accounts</CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Search any attribute · select a row to open the account
-          </p>
+          <CardTitle>{t("clientAccounts")}</CardTitle>
+          <p className="text-xs text-muted-foreground">{t("accountsHint")}</p>
         </CardHeader>
         <CardContent>
           <ClientTable />
