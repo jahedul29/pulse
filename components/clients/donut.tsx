@@ -19,7 +19,16 @@ export function Donut({ data, unit = "%" }: { data: SplitDatum[]; unit?: string 
   return (
     <div className="flex items-center gap-4">
       <div className="relative size-[132px] shrink-0">
-        <ResponsiveContainer width="100%" height="100%">
+        <div className="pointer-events-none absolute inset-0 z-0 flex flex-col items-center justify-center">
+          <span className="font-heading text-lg leading-none font-bold tabular-nums">
+            {top.value}
+            {unit}
+          </span>
+          <span className="mt-0.5 text-xs tracking-wide text-muted-foreground uppercase">
+            {top.name}
+          </span>
+        </div>
+        <ResponsiveContainer width="100%" height="100%" className="relative z-10">
           <PieChart>
             <Pie
               data={data}
@@ -36,18 +45,9 @@ export function Donut({ data, unit = "%" }: { data: SplitDatum[]; unit?: string 
                 <Cell key={d.name} fill={d.fill} />
               ))}
             </Pie>
-            <Tooltip content={<DonutTooltip />} />
+            <Tooltip content={<DonutTooltip />} wrapperStyle={{ zIndex: 20, outline: "none" }} />
           </PieChart>
         </ResponsiveContainer>
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <span className="font-heading text-lg leading-none font-bold tabular-nums">
-            {top.value}
-            {unit}
-          </span>
-          <span className="mt-0.5 text-[10px] tracking-wide text-muted-foreground uppercase">
-            {top.name}
-          </span>
-        </div>
       </div>
       <ul className="flex min-w-0 flex-1 flex-col gap-1.5">
         {data.map((d) => (

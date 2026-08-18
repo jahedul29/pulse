@@ -180,7 +180,7 @@ export function CoachDialog({
       <DialogContent
         showCloseButton={false}
         initialFocus={stageRef}
-        className="theme-violet font-manrope sm:w-[390px] sm:max-w-[390px]"
+        className="font-manrope w-[calc(100vw-2rem)] max-w-[var(--modal-w)] sm:w-[var(--modal-w)]"
       >
         <DialogTitle className="sr-only">{t("title")}</DialogTitle>
 

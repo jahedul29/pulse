@@ -23,7 +23,6 @@
     "next": "अगला पेज"
   },
   "clients": {
-    "newClients": "नए ग्राहक",
     "newClientsUnit": "नए ग्राहक",
     "activePackages": "सक्रिय पैकेज",
     "splitByRecurrence": "पुनरावृत्ति के अनुसार विभाजन",
@@ -44,7 +43,6 @@
     "colWallet": "वॉलेट",
     "colJoined": "शामिल हुए",
     "pkg": "पैक",
-    "noMatch": "“{query}” से कोई ग्राहक मेल नहीं खाता।",
     "openAria": "{name} खोलें",
     "itemsLabel": "ग्राहक",
     "status": {

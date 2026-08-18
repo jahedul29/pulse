@@ -43,7 +43,7 @@ export function GuidelinesDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="w-[345px] max-w-[345px] font-manrope theme-violet sm:max-w-[345px] md:w-[390px] md:max-w-[390px]"
+        className="font-manrope w-[calc(100vw-2rem)] max-w-[var(--modal-w)] sm:w-[var(--modal-w)]"
       >
         <div className="relative shrink-0 border-b px-4 pt-6 pb-3">
           <DialogTitle className="text-center text-sm leading-snug font-bold text-balance text-foreground md:text-base">

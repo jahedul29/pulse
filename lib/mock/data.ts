@@ -297,10 +297,11 @@ export const territories: Territory[] = (() => {
 
 function trend(base: number, len: number, drift: number) {
   const points: { label: string; value: number }[] = [];
-  let v = base;
+  const phase = rng() * Math.PI * 2;
   for (let i = 0; i < len; i++) {
-    v = Math.max(0, Math.round(v + (rng() - 0.45) * drift));
-    points.push({ label: `${i + 1}`, value: v });
+    const wave = Math.sin(i * 1.2 + phase) * drift * 1.5;
+    const noise = (rng() - 0.5) * drift * 1.2;
+    points.push({ label: `${i + 1}`, value: Math.max(0, Math.round(base + wave + noise)) });
   }
   return points;
 }

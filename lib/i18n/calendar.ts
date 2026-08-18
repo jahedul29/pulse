@@ -12,6 +12,10 @@ export function weekdayShortLabels(locale: string): string[] {
   return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(Date.UTC(2021, 2, 1 + i))));
 }
 
+export function weekdayTwoCharLabels(locale: string): string[] {
+  return weekdayShortLabels(locale).map((w) => w.slice(0, 2).toUpperCase());
+}
+
 export function weekdayNarrowLabels(locale: string): string[] {
   const fmt = new Intl.DateTimeFormat(locale, { weekday: "narrow", timeZone: "UTC" });
   return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(Date.UTC(2021, 2, 1 + i))));

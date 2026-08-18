@@ -54,7 +54,7 @@ export function AnnualGuidelinesDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="theme-violet w-[345px] max-w-[345px] font-manrope sm:max-w-[345px] md:w-[390px] md:max-w-[390px]"
+        className="w-[345px] max-w-[345px] font-manrope sm:max-w-[345px] md:w-[390px] md:max-w-[390px]"
       >
         <div className="relative shrink-0 border-b px-4 pt-6 pb-3">
           <DialogTitle className="text-center text-sm leading-snug font-bold text-balance text-foreground md:text-base">

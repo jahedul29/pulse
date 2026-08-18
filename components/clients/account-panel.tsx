@@ -5,7 +5,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge, StatusDot, accountTone } from "@/components/common/status-badge";
-import { fmtDate, fmtMoney } from "@/lib/format";
+import { fmtDate } from "@/lib/format";
+import { Money } from "@/components/common/money";
 import type { Client } from "@/lib/types";
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
@@ -91,13 +92,11 @@ export function AccountPanel({ client }: { client: Client }) {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-baseline justify-between">
-              <span className="font-heading text-3xl font-semibold tabular">
-                {fmtMoney(w.balance)}
-              </span>
+              <Money value={w.balance} className="font-heading text-3xl font-semibold" />
               <div className="text-end text-xs text-muted-foreground">
-                <div>{t("account.bonus")} {fmtMoney(w.bonus)}</div>
-                <div>{t("account.gift")} {fmtMoney(w.gift)}</div>
-                <div>{t("account.forfeit")} {fmtMoney(w.forfeit)}</div>
+                <div>{t("account.bonus")} <Money value={w.bonus} /></div>
+                <div>{t("account.gift")} <Money value={w.gift} /></div>
+                <div>{t("account.forfeit")} <Money value={w.forfeit} /></div>
               </div>
             </div>
             <div className="border-t pt-2">
@@ -111,7 +110,7 @@ export function AccountPanel({ client }: { client: Client }) {
                       {t.kind}
                       <span className="ms-2 font-mono text-xs">{fmtDate(t.date, locale)}</span>
                     </span>
-                    <span className="font-mono tabular">{fmtMoney(t.amount)}</span>
+                    <Money value={t.amount} className="font-mono" />
                   </li>
                 ))}
               </ul>

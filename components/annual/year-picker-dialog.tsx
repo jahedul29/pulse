@@ -23,7 +23,7 @@ export function YearPickerDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="theme-violet w-[300px] max-w-[300px] font-manrope sm:max-w-[300px]"
+        className="w-[300px] max-w-[300px] font-manrope sm:max-w-[300px]"
       >
         <DialogTitle className="border-b px-4 pt-5 pb-3 text-center text-sm font-bold text-foreground">
           {t("yearPickerTitle")}

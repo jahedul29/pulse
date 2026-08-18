@@ -65,7 +65,7 @@ export function RulesConfigDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md font-manrope theme-violet">
+      <DialogContent className="font-manrope w-[calc(100vw-2rem)] max-w-[var(--modal-w)] sm:w-[var(--modal-w)]">
         <DialogHeader>
           <DialogTitle>{t("rulesConfig.title")}</DialogTitle>
           <DialogDescription>{t("rulesConfig.desc")}</DialogDescription>

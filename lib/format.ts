@@ -1,6 +1,5 @@
-const currency = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
+const money = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
 
@@ -8,7 +7,7 @@ const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFra
 const plain = new Intl.NumberFormat("en-US");
 
 export function fmtMoney(n: number): string {
-  return currency.format(n);
+  return money.format(n);
 }
 
 export function fmtNumber(n: number): string {

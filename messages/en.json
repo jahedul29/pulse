@@ -13,7 +13,13 @@
     "role": {
       "therapist": "Therapist",
       "analyst": "Analyst"
-    }
+    },
+    "filter": "Filter",
+    "clear": "Clear",
+    "min": "Min",
+    "max": "Max",
+    "freeze": "Freeze",
+    "view": "View"
   },
   "pagination": {
     "range": "{start}–{end} of {total} {label}",
@@ -23,7 +29,6 @@
     "next": "Next page"
   },
   "clients": {
-    "newClients": "New clients",
     "newClientsUnit": "new clients",
     "activePackages": "Active packages",
     "splitByRecurrence": "Split by recurrence",
@@ -44,7 +49,6 @@
     "colWallet": "Wallet",
     "colJoined": "Joined",
     "pkg": "pkg",
-    "noMatch": "No clients match “{query}”.",
     "openAria": "Open {name}",
     "itemsLabel": "clients",
     "status": {
@@ -144,6 +148,34 @@
       "ofAvailable": "of {paid} available",
       "used": "{count} used",
       "canceled": "{count} canceled"
+    },
+    "tableEmpty": "No clients found",
+    "colActions": "Actions",
+    "suspend": "Suspend",
+    "reactivate": "Reactivate",
+    "biometrics": "Toggle biometrics",
+    "suspendedToast": "{name} suspended",
+    "reactivatedToast": "{name} reactivated",
+    "biometricsToast": "Biometrics updated for {name}",
+    "chartPanel": {
+      "title": "Metrics",
+      "period": "Period",
+      "type": "Chart type",
+      "metric1": "Metric 1",
+      "metric2": "Metric 2",
+      "none": "None",
+      "dataBox": "Data box",
+      "line": "Line",
+      "bar": "Bar",
+      "pie": "Pie"
+    },
+    "metric": {
+      "new": "New clients",
+      "total": "Total clients",
+      "profile": "Clients with a profile",
+      "activePkg": "Clients with active packages",
+      "suspended": "Suspended clients",
+      "deleted": "Deleted clients"
     }
   },
   "nav": {
@@ -174,7 +206,10 @@
     "colAction": "Action",
     "defined": "Defined",
     "notDefined": "Not defined",
-    "editAvailability": "Edit availability"
+    "editAvailability": "Edit availability",
+    "searchPlaceholder": "Search by name, email or role",
+    "tableEmpty": "No specialists found",
+    "itemsLabel": "specialists"
   },
   "annual": {
     "headerRole": {

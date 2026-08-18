@@ -23,7 +23,7 @@ export function KpiCard({ kpi, period }: { kpi: Kpi; period: Period }) {
         <span
           className={cn(
             "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-mono text-xs font-medium",
-            good ? "bg-success-muted text-success" : "bg-danger-muted text-danger",
+            good ? "bg-success text-success-foreground" : "bg-danger text-danger-foreground",
           )}
         >
           <Icon className="size-3" />

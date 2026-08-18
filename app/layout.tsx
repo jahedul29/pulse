@@ -43,7 +43,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html
       lang={locale}
       dir={dirFor(locale)}
-      className={`theme-violet ${mono.variable} ${manrope.variable} ${hind.variable} ${plexArabic.variable} h-full antialiased`}
+      className={`${mono.variable} ${manrope.variable} ${hind.variable} ${plexArabic.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <IntlProvider locale={locale} messages={messages}>

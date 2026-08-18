@@ -23,7 +23,6 @@
     "next": "Следующая страница"
   },
   "clients": {
-    "newClients": "Новые клиенты",
     "newClientsUnit": "новых клиентов",
     "activePackages": "Активные пакеты",
     "splitByRecurrence": "Разбивка по периодичности",
@@ -44,7 +43,6 @@
     "colWallet": "Кошелёк",
     "colJoined": "Присоединился",
     "pkg": "пакет",
-    "noMatch": "Нет клиентов по запросу «{query}».",
     "openAria": "Открыть {name}",
     "itemsLabel": "клиентов",
     "status": {

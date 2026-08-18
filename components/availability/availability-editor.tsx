@@ -156,7 +156,7 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
   };
 
   return (
-    <div className="theme-violet flex flex-col gap-4 font-manrope text-foreground">
+    <div className="flex flex-col gap-4 font-manrope text-foreground">
       <div className="flex items-center justify-between gap-3 hidden">
         <div className="flex items-center gap-3">
           <div className="grid size-10 place-items-center rounded-full bg-primary/12 font-heading text-sm font-semibold text-primary ring-1 ring-primary/20">
@@ -165,7 +165,7 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
           <div>
             <div className="font-heading text-sm font-semibold leading-tight">{specialist.name}</div>
             <span
-              className={cn("rounded-full px-2 py-0.5 text-xs font-medium", ROLE_BADGE[specialist.role])}
+              className={cn("inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium min-w-[var(--badge-w)]", ROLE_BADGE[specialist.role])}
             >
               {t(`common.role.${specialist.role}`)}
             </span>

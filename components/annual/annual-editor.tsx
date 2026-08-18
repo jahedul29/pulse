@@ -62,7 +62,7 @@ export function AnnualEditor({ specialist }: { specialist: Specialist }) {
   };
 
   return (
-    <div className="theme-violet flex flex-col gap-4 font-manrope text-foreground">
+    <div className="flex flex-col gap-4 font-manrope text-foreground">
       <div className="flex flex-col items-center gap-1 text-center">
         <h2 className="font-heading text-xl font-semibold text-balance">
           {t("annual.titleTop")}
@@ -86,7 +86,7 @@ export function AnnualEditor({ specialist }: { specialist: Specialist }) {
 
       <AnnualLegend expanded={expanded} onToggleExpanded={() => setExpanded((v) => !v)} />
 
-      <div className="-mx-4 min-h-[420px] overflow-x-auto px-[5px] pb-2 md:mx-0 md:flex md:justify-center md:px-0">
+      <div className="-mx-4 min-h-[420px] overflow-x-auto px-[5px] pb-2 md:mx-0 md:px-0 lg:flex lg:justify-center lg:overflow-visible">
         {year != null && todayIso != null && (
           <div
             key={shake}

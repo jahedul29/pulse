@@ -30,7 +30,7 @@ export function NavItems({
             title={collapsed ? label : undefined}
             aria-label={collapsed ? label : undefined}
             className={cn(
-              "group flex items-center gap-3 rounded-lg py-2 text-sm transition-colors",
+              "group flex items-center gap-3 rounded-lg py-2 text-sm font-medium transition-colors",
               collapsed ? "justify-center px-0" : "px-3",
               active
                 ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
@@ -40,7 +40,7 @@ export function NavItems({
             <Icon className="size-4 shrink-0" />
             {!collapsed && <span className="truncate">{label}</span>}
             {!collapsed && !s.live && (
-              <span className="ms-auto rounded-full bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+              <span className="ms-auto rounded-full bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
                 {t("soon")}
               </span>
             )}

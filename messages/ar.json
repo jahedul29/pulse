@@ -13,7 +13,13 @@
     "role": {
       "therapist": "معالج",
       "analyst": "محلل"
-    }
+    },
+    "filter": "تصفية",
+    "clear": "مسح",
+    "min": "الأدنى",
+    "max": "الأعلى",
+    "freeze": "تجميد",
+    "view": "عرض"
   },
   "pagination": {
     "range": "{start}–{end} من {total} {label}",
@@ -23,7 +29,6 @@
     "next": "الصفحة التالية"
   },
   "clients": {
-    "newClients": "عملاء جدد",
     "newClientsUnit": "عملاء جدد",
     "activePackages": "الباقات النشطة",
     "splitByRecurrence": "التقسيم حسب التكرار",
@@ -44,7 +49,6 @@
     "colWallet": "المحفظة",
     "colJoined": "تاريخ الانضمام",
     "pkg": "باقة",
-    "noMatch": "لا يوجد عملاء يطابقون “{query}”.",
     "openAria": "فتح {name}",
     "itemsLabel": "عميل",
     "status": {
@@ -144,6 +148,34 @@
       "ofAvailable": "من أصل {paid} متاح",
       "used": "{count} مستخدمة",
       "canceled": "{count} ملغاة"
+    },
+    "tableEmpty": "لا يوجد عملاء",
+    "colActions": "إجراءات",
+    "suspend": "تعليق",
+    "reactivate": "إعادة تفعيل",
+    "biometrics": "تبديل القياسات الحيوية",
+    "suspendedToast": "تم تعليق {name}",
+    "reactivatedToast": "تمت إعادة تفعيل {name}",
+    "biometricsToast": "تم تحديث القياسات الحيوية لـ {name}",
+    "chartPanel": {
+      "title": "المقاييس",
+      "period": "الفترة",
+      "type": "نوع الرسم",
+      "metric1": "المقياس 1",
+      "metric2": "المقياس 2",
+      "none": "بدون",
+      "dataBox": "صندوق البيانات",
+      "line": "خطي",
+      "bar": "أعمدة",
+      "pie": "دائري"
+    },
+    "metric": {
+      "new": "عملاء جدد",
+      "total": "إجمالي العملاء",
+      "profile": "عملاء لديهم ملف",
+      "activePkg": "عملاء بباقات نشطة",
+      "suspended": "عملاء معلّقون",
+      "deleted": "عملاء محذوفون"
     }
   },
   "nav": {
@@ -174,7 +206,10 @@
     "colAction": "إجراء",
     "defined": "محدَّد",
     "notDefined": "غير محدَّد",
-    "editAvailability": "تعديل التوفر"
+    "editAvailability": "تعديل التوفر",
+    "searchPlaceholder": "ابحث بالاسم أو البريد أو الدور",
+    "tableEmpty": "لا يوجد متخصصون",
+    "itemsLabel": "متخصصون"
   },
   "annual": {
     "headerRole": {
