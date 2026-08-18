@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { annualConfigFor } from "@/lib/annual/constants";
 import { firstFailure, sortIso } from "@/lib/annual/rules";
@@ -12,13 +13,8 @@ import { AnnualLegend } from "./annual-legend";
 import { YearGrid } from "./year-grid";
 import { YearPickerDialog } from "./year-picker-dialog";
 
-const HEADER_ROLE: Record<Specialist["role"], string> = {
-  therapist: "Therapist",
-  analyst: "Behavior Analyst",
-};
-
-
 export function AnnualEditor({ specialist }: { specialist: Specialist }) {
+  const t = useTranslations();
   const saveAnnual = useSpecialistStore((s) => s.saveAnnual);
   const config = useMemo(() => annualConfigFor(specialist.role), [specialist.role]);
 
@@ -57,7 +53,7 @@ export function AnnualEditor({ specialist }: { specialist: Specialist }) {
       const fail = firstFailure([...next], config);
       if (fail) {
         setShake((n) => n + 1);
-        toast.error(fail.message);
+        toast.error(t(fail.messageKey, fail.values));
         return;
       }
     }
@@ -66,31 +62,31 @@ export function AnnualEditor({ specialist }: { specialist: Specialist }) {
   };
 
   return (
-    <div className="theme-violet flex flex-col gap-4 font-manrope text-foreground">
+    <div className="flex flex-col gap-4 font-manrope text-foreground">
       <div className="flex flex-col items-center gap-1 text-center">
         <h2 className="font-heading text-xl font-semibold text-balance">
-          Select your annual work calendar
+          {t("annual.titleTop")}
           <br />
-          as a {HEADER_ROLE[specialist.role]}
+          {t("annual.titleRole", { role: t(`annual.headerRole.${specialist.role}`) })}
         </h2>
         <button
           type="button"
           onClick={() => setGuidelinesOpen(true)}
           className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground md:text-sm"
         >
-          We recommend checking these guidelines
+          {t("common.checkGuidelines")}
           <Info className="size-4 text-primary" />
         </button>
         <p className="text-xs leading-snug text-muted-foreground md:text-sm">
-          Click on any day (or click and drag) to change its status
+          {t("annual.instr1")}
           <br />
-          Click on the year to change the year
+          {t("annual.instr2")}
         </p>
       </div>
 
       <AnnualLegend expanded={expanded} onToggleExpanded={() => setExpanded((v) => !v)} />
 
-      <div className="-mx-4 min-h-[420px] overflow-x-auto px-[5px] pb-2 md:mx-0 md:flex md:justify-center md:px-0">
+      <div className="-mx-4 min-h-[420px] overflow-x-auto px-[5px] pb-2 md:mx-0 md:px-0 lg:flex lg:justify-center lg:overflow-visible">
         {year != null && todayIso != null && (
           <div
             key={shake}

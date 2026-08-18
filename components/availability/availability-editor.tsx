@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { HelpCircle, Info, RotateCcw, Save, SlidersHorizontal } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { SLOTS_PER_DAY, WEEKDAY_LABELS } from "@/lib/availability/constants";
+import { SLOTS_PER_DAY } from "@/lib/availability/constants";
+import { weekdayShortLabels } from "@/lib/i18n/calendar";
 import { addBlock, setAvailable, validateDay } from "@/lib/availability/rules";
 import type { DayState, PaintStatus, RuleConfig } from "@/lib/availability/types";
-import { ROLE_BADGE, ROLE_LABEL, useSpecialistStore, type Specialist } from "@/lib/specialists";
+import { ROLE_BADGE, useSpecialistStore, type Specialist } from "@/lib/specialists";
 import { cn } from "@/lib/utils";
 import { CoachDialog } from "./coach-dialog";
 import { PaintControls } from "./control-bar";
@@ -20,21 +22,26 @@ function fullDay(): DayState {
   return { blocks: [{ start: 0, end: SLOTS_PER_DAY, kind: "unavailable" }] };
 }
 
-function weekIssues(days: DayState[], daysOff: number[], config: RuleConfig): string[] {
-  const issues: string[] = [];
+type WeekIssue = { day: number | "weekdays"; labelKey: string };
+
+function weekIssues(days: DayState[], daysOff: number[], config: RuleConfig): WeekIssue[] {
+  const issues: WeekIssue[] = [];
   const firstWorkday = days.findIndex((_, i) => !daysOff.includes(i));
   if (firstWorkday !== -1) {
     const fail = validateDay(days[firstWorkday], config, { isWorkday: true }).find((r) => !r.pass);
-    if (fail) issues.push(`Weekdays — ${fail.label.toLowerCase()}`);
+    if (fail) issues.push({ day: "weekdays", labelKey: fail.labelKey });
   }
   for (const d of daysOff) {
     const fail = validateDay(days[d], config, { isWorkday: false }).find((r) => !r.pass);
-    if (fail) issues.push(`${WEEKDAY_LABELS[d]} — ${fail.label.toLowerCase()}`);
+    if (fail) issues.push({ day: d, labelKey: fail.labelKey });
   }
   return issues;
 }
 
 export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
+  const t = useTranslations();
+  const locale = useLocale();
+  const weekdays = weekdayShortLabels(locale);
   const saveAvailability = useSpecialistStore((s) => s.saveAvailability);
   const [config, setConfig] = useState<RuleConfig>(specialist.config);
   const [days, setDays] = useState<DayState[]>(specialist.days);
@@ -70,7 +77,7 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
     );
     if (fail) {
       setShake((s) => ({ cols: targets, nonce: s.nonce + 1 }));
-      toast.error(fail.message, { style: { whiteSpace: "pre-line" } });
+      toast.error(t(fail.messageKey, fail.values), { style: { whiteSpace: "pre-line" } });
       return;
     }
     setDays((prev) => prev.map((d, i) => (targets.includes(i) ? apply(d) : d)));
@@ -85,7 +92,7 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
     const off = daysOff.includes(dayIndex);
     if (!off && daysOff.length >= config.maxDaysOff) {
       setShake((s) => ({ cols: [dayIndex], nonce: s.nonce + 1 }));
-      toast.error(`Maximum ${config.maxDaysOff} ${config.maxDaysOff === 1 ? "day" : "days"} off allowed`);
+      toast.error(t("availability.toastDaysOffMax", { max: config.maxDaysOff }));
       return;
     }
     const template = days.find((_, i) => !daysOff.includes(i) && i !== dayIndex);
@@ -101,13 +108,13 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
     setDaysOff([]);
     setDays((prev) => prev.map(() => ({ blocks: [] })));
     setShowViolations(false);
-    toast.info("Travel time updated — calendar reset");
+    toast.info(t("availability.toastTravelReset"));
   };
 
   const handleSaveRules = (next: RuleConfig) => {
     setConfig(next);
     setShowViolations(false);
-    toast.success("Calendar rules updated");
+    toast.success(t("availability.toastRulesUpdated"));
   };
 
   const handleReset = () => {
@@ -128,7 +135,13 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
     const issues = weekIssues(days, daysOff, config);
     if (issues.length) {
       setShowViolations(true);
-      toast.error(`Can't save — ${issues.join(" · ")}`);
+      const list = issues
+        .map((iss) => {
+          const day = iss.day === "weekdays" ? t("availability.issueWeekdays") : weekdays[iss.day];
+          return `${day} — ${t(iss.labelKey).toLowerCase()}`;
+        })
+        .join(" · ");
+      toast.error(t("availability.cantSave", { issues: list }));
       return;
     }
 
@@ -138,12 +151,12 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
     if (specialist.role === "analyst" && isMaxAvailability) {
       setNotice("max-availability");
     } else {
-      toast.success(`Availability saved for ${specialist.name}`);
+      toast.success(t("availability.toastSaved", { name: specialist.name }));
     }
   };
 
   return (
-    <div className="theme-violet flex flex-col gap-4 font-manrope text-foreground">
+    <div className="flex flex-col gap-4 font-manrope text-foreground">
       <div className="flex items-center justify-between gap-3 hidden">
         <div className="flex items-center gap-3">
           <div className="grid size-10 place-items-center rounded-full bg-primary/12 font-heading text-sm font-semibold text-primary ring-1 ring-primary/20">
@@ -152,31 +165,31 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
           <div>
             <div className="font-heading text-sm font-semibold leading-tight">{specialist.name}</div>
             <span
-              className={cn("rounded-full px-2 py-0.5 text-xs font-medium", ROLE_BADGE[specialist.role])}
+              className={cn("inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium min-w-[var(--badge-w)]", ROLE_BADGE[specialist.role])}
             >
-              {ROLE_LABEL[specialist.role]}
+              {t(`common.role.${specialist.role}`)}
             </span>
           </div>
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2">
           <Button variant="outline" size="sm" onClick={() => setRulesOpen(true)}>
             <SlidersHorizontal className="size-3.5" />
-            <span className="hidden sm:inline">Rules</span>
+            <span className="hidden sm:inline">{t("availability.btnRules")}</span>
           </Button>
           <Button variant="ghost" size="sm" onClick={handleReset}>
             <RotateCcw className="size-3.5" />
-            <span className="hidden sm:inline">Reset</span>
+            <span className="hidden sm:inline">{t("availability.btnReset")}</span>
           </Button>
           <Button size="sm" onClick={handleSave}>
             <Save className="size-3.5" />
-            <span className="hidden sm:inline">Save</span>
+            <span className="hidden sm:inline">{t("common.save")}</span>
           </Button>
         </div>
       </div>
 
       <div className="flex flex-col items-center gap-1 text-center">
         <h2 className="font-heading text-xl font-semibold">
-          Select your weekly business hours as a {ROLE_LABEL[specialist.role]}
+          {t("availability.title", { role: t(`common.role.${specialist.role}`) })}
         </h2>
         <div className="flex items-center gap-3">
           <button
@@ -184,13 +197,13 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
             onClick={() => setGuidelinesOpen(true)}
             className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground md:text-sm"
           >
-            We recommend checking these guidelines
+            {t("common.checkGuidelines")}
             <Info className="size-4 text-primary" />
           </button>
           <button
             type="button"
             onClick={() => setCoachOpen(true)}
-            aria-label="How editing works"
+            aria-label={t("availability.help")}
             className="inline-flex size-6 cursor-pointer items-center justify-center rounded-full text-primary transition-colors hover:bg-primary/10"
           >
             <HelpCircle className="size-4" />
@@ -235,22 +248,20 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
       <NoticeDialog
         open={notice === "max-availability"}
         onOpenChange={(o) => !o && setNotice(null)}
-        title="Business hours set to maximum availability"
+        title={t("availability.notice.maxAvailTitle")}
       >
-        Your weekly business hours are set to{" "}
-        <NoticeHl>maximum availability 06:00–24:00, MO–SU</NoticeHl>. You can change them until the
-        first booking for your services is confirmed.
+        {t.rich("availability.notice.maxAvailBody", {
+          hl: (chunks) => <NoticeHl>{chunks}</NoticeHl>,
+        })}
       </NoticeDialog>
 
       <NoticeDialog
         open={notice === "travel"}
         onOpenChange={(o) => !o && setNotice(null)}
-        title="Select a travel time"
+        title={t("availability.notice.travelTitle")}
       >
-        <p>
-          Please select for the Therapist your preferred <NoticeHl>TRAVEL TIME</NoticeHl> option.
-        </p>
-        <p>You can change it later until the first booking for your services is confirmed.</p>
+        <p>{t.rich("availability.notice.travelBody1", { hl: (chunks) => <NoticeHl>{chunks}</NoticeHl> })}</p>
+        <p>{t("availability.notice.travelBody2")}</p>
       </NoticeDialog>
     </div>
   );

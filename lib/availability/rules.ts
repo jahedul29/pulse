@@ -116,6 +116,9 @@ export function validateDay(
     results.push({
       id: "min-block",
       label: config.supportsOnline ? "In-person availability block" : "Minimum availability block",
+      labelKey: config.supportsOnline
+        ? "availability.rule.minBlockInpersonLabel"
+        : "availability.rule.minBlockAnyLabel",
       pass: short.length === 0,
       actual: inPersonRuns.length
         ? `shortest ${fmtDuration(shortest)}`
@@ -123,6 +126,10 @@ export function validateDay(
           ? "no in-person availability"
           : "no availability yet",
       message: `Each ${config.supportsOnline ? "in-person " : ""}availability block must be at least ${fmtDuration(config.minBlockInPersonMins)}.`,
+      messageKey: config.supportsOnline
+        ? "availability.rule.minBlockInpersonMsg"
+        : "availability.rule.minBlockAnyMsg",
+      values: { dur: fmtDuration(config.minBlockInPersonMins) },
       offending: short.flatMap(slotsOf),
     });
   }
@@ -134,9 +141,12 @@ export function validateDay(
     results.push({
       id: "online-block",
       label: "Online-only availability block",
+      labelKey: "availability.rule.onlineLabel",
       pass: short.length === 0,
       actual: onlineRuns.length ? `shortest ${fmtDuration(shortest)}` : "none set",
       message: `Each online-only availability block must be at least ${fmtDuration(config.minBlockOnlineMins)}.`,
+      messageKey: "availability.rule.onlineMsg",
+      values: { dur: fmtDuration(config.minBlockOnlineMins) },
       offending: short.flatMap(slotsOf),
     });
   }
@@ -155,11 +165,23 @@ export function validateDay(
     results.push({
       id: "breaks",
       label: config.specialist === "therapist" ? "Break ≥ travel time" : "Break between availability",
+      labelKey:
+        config.specialist === "therapist"
+          ? "availability.rule.breakTherapistLabel"
+          : "availability.rule.breakAnalystLabel",
       pass: offending.length === 0,
       actual: minInterior === Infinity ? "no breaks" : `shortest ${fmtDuration(minInterior)}`,
       message: `Breaks between availability must be\nat least ${fmtDuration(config.minBreakMins)}${
         config.specialist === "therapist" ? " (your travel time)" : ""
       }.\nEdges may be ${fmtDuration(config.minAdjacentUnavailMins)}.`,
+      messageKey:
+        config.specialist === "therapist"
+          ? "availability.rule.breakTherapistMsg"
+          : "availability.rule.breakAnalystMsg",
+      values: {
+        brk: fmtDuration(config.minBreakMins),
+        edge: fmtDuration(config.minAdjacentUnavailMins),
+      },
       offending,
     });
   }
@@ -169,9 +191,12 @@ export function validateDay(
     results.push({
       id: "window",
       label: "Continuous availability window",
+      labelKey: "availability.rule.windowLabel",
       pass: longest >= config.continuousWindowMins,
       actual: `${fmtDuration(longest)} open`,
       message: `Workdays need one continuous availability window of at least ${fmtDuration(config.continuousWindowMins)}.`,
+      messageKey: "availability.rule.windowMsg",
+      values: { dur: fmtDuration(config.continuousWindowMins) },
     });
   }
 

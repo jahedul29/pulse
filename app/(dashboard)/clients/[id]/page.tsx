@@ -1,6 +1,7 @@
 "use client";
 
 import { use } from "react";
+import { useTranslations } from "next-intl";
 import { AccountPanel } from "@/components/clients/account-panel";
 import { ProfileTabs } from "@/components/clients/profile-tabs";
 import { ClientActions } from "@/components/clients/client-actions";
@@ -8,6 +9,7 @@ import { useClientStore } from "@/lib/store";
 
 export default function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const t = useTranslations("clients.detail");
   const client = useClientStore((s) => s.clients.find((c) => c.id === id));
 
   return (
@@ -20,10 +22,8 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
 
       {!client ? (
         <div className="flex flex-col items-center gap-3 py-24 text-center">
-          <h2 className="font-heading text-xl font-semibold">Client not found</h2>
-          <p className="text-sm text-muted-foreground">
-            This account may have been deleted in this session.
-          </p>
+          <h2 className="font-heading text-xl font-semibold">{t("notFoundTitle")}</h2>
+          <p className="text-sm text-muted-foreground">{t("notFoundBody")}</p>
         </div>
       ) : (
         <>
@@ -31,9 +31,9 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
 
           <section className="flex flex-col gap-3">
             <div className="flex items-baseline justify-between">
-              <h2 className="font-heading text-lg font-semibold">Profiles</h2>
+              <h2 className="font-heading text-lg font-semibold">{t("profiles")}</h2>
               <span className="font-mono text-xs text-muted-foreground">
-                {client.profiles.length} on this account
+                {t("profilesCount", { count: client.profiles.length })}
               </span>
             </div>
             <ProfileTabs profiles={client.profiles} />

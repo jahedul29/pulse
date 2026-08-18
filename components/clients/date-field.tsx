@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CalendarIcon } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -27,6 +28,8 @@ export function DateField({
   value?: string;
   onChange: (value: string) => void;
 }) {
+  const t = useTranslations("clients.form");
+  const locale = useLocale();
   const [open, setOpen] = useState(false);
   const selected = toDate(value);
   const now = new Date();
@@ -42,7 +45,7 @@ export function DateField({
           />
         }
       >
-        {selected ? fmtDate(value!) : "Select date"}
+        {selected ? fmtDate(value!, locale) : t("selectDate")}
         <CalendarIcon className="size-4 opacity-70" />
       </PopoverTrigger>
       <PopoverContent align="start" className="w-auto p-0">

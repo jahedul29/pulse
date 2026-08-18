@@ -1,22 +1,8 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-
-const ITEMS = [
-  {
-    key: "available",
-    label: "Available",
-    sub: "(as per weekly business hours)",
-    desc: "Clients that need Therapy during these days will be able to find and book you",
-  },
-  {
-    key: "unavailable",
-    label: "Unavailable",
-    sub: null,
-    desc: "Clients that need Therapy during these days will not be able to find you",
-  },
-] as const;
 
 export function AnnualLegend({
   expanded,
@@ -25,23 +11,54 @@ export function AnnualLegend({
   expanded: boolean;
   onToggleExpanded: () => void;
 }) {
+  const t = useTranslations("annual.legend");
+  const items = [
+    {
+      key: "available",
+      label: t("availableLabel"),
+      sub: t("availableSub"),
+      desc: t("availableDesc"),
+    },
+    {
+      key: "unavailable",
+      label: t("unavailableLabel"),
+      sub: null as string | null,
+      desc: t("unavailableDesc"),
+    },
+  ];
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="grid w-full max-w-2xl grid-cols-2 gap-2 sm:gap-3">
-        {ITEMS.map((item) => {
+        {items.map((item) => {
           const unavailable = item.key === "unavailable";
           return (
             <div key={item.key} className="flex w-full flex-col items-center text-center">
               <div
                 className={cn(
-                  "flex h-10 w-full flex-col items-center justify-center rounded-[10px] px-2 text-xs leading-tight font-semibold sm:px-4 md:text-sm",
-                  unavailable
-                    ? "bg-danger text-danger-foreground"
-                    : "bg-muted text-muted-foreground ring-1 ring-inset ring-border-strong",
+                  "relative flex h-10 w-full flex-col items-center justify-center overflow-hidden rounded-[10px] px-2 text-xs leading-tight font-semibold sm:px-4 md:text-sm",
+                  unavailable ? "bg-danger text-danger-foreground" : "text-foreground",
                 )}
               >
-                {item.label}
-                {item.sub && <span className="text-[9px] font-medium md:text-[11px]">{item.sub}</span>}
+                {!unavailable && (
+                  <svg
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 h-full w-full"
+                    viewBox="0 0 163 40"
+                    preserveAspectRatio="none"
+                  >
+                    <rect width="163" height="40" fill="var(--muted)" />
+                    <path
+                      d="M2.06975 35.866L162.158 3.64062C162.658 11.1828 162.745 24.2615 162.158 31.6063C161.67 37.7055 155.228 40.1884 152.515 40.0046C107.053 39.9867 14.9512 39.9615 10.2404 40.0046C5.52959 40.0477 2.83046 37.2635 2.06975 35.866Z"
+                      fill="var(--border-strong)"
+                    />
+                  </svg>
+                )}
+                <span className="relative z-10">{item.label}</span>
+                {item.sub && (
+                  <span className="relative z-10 text-[9px] font-medium md:text-[11px]">
+                    {item.sub}
+                  </span>
+                )}
               </div>
               <div
                 className={cn(

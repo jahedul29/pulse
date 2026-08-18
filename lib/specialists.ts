@@ -10,7 +10,7 @@ export const ROLE_LABEL: Record<SpecialistType, string> = {
 
 export const ROLE_BADGE: Record<SpecialistType, string> = {
   therapist: "bg-accent text-accent-foreground ring-1 ring-primary/20",
-  analyst: "bg-warning-muted text-warning ring-1 ring-warning/30",
+  analyst: "bg-warning text-warning-foreground",
 };
 
 export interface Specialist {

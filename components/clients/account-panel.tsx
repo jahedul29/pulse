@@ -1,13 +1,12 @@
+"use client";
+
 import { Bell, CreditCard, NotebookPen, Wallet } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  ACCOUNT_STATUS_LABEL,
-  StatusBadge,
-  StatusDot,
-  accountTone,
-} from "@/components/common/status-badge";
-import { fmtDate, fmtMoney } from "@/lib/format";
+import { StatusBadge, StatusDot, accountTone } from "@/components/common/status-badge";
+import { fmtDate } from "@/lib/format";
+import { Money } from "@/components/common/money";
 import type { Client } from "@/lib/types";
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
@@ -20,6 +19,8 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export function AccountPanel({ client }: { client: Client }) {
+  const t = useTranslations("clients");
+  const locale = useLocale();
   const w = client.wallet;
   const unread = client.notifications.filter((n) => !n.read).length;
   return (
@@ -36,40 +37,44 @@ export function AccountPanel({ client }: { client: Client }) {
             <div className="flex flex-wrap items-center gap-2">
               <CardTitle className="text-xl">{client.fullName}</CardTitle>
               <StatusBadge tone={accountTone(client.status)}>
-                {ACCOUNT_STATUS_LABEL[client.status]}
+                {t(`status.${client.status}`)}
               </StatusBadge>
               {client.activePackage && (
-                <StatusBadge tone="neutral">Active package</StatusBadge>
+                <StatusBadge tone="neutral">{t("account.activePackage")}</StatusBadge>
               )}
             </div>
             <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-              {client.refCode} · {client.systemId} · {client.signedIn ? "Signed in" : "Signed out"}
+              {client.refCode} · {client.systemId} ·{" "}
+              {client.signedIn ? t("account.signedIn") : t("account.signedOut")}
             </p>
           </div>
         </CardHeader>
         <CardContent>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
-            <Field label="Email" value={client.email} />
-            <Field label="Phone" value={<span className="font-mono">{client.phone}</span>} />
+            <Field label={t("account.email")} value={client.email} />
+            <Field label={t("account.phone")} value={<span className="font-mono">{client.phone}</span>} />
             <Field
-              label="Alt phone"
+              label={t("account.altPhone")}
               value={<span className="font-mono">{client.altPhone ?? "—"}</span>}
             />
-            <Field label="Date of birth" value={`${fmtDate(client.dob)} · ${client.age} yrs`} />
-            <Field label="Nationality" value={client.nationality} />
-            <Field label="Region" value={client.region} />
-            <Field label="Residence" value={client.countryResidence} />
-            <Field label="Registration" value={client.countryRegistration} />
-            <Field label="Joined" value={fmtDate(client.joinedAt)} />
             <Field
-              label="Biometrics"
-              value={client.biometrics ? "Enabled" : "Disabled"}
+              label={t("account.dob")}
+              value={t("account.dobValue", { date: fmtDate(client.dob, locale), age: client.age })}
+            />
+            <Field label={t("account.nationality")} value={client.nationality} />
+            <Field label={t("account.region")} value={client.region} />
+            <Field label={t("account.residence")} value={client.countryResidence} />
+            <Field label={t("account.registration")} value={client.countryRegistration} />
+            <Field label={t("account.joined")} value={fmtDate(client.joinedAt, locale)} />
+            <Field
+              label={t("account.biometrics")}
+              value={client.biometrics ? t("account.enabled") : t("account.disabled")}
             />
             <Field
-              label="Policies"
+              label={t("account.policies")}
               value={
                 <StatusBadge tone={client.policiesAccepted ? "success" : "warning"}>
-                  {client.policiesAccepted ? "Accepted" : "Pending"}
+                  {client.policiesAccepted ? t("account.accepted") : t("account.pending")}
                 </StatusBadge>
               }
             />
@@ -82,32 +87,30 @@ export function AccountPanel({ client }: { client: Client }) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Wallet className="size-4 text-primary" />
-              Wallet
+              {t("account.wallet")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-baseline justify-between">
-              <span className="font-heading text-3xl font-semibold tabular">
-                {fmtMoney(w.balance)}
-              </span>
-              <div className="text-right text-xs text-muted-foreground">
-                <div>Bonus {fmtMoney(w.bonus)}</div>
-                <div>Gift {fmtMoney(w.gift)}</div>
-                <div>Forfeit {fmtMoney(w.forfeit)}</div>
+              <Money value={w.balance} className="font-heading text-3xl font-semibold" />
+              <div className="text-end text-xs text-muted-foreground">
+                <div>{t("account.bonus")} <Money value={w.bonus} /></div>
+                <div>{t("account.gift")} <Money value={w.gift} /></div>
+                <div>{t("account.forfeit")} <Money value={w.forfeit} /></div>
               </div>
             </div>
             <div className="border-t pt-2">
               <span className="text-xs tracking-wide text-muted-foreground uppercase">
-                Recent transactions
+                {t("account.recentTransactions")}
               </span>
               <ul className="mt-1.5 flex flex-col gap-1">
                 {w.transactions.slice(0, 4).map((t, i) => (
                   <li key={i} className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">
                       {t.kind}
-                      <span className="ml-2 font-mono text-xs">{fmtDate(t.date)}</span>
+                      <span className="ms-2 font-mono text-xs">{fmtDate(t.date, locale)}</span>
                     </span>
-                    <span className="font-mono tabular">{fmtMoney(t.amount)}</span>
+                    <Money value={t.amount} className="font-mono" />
                   </li>
                 ))}
               </ul>
@@ -119,7 +122,7 @@ export function AccountPanel({ client }: { client: Client }) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <CreditCard className="size-4 text-primary" />
-              Bank cards
+              {t("account.bankCards")}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
@@ -132,7 +135,7 @@ export function AccountPanel({ client }: { client: Client }) {
                   <span className="font-medium">{c.brand}</span>
                   <span className="font-mono text-muted-foreground">•••• {c.last4}</span>
                 </span>
-                {c.isDefault && <StatusBadge tone="success">Default</StatusBadge>}
+                {c.isDefault && <StatusBadge tone="success">{t("account.default")}</StatusBadge>}
               </div>
             ))}
           </CardContent>
@@ -145,8 +148,10 @@ export function AccountPanel({ client }: { client: Client }) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Bell className="size-4 text-primary" />
-              Notifications
-              {unread > 0 && <StatusBadge tone="warning">{unread} unread</StatusBadge>}
+              {t("account.notifications")}
+              {unread > 0 && (
+                <StatusBadge tone="warning">{t("account.unread", { count: unread })}</StatusBadge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
@@ -155,7 +160,7 @@ export function AccountPanel({ client }: { client: Client }) {
                 <StatusDot tone={n.read ? "neutral" : "warning"} />
                 <div className="min-w-0 flex-1">
                   <p className={n.read ? "text-muted-foreground" : "text-foreground"}>{n.text}</p>
-                  <span className="font-mono text-xs text-muted-foreground">{fmtDate(n.date)}</span>
+                  <span className="font-mono text-xs text-muted-foreground">{fmtDate(n.date, locale)}</span>
                 </div>
               </div>
             ))}
@@ -166,15 +171,15 @@ export function AccountPanel({ client }: { client: Client }) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <NotebookPen className="size-4 text-primary" />
-              Admin notes
+              {t("account.adminNotes")}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             {client.adminNotes.map((note, i) => (
-              <div key={i} className="border-l-2 border-border pl-3 text-sm">
+              <div key={i} className="border-s-2 border-border ps-3 text-sm">
                 <p>{note.text}</p>
                 <span className="font-mono text-xs text-muted-foreground">
-                  {note.adminName} · {note.adminId} · {fmtDate(note.date)}
+                  {note.adminName} · {note.adminId} · {fmtDate(note.date, locale)}
                 </span>
               </div>
             ))}

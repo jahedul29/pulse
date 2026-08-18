@@ -2,14 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { eachDayOfInterval, format, parseISO } from "date-fns";
+import { useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
-import { MONTH_LABELS, WEEKDAY_LABELS } from "@/lib/annual/constants";
 import { buildYearGrid, dayAt, isoOf } from "@/lib/annual/grid";
+import { monthShortLabels, weekdayTwoCharLabels } from "@/lib/i18n/calendar";
 
 const VARS =
   "[--awc-lead:53px] [--awc-col:26px] [--awc-row:20px] [--awc-pill:18px] " +
   "sm:[--awc-lead:66px] sm:[--awc-col:33px] sm:[--awc-row:25px] sm:[--awc-pill:22px] " +
-  "md:[--awc-lead:80px] md:[--awc-col:40px] md:[--awc-row:30px] md:[--awc-pill:26px]";
+  "md:[--awc-lead:76px] md:[--awc-col:60px] md:[--awc-row:32px] md:[--awc-pill:28px]";
 
 const COLS = "grid-cols-[var(--awc-lead)_repeat(12,var(--awc-col))]";
 
@@ -33,6 +34,9 @@ export function YearGrid({
   onCommit: (dates: string[], makeUnavailable: boolean) => void;
   onYearClick: () => void;
 }) {
+  const locale = useLocale();
+  const monthLabels = useMemo(() => monthShortLabels(locale), [locale]);
+  const weekdayLabels = useMemo(() => weekdayTwoCharLabels(locale), [locale]);
   const grid = useMemo(() => buildYearGrid(year), [year]);
   const drag = useRef<{
     anchor: string;
@@ -101,7 +105,7 @@ export function YearGrid({
             weekend && "bg-[#e7e6e6]",
           )}
         >
-          {WEEKDAY_LABELS[wd]}
+          {weekdayLabels[wd]}
         </span>
       </div>,
     );
@@ -159,10 +163,10 @@ export function YearGrid({
         >
           {year}
         </button>
-        {MONTH_LABELS.map((label) => (
+        {monthLabels.map((label, m) => (
           <div
-            key={label}
-            className="text-center text-[10px] font-semibold tracking-tight text-primary sm:text-[11px] md:text-[13px]"
+            key={m}
+            className="truncate px-0.5 text-center text-[10px] font-semibold tracking-wide text-primary uppercase sm:text-[11px] md:text-sm"
           >
             {label}
           </div>

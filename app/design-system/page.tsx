@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import {
   Activity,
   AlertCircle,
@@ -13,6 +14,7 @@ import {
   DollarSign,
   Eye,
   EyeOff,
+  Fingerprint,
   Inbox,
   Info,
   Loader2,
@@ -40,6 +42,10 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import type { ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/common/data-table";
+import { Switch } from "@/components/common/toggle-switch";
+import { DirhamSign, DollarSign as DollarMark } from "@/components/icons/currency-signs";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -101,6 +107,7 @@ import { Alert } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Pagination } from "@/components/common/pagination";
 import { TrendChart } from "@/components/clients/trend-chart";
+import { MetricChartPanel } from "@/components/clients/metric-chart-panel";
 import { BarChart } from "@/components/clients/bar-chart";
 import { Donut } from "@/components/clients/donut";
 import { Sparkline } from "@/components/clients/sparkline";
@@ -129,12 +136,55 @@ const SEMANTIC = [
   "--danger-muted",
 ];
 const CHARTS = ["--chart-1", "--chart-2", "--chart-3", "--chart-4", "--chart-5"];
+const PALETTE = [
+  "--brand-color-1",
+  "--brand-color-2",
+  "--brand-color-3",
+  "--brand-color-4",
+  "--brand-color-5",
+  "--grey-1",
+  "--grey-2",
+  "--grey-3",
+  "--grey-4",
+  "--black",
+  "--white",
+];
+const PALETTE_LABEL: Record<string, string> = {
+  "--brand-color-1": "Magenta",
+  "--brand-color-2": "Scarlet",
+  "--brand-color-3": "Gold",
+  "--brand-color-4": "Green",
+  "--brand-color-5": "Blue",
+  "--grey-1": "Grey 1",
+  "--grey-2": "Grey 2",
+  "--grey-3": "Grey 3",
+  "--grey-4": "Grey 4",
+  "--black": "Black",
+  "--white": "Body color",
+};
+const TOKEN_SOURCE: Record<string, string> = {
+  "--primary": "Brand color 1",
+  "--primary-foreground": "Body color",
+  "--accent": "Input field",
+  "--accent-foreground": "Brand color 1",
+  "--secondary": "Grey 1",
+  "--ring": "Brand color 1",
+  "--background": "Body color",
+  "--foreground": "Black",
+  "--card": "Body color",
+  "--muted": "Grey 1",
+  "--muted-foreground": "Grey 4",
+  "--border": "Grey 2",
+  "--success": "Brand color 4",
+  "--warning": "Brand color 3",
+  "--danger": "Brand color 2",
+  "--chart-1": "Brand color 1",
+  "--chart-2": "Brand color 5",
+  "--chart-3": "Brand color 4",
+  "--chart-4": "Brand color 3",
+  "--chart-5": "Brand color 2",
+};
 const TRAVEL = [45, 60, 75, 90, 105];
-const THEMES = [
-  { id: "violet", name: "Regal Violet" },
-  { id: "teal", name: "Clinical Teal" },
-] as const;
-type ThemeId = (typeof THEMES)[number]["id"];
 
 const NAV = [
   ["foundations", "Foundations"],
@@ -238,20 +288,185 @@ const CLIENTS: Client[] = [
   { name: "Nora Bauer", email: "nora.bauer@pulse.health", role: "Analyst", status: "Suspended", packages: 1, mrr: "$150", sessions: 29, region: "EU-Central", phone: "+43 1 234 56", plan: "Quarterly", owner: "R. Diaz", joined: "2026-01-09", lastActive: "2026-06-28" },
 ];
 
-const HEAD =
-  "h-10 whitespace-nowrap border-b bg-card px-3 text-left align-middle font-medium text-foreground";
-const CELL = "whitespace-nowrap border-b px-3 py-2 align-middle group-hover:bg-muted";
-const FREEZE_SHADOW = "shadow-[4px_0_6px_-4px_rgba(0,0,0,0.18)]";
+function DemoActions({ name }: { name: string }) {
+  const actions = [
+    { label: "View", icon: Eye },
+    { label: "Edit", icon: Pencil },
+    { label: "Suspend", icon: Lock },
+    { label: "Biometrics", icon: Fingerprint },
+    { label: "Delete", icon: Trash2, danger: true },
+  ];
+  return (
+    <div className="flex items-center justify-end gap-0.5">
+      <TooltipProvider>
+        {actions.map(({ label, icon: Icon, danger }) => (
+          <Tooltip key={label}>
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={label}
+                  onClick={() => toast.success(`${label}: ${name}`)}
+                  className={cn(
+                    "size-8 text-muted-foreground hover:text-foreground",
+                    danger && "hover:bg-danger-muted hover:text-danger",
+                  )}
+                />
+              }
+            >
+              <Icon className="size-4" />
+            </TooltipTrigger>
+            <TooltipContent>{label}</TooltipContent>
+          </Tooltip>
+        ))}
+      </TooltipProvider>
+    </div>
+  );
+}
 
-function Swatch({ token, hex }: { token: string; hex?: string }) {
+function DataTableDemo() {
+  const locale = useLocale();
+  const columns = useMemo<ColumnDef<Client, unknown>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        header: "Client",
+        size: 220,
+        filterFn: "includesString",
+        meta: { filter: "text", filterLabel: "Client" },
+        cell: ({ row }) => {
+          const c = row.original;
+          const initials = c.name
+            .split(" ")
+            .map((w) => w[0])
+            .join("");
+          return (
+            <div className="flex items-center gap-2">
+              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/12 font-heading text-xs font-semibold text-primary ring-1 ring-primary/20">
+                {initials}
+              </span>
+              <span className="font-medium">{c.name}</span>
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "email",
+        header: "Email",
+        size: 220,
+        filterFn: "includesString",
+        meta: { filter: "text", filterLabel: "Email" },
+        cell: ({ row }) => <span className="text-muted-foreground">{row.original.email}</span>,
+      },
+      {
+        accessorKey: "role",
+        header: "Role",
+        size: 150,
+        meta: {
+          filter: "select",
+          filterLabel: "Role",
+          filterOptions: [
+            { value: "Therapist", label: "Therapist" },
+            { value: "Analyst", label: "Analyst" },
+          ],
+        },
+        cell: ({ row }) => (
+          <span
+            className={cn(
+              "inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium min-w-[var(--badge-w)]",
+              row.original.role === "Therapist" ? ROLE_BADGE.therapist : ROLE_BADGE.analyst,
+            )}
+          >
+            {row.original.role}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        meta: {
+          filter: "select",
+          filterLabel: "Status",
+          filterOptions: ["Active", "Suspended", "Deleted"].map((s) => ({ value: s, label: s })),
+        },
+        cell: ({ row }) => {
+          const s = row.original.status;
+          const tone = s === "Active" ? "success" : s === "Suspended" ? "warning" : "danger";
+          return <StatusBadge tone={tone as "success" | "warning" | "danger"}>{s}</StatusBadge>;
+        },
+      },
+      {
+        accessorKey: "sessions",
+        header: "Sessions",
+        filterFn: "inNumberRange",
+        cell: ({ row }) => <span className="font-mono tabular">{row.original.sessions}</span>,
+        meta: { headClassName: "text-end", cellClassName: "text-end", filter: "range", filterLabel: "Sessions" },
+      },
+      {
+        id: "mrr",
+        accessorFn: (c) => Number(c.mrr.replace(/[^0-9.]/g, "")),
+        header: "MRR",
+        filterFn: "inNumberRange",
+        cell: ({ row }) => <span className="font-mono text-xs">{row.original.mrr}</span>,
+        meta: { headClassName: "text-end", cellClassName: "text-end", filter: "range", filterLabel: "MRR" },
+      },
+      {
+        accessorKey: "region",
+        header: "Region",
+        size: 150,
+        meta: { filter: "select", filterLabel: "Region" },
+        cell: ({ row }) => <span className="text-muted-foreground">{row.original.region}</span>,
+      },
+      {
+        accessorKey: "joined",
+        header: "Joined",
+        cell: ({ row }) => (
+          <span className="font-mono text-xs text-muted-foreground">
+            {fmtDate(row.original.joined, locale)}
+          </span>
+        ),
+        meta: { headClassName: "text-end", cellClassName: "text-end" },
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        enableSorting: false,
+        cell: ({ row }) => <DemoActions name={row.original.name} />,
+        meta: { headClassName: "text-end", cellClassName: "text-end" },
+      },
+    ],
+    [locale],
+  );
+
+  return (
+    <DataTable
+      columns={columns}
+      data={CLIENTS}
+      searchPlaceholder="Search by name, email, role or region"
+      emptyLabel="No clients found"
+      itemsLabel="clients"
+      pageSize={5}
+      getSearchText={(c) => `${c.name} ${c.email} ${c.role} ${c.region}`}
+      filterLabels={{ filter: "Filter", clear: "Clear", min: "Min", max: "Max" }}
+      enableFreeze
+      maxFreeze={3}
+      freezeLabels={{ label: "Freeze" }}
+    />
+  );
+}
+
+function Swatch({ token, hex, source }: { token: string; hex?: string; source?: string }) {
   return (
     <div className="flex flex-col gap-1">
       <div
         className="h-14 w-full rounded-lg ring-1 ring-foreground/10"
         style={{ background: `var(${token})` }}
       />
-      <div className="font-mono text-[11px] text-muted-foreground">{token.slice(2)}</div>
-      <div className="font-mono text-[10px] text-foreground/70 uppercase">{hex || "—"}</div>
+      <div className="font-mono text-xs text-muted-foreground">{token.slice(2)}</div>
+      <div className="font-mono text-xs text-foreground/70 uppercase">{hex || "—"}</div>
+      {source && <div className="text-xs text-foreground/60">{source}</div>}
     </div>
   );
 }
@@ -296,11 +511,11 @@ function Tile({ kind }: { kind: "available" | "unavailable" | "online" | "offend
     <div
       className={cn(
         "flex h-6 w-14 items-center justify-center rounded-[12px]",
-        kind === "unavailable" ? "bg-[#e8134e]" : "bg-zinc-200/70",
+        kind === "unavailable" ? "bg-danger" : "bg-muted",
         kind === "offending" && "ring-2 ring-amber-500",
       )}
     >
-      {kind === "online" && <span className="size-2 rounded-full bg-emerald-500" />}
+      {kind === "online" && <span className="size-2 rounded-full bg-chart-3" />}
     </div>
   );
 }
@@ -329,8 +544,8 @@ function StatCard({ stat }: { stat: (typeof STATS)[number] }) {
           </span>
           <span
             className={cn(
-              "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-medium",
-              stat.tone === "success" ? "bg-success-muted text-success" : "bg-danger-muted text-danger",
+              "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-medium",
+              stat.tone === "success" ? "bg-success text-success-foreground" : "bg-danger text-danger-foreground",
             )}
           >
             {rising ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
@@ -388,18 +603,19 @@ function IconInput({
   leading,
   trailing,
   className,
+  dir,
   ...props
 }: React.ComponentProps<typeof Input> & { leading?: React.ReactNode; trailing?: React.ReactNode }) {
   return (
-    <div className="relative flex items-center">
+    <div dir={dir} className="relative flex items-center">
       {leading && (
-        <span className="pointer-events-none absolute left-2.5 top-1/2 flex -translate-y-1/2 text-muted-foreground">
+        <span className="pointer-events-none absolute start-2.5 top-1/2 flex -translate-y-1/2 text-muted-foreground">
           {leading}
         </span>
       )}
-      <Input className={cn(leading && "pl-8", trailing && "pr-8", className)} {...props} />
+      <Input className={cn(leading && "ps-8", trailing && "pe-8", className)} {...props} />
       {trailing && (
-        <span className="pointer-events-none absolute right-2.5 top-1/2 flex -translate-y-1/2 text-muted-foreground">
+        <span className="pointer-events-none absolute end-2.5 top-1/2 flex -translate-y-1/2 text-muted-foreground">
           {trailing}
         </span>
       )}
@@ -407,27 +623,6 @@ function IconInput({
   );
 }
 
-function Switch({ checked, onChange }: { checked: boolean; onChange: () => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={onChange}
-      className={cn(
-        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors",
-        checked ? "bg-primary" : "bg-muted-foreground/30",
-      )}
-    >
-      <span
-        className={cn(
-          "inline-block size-4 rounded-full bg-white shadow transition-transform",
-          checked ? "translate-x-4" : "translate-x-0.5",
-        )}
-      />
-    </button>
-  );
-}
 
 function Checkbox({
   checked,
@@ -519,7 +714,7 @@ function SidebarDemo({ collapsed }: { collapsed: boolean }) {
               <Icon className="size-4 shrink-0" />
               {!collapsed && <span className="truncate">{s.label}</span>}
               {!collapsed && !s.live && (
-                <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
                   soon
                 </span>
               )}
@@ -579,9 +774,12 @@ function TopbarDemo() {
   );
 }
 
-function fmtDMY(d?: Date): string {
+function fmtDMY(d: Date | undefined, locale: string): string {
   if (!d) return "";
-  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+  const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate(),
+  ).padStart(2, "0")}`;
+  return fmtDate(iso, locale);
 }
 
 const TRIGGER = "h-8 w-full justify-between font-normal";
@@ -589,12 +787,13 @@ const TRIGGER = "h-8 w-full justify-between font-normal";
 function DatePicker() {
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState<Date | undefined>();
+  const locale = useLocale();
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={<Button type="button" variant="outline" className={cn(TRIGGER, !date && "text-muted-foreground")} />}
       >
-        {date ? fmtDMY(date) : "DD/MM/YYYY"}
+        {date ? fmtDMY(date, locale) : "DD-Mmm-YYYY"}
         <CalendarDays className="size-4 opacity-70" />
       </PopoverTrigger>
       <PopoverContent align="start" className="w-auto p-0">
@@ -616,12 +815,13 @@ function DateTimePicker() {
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState<Date | undefined>();
   const [time, setTime] = useState("09:00");
+  const locale = useLocale();
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={<Button type="button" variant="outline" className={cn(TRIGGER, !date && "text-muted-foreground")} />}
       >
-        {date ? `${fmtDMY(date)} ${time}` : "DD/MM/YYYY --:--"}
+        {date ? `${fmtDMY(date, locale)} ${time}` : "DD-Mmm-YYYY --:--"}
         <CalendarDays className="size-4 opacity-70" />
       </PopoverTrigger>
       <PopoverContent align="start" className="w-auto p-0">
@@ -645,11 +845,12 @@ function DateTimePicker() {
 function DateRangePicker() {
   const [open, setOpen] = useState(false);
   const [range, setRange] = useState<{ from?: Date; to?: Date } | undefined>();
+  const locale = useLocale();
   const label = range?.from
     ? range.to
-      ? `${fmtDMY(range.from)} – ${fmtDMY(range.to)}`
-      : fmtDMY(range.from)
-    : "DD/MM/YYYY – DD/MM/YYYY";
+      ? `${fmtDMY(range.from, locale)} – ${fmtDMY(range.to, locale)}`
+      : fmtDMY(range.from, locale)
+    : "DD-Mmm-YYYY – DD-Mmm-YYYY";
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
@@ -674,14 +875,14 @@ function DateRangePicker() {
 }
 
 export default function DesignSystemPage() {
+  const t = useTranslations("designSystem");
+  const locale = useLocale();
   const [dark, setDark] = useState(false);
-  const [theme, setTheme] = useState<ThemeId>("violet");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
   const [guidelinesOpen, setGuidelinesOpen] = useState(false);
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [showPw, setShowPw] = useState(false);
-  const [freeze, setFreeze] = useState(true);
   const [notify, setNotify] = useState(true);
   const [marketing, setMarketing] = useState(false);
   const [plan, setPlan] = useState("monthly");
@@ -698,22 +899,20 @@ export default function DesignSystemPage() {
 
   useEffect(() => {
     const el = document.documentElement;
-    el.classList.toggle("theme-violet", theme === "violet");
     el.classList.toggle("dark", dark);
     return () => {
-      el.classList.remove("theme-violet");
       el.classList.remove("dark");
     };
-  }, [theme, dark]);
+  }, [dark]);
 
   useEffect(() => {
     const cs = getComputedStyle(document.documentElement);
-    const tokens = [...BRAND, ...NEUTRALS, ...SEMANTIC, ...CHARTS];
+    const tokens = [...PALETTE, ...BRAND, ...NEUTRALS, ...SEMANTIC, ...CHARTS];
     const map: Record<string, string> = {};
     tokens.forEach((t) => (map[t] = cs.getPropertyValue(t).trim()));
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setHexes(map);
-  }, [theme, dark]);
+  }, [dark]);
 
   useEffect(() => {
     const obs = new IntersectionObserver(
@@ -740,7 +939,7 @@ export default function DesignSystemPage() {
             <div className="mr-auto">
               <div className="font-heading text-lg font-bold">ABAPRO — Design System</div>
               <div className="text-xs text-muted-foreground">
-                {THEMES.find((t) => t.id === theme)!.name} · component & token reference
+                Regal Violet · component &amp; token reference
               </div>
             </div>
             <nav className="hidden items-center gap-1 xl:flex">
@@ -759,26 +958,9 @@ export default function DesignSystemPage() {
                 </a>
               ))}
             </nav>
-            <div className="flex items-center gap-0.5 rounded-full border bg-card p-0.5">
-              {THEMES.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTheme(t.id)}
-                  className={cn(
-                    "cursor-pointer rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                    theme === t.id
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {t.name}
-                </button>
-              ))}
-            </div>
             <Button variant="outline" size="sm" onClick={() => setDark((d) => !d)}>
               {dark ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
-              {dark ? "Light" : "Dark"}
+              {dark ? t("light") : t("dark")}
             </Button>
           </div>
         </header>
@@ -789,13 +971,9 @@ export default function DesignSystemPage() {
               ABAPRO UI
             </span>
             <h1 className="max-w-2xl font-heading text-3xl font-bold text-balance sm:text-4xl">
-              One component library, dressed in the current theme.
+              {t("title")}
             </h1>
-            <p className="max-w-2xl text-sm text-muted-foreground">
-              Every element below is built from the same design tokens. Switch the theme in the
-              header to see the whole system re-skin — colors change, structure and behavior stay
-              identical.
-            </p>
+            <p className="max-w-2xl text-sm text-muted-foreground">{t("intro")}</p>
             <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
               <span className="rounded-md bg-muted px-2 py-1">Display · Manrope</span>
               <span className="rounded-md bg-muted px-2 py-1">Body · Manrope</span>
@@ -804,7 +982,7 @@ export default function DesignSystemPage() {
             </div>
           </section>
 
-          <Section id="foundations" title="Foundations" desc="Color tokens, typography, and radius.">
+          <Section id="foundations" title={t("foundationsTitle")} desc={t("foundationsDesc")}>
             <Card>
               <CardHeader>
                 <CardTitle>Color tokens</CardTitle>
@@ -813,31 +991,38 @@ export default function DesignSystemPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-6">
+                <Sub label="Palette">
+                  <div className="grid w-full grid-cols-3 gap-3 sm:grid-cols-6">
+                    {PALETTE.map((t) => (
+                      <Swatch key={t} token={t} hex={hexes[t]} source={PALETTE_LABEL[t]} />
+                    ))}
+                  </div>
+                </Sub>
                 <Sub label="Brand">
                   <div className="grid w-full grid-cols-3 gap-3 sm:grid-cols-6">
                     {BRAND.map((t) => (
-                      <Swatch key={t} token={t} hex={hexes[t]} />
+                      <Swatch key={t} token={t} hex={hexes[t]} source={TOKEN_SOURCE[t]} />
                     ))}
                   </div>
                 </Sub>
                 <Sub label="Neutrals">
                   <div className="grid w-full grid-cols-3 gap-3 sm:grid-cols-6">
                     {NEUTRALS.map((t) => (
-                      <Swatch key={t} token={t} hex={hexes[t]} />
+                      <Swatch key={t} token={t} hex={hexes[t]} source={TOKEN_SOURCE[t]} />
                     ))}
                   </div>
                 </Sub>
                 <Sub label="Semantic">
                   <div className="grid w-full grid-cols-3 gap-3 sm:grid-cols-6">
                     {SEMANTIC.map((t) => (
-                      <Swatch key={t} token={t} hex={hexes[t]} />
+                      <Swatch key={t} token={t} hex={hexes[t]} source={TOKEN_SOURCE[t]} />
                     ))}
                   </div>
                 </Sub>
                 <Sub label="Charts">
                   <div className="grid w-full grid-cols-3 gap-3 sm:grid-cols-6">
                     {CHARTS.map((t) => (
-                      <Swatch key={t} token={t} hex={hexes[t]} />
+                      <Swatch key={t} token={t} hex={hexes[t]} source={TOKEN_SOURCE[t]} />
                     ))}
                   </div>
                 </Sub>
@@ -875,7 +1060,7 @@ export default function DesignSystemPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[520px] text-sm">
                     <thead>
-                      <tr className="border-b text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                      <tr className="border-b text-start text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                         <th className="py-2 pr-4">Sample</th>
                         <th className="py-2 pr-4">Role</th>
                         <th className="py-2 pr-4">Token</th>
@@ -909,7 +1094,7 @@ export default function DesignSystemPage() {
                   {SPACING.map((s) => (
                     <div key={s} className="flex flex-col items-center gap-1">
                       <div className="bg-primary/70" style={{ width: `${s * 4}px`, height: 16 }} />
-                      <span className="font-mono text-[10px] text-muted-foreground">{s}</span>
+                      <span className="font-mono text-xs text-muted-foreground">{s}</span>
                     </div>
                   ))}
                 </Sub>
@@ -917,7 +1102,7 @@ export default function DesignSystemPage() {
                   {RADII.map(([name, cls]) => (
                     <div key={name} className="flex flex-col items-center gap-1.5">
                       <div className={cn("size-12 border-2 border-primary/50 bg-primary/10", cls)} />
-                      <span className="font-mono text-[10px] text-muted-foreground">{name}</span>
+                      <span className="font-mono text-xs text-muted-foreground">{name}</span>
                     </div>
                   ))}
                 </Sub>
@@ -925,7 +1110,7 @@ export default function DesignSystemPage() {
                   {ELEVATION.map(([name, cls]) => (
                     <div key={name} className="flex flex-col items-center gap-1.5">
                       <div className={cn("size-12 rounded-lg bg-card ring-1 ring-foreground/5", cls)} />
-                      <span className="font-mono text-[10px] text-muted-foreground">{name}</span>
+                      <span className="font-mono text-xs text-muted-foreground">{name}</span>
                     </div>
                   ))}
                 </Sub>
@@ -941,12 +1126,41 @@ export default function DesignSystemPage() {
                 </Sub>
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Currency signs</CardTitle>
+                <CardDescription>
+                  US dollar and UAE dirham marks — SVG, inherit color, scale with font size.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-wrap items-end gap-x-10 gap-y-6">
+                <div className="flex flex-col items-center gap-2">
+                  <DollarMark className="h-12 w-auto text-foreground" />
+                  <span className="text-xs text-muted-foreground">Dollar · USD</span>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <DirhamSign className="h-12 w-auto text-foreground" />
+                  <span className="text-xs text-muted-foreground">Dirham · AED</span>
+                </div>
+                <div className="flex flex-col gap-3">
+                  <span className="inline-flex items-center gap-1.5 font-heading text-3xl font-semibold tabular">
+                    <DollarMark className="h-[0.85em] w-auto" />
+                    1,284.50
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 font-heading text-3xl font-semibold tabular">
+                    <DirhamSign className="h-[0.85em] w-auto" />
+                    1,284.50
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
           </Section>
 
           <Section
             id="navigation"
-            title="Navigation"
-            desc="The app shell — top bar and sidebar in expanded and collapsed states."
+            title={t("navigationTitle")}
+            desc={t("navigationDesc")}
           >
             <Card>
               <CardHeader>
@@ -979,7 +1193,7 @@ export default function DesignSystemPage() {
             </div>
           </Section>
 
-          <Section id="buttons" title="Buttons" desc="Variants, sizes, and states.">
+          <Section id="buttons" title={t("buttonsTitle")} desc={t("buttonsDesc")}>
             <Card>
               <CardContent className="flex flex-col gap-6 pt-6">
                 <Sub label="Variants">
@@ -1020,7 +1234,7 @@ export default function DesignSystemPage() {
             </Card>
           </Section>
 
-          <Section id="badges" title="Badges & pills" desc="Status and role indicators.">
+          <Section id="badges" title={t("badgesTitle")} desc={t("badgesDesc")}>
             <Card>
               <CardContent className="flex flex-col gap-6 pt-6">
                 <Sub label="Status">
@@ -1030,19 +1244,19 @@ export default function DesignSystemPage() {
                   <StatusBadge tone="neutral">Draft</StatusBadge>
                 </Sub>
                 <Sub label="Specialist roles">
-                  <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", ROLE_BADGE.therapist)}>
+                  <span className={cn("inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium min-w-[var(--badge-w)]", ROLE_BADGE.therapist)}>
                     {ROLE_LABEL.therapist}
                   </span>
-                  <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", ROLE_BADGE.analyst)}>
+                  <span className={cn("inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium min-w-[var(--badge-w)]", ROLE_BADGE.analyst)}>
                     {ROLE_LABEL.analyst}
                   </span>
                 </Sub>
                 <Sub label="Business hours state">
-                  <span className="inline-flex items-center gap-1.5 text-xs text-success">
+                  <span className="inline-flex items-center gap-1.5 text-xs text-foreground">
                     <span className="size-1.5 rounded-full bg-success" /> Defined
                   </span>
                   <span className="text-xs text-muted-foreground">Not defined</span>
-                  <span className="rounded-full bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                  <span className="rounded-full bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
                     soon
                   </span>
                 </Sub>
@@ -1050,7 +1264,7 @@ export default function DesignSystemPage() {
             </Card>
           </Section>
 
-          <Section id="forms" title="Forms" desc="The full field set for an admin panel.">
+          <Section id="forms" title={t("formsTitle")} desc={t("formsDesc")}>
             <Card>
               <CardHeader>
                 <CardTitle>Field types</CardTitle>
@@ -1064,18 +1278,19 @@ export default function DesignSystemPage() {
                   <IconInput
                     id="f-email"
                     type="email"
+                    dir="ltr"
                     leading={<Mail className="size-4" />}
                     placeholder="jane@mail.com"
                   />
                 </Field>
                 <Field label="Password" htmlFor="f-pw" hint="At least 8 characters.">
                   <div className="relative flex items-center">
-                    <Input id="f-pw" type={showPw ? "text" : "password"} defaultValue="secret123" className="pr-9" />
+                    <Input id="f-pw" type={showPw ? "text" : "password"} defaultValue="secret123" className="pe-9" />
                     <button
                       type="button"
                       onClick={() => setShowPw((v) => !v)}
                       aria-label={showPw ? "Hide password" : "Show password"}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
+                      className="absolute end-2 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
                     >
                       {showPw ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                     </button>
@@ -1085,6 +1300,7 @@ export default function DesignSystemPage() {
                   <IconInput
                     id="f-phone"
                     type="tel"
+                    dir="ltr"
                     leading={<Phone className="size-4" />}
                     placeholder="+1 555 012 3456"
                   />
@@ -1093,13 +1309,14 @@ export default function DesignSystemPage() {
                   <IconInput
                     id="f-amt"
                     type="number"
+                    dir="ltr"
                     leading={<DollarSign className="size-4" />}
                     placeholder="0.00"
                   />
                 </Field>
                 <Field label="Website" htmlFor="f-web">
-                  <div className="flex items-center rounded-lg border border-input bg-transparent focus-within:border-ring focus-within:ring-1 focus-within:ring-ring/40">
-                    <span className="border-r border-input px-2.5 text-sm text-muted-foreground">https://</span>
+                  <div dir="ltr" className="flex items-center rounded-lg border border-input bg-transparent focus-within:border-ring focus-within:ring-1 focus-within:ring-ring/40">
+                    <span className="border-e border-input px-2.5 text-sm text-muted-foreground">https://</span>
                     <input
                       id="f-web"
                       className="h-8 w-full bg-transparent px-2.5 text-sm outline-none placeholder:text-muted-foreground"
@@ -1135,7 +1352,7 @@ export default function DesignSystemPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Date &amp; time</CardTitle>
-                <CardDescription>Date, date-time, and range pickers — all DD/MM/YYYY.</CardDescription>
+                <CardDescription>Date, date-time, and range pickers — all DD-Mmm-YYYY.</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-5 sm:grid-cols-3">
                 <Field label="Date">
@@ -1221,7 +1438,7 @@ export default function DesignSystemPage() {
                 </Sub>
                 <Sub label="Switch">
                   <div className="flex items-center gap-2 text-sm">
-                    <Switch checked={notify} onChange={() => setNotify((v) => !v)} />
+                    <Switch checked={notify} onCheckedChange={setNotify} />
                     Send weekly summary
                   </div>
                 </Sub>
@@ -1237,8 +1454,8 @@ export default function DesignSystemPage() {
 
           <Section
             id="feedback"
-            title="Feedback"
-            desc="Inline alerts, empty states, and loading skeletons."
+            title={t("feedbackTitle")}
+            desc={t("feedbackDesc")}
           >
             <Card>
               <CardHeader>
@@ -1306,12 +1523,14 @@ export default function DesignSystemPage() {
             </div>
           </Section>
 
-          <Section id="data" title="Data display" desc="Stat cards, charts, tabs, tables, avatars, progress.">
+          <Section id="data" title={t("dataTitle")} desc={t("dataDesc")}>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {STATS.map((s) => (
                 <StatCard key={s.slug} stat={s} />
               ))}
             </div>
+
+            <MetricChartPanel />
 
             <Card>
               <CardHeader>
@@ -1355,7 +1574,7 @@ export default function DesignSystemPage() {
                 <CardContent className="flex flex-col gap-3">
                   <div className="font-heading text-3xl font-bold">1.3K</div>
                   <div className="flex items-center gap-2 text-xs">
-                    <span className="rounded-full bg-success-muted px-1.5 py-0.5 font-medium text-success">
+                    <span className="rounded-full bg-success px-1.5 py-0.5 font-medium text-success-foreground">
                       +7%
                     </span>
                     <span className="text-muted-foreground">vs last period</span>
@@ -1424,12 +1643,12 @@ export default function DesignSystemPage() {
                       <TableRow>
                         <TableCell>Alex Rivera</TableCell>
                         <TableCell>
-                          <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", ROLE_BADGE.therapist)}>
+                          <span className={cn("inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium min-w-[var(--badge-w)]", ROLE_BADGE.therapist)}>
                             Therapist
                           </span>
                         </TableCell>
                         <TableCell>
-                          <span className="inline-flex items-center gap-1.5 text-xs text-success">
+                          <span className="inline-flex items-center gap-1.5 text-xs text-foreground">
                             <span className="size-1.5 rounded-full bg-success" /> Defined
                           </span>
                         </TableCell>
@@ -1437,7 +1656,7 @@ export default function DesignSystemPage() {
                       <TableRow>
                         <TableCell>Priya Nair</TableCell>
                         <TableCell>
-                          <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", ROLE_BADGE.analyst)}>
+                          <span className={cn("inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium min-w-[var(--badge-w)]", ROLE_BADGE.analyst)}>
                             Analyst
                           </span>
                         </TableCell>
@@ -1464,109 +1683,24 @@ export default function DesignSystemPage() {
 
           <Section
             id="tables"
-            title="Data tables"
-            desc="Long table with a locked column — it stays pinned left while the rest scrolls horizontally."
+            title={t("dataTablesTitle")}
+            desc={t("dataTablesDesc")}
           >
             <Card>
-              <CardHeader className="flex-row items-center justify-between gap-3">
-                <div>
-                  <CardTitle>Clients</CardTitle>
-                  <CardDescription>Scroll right — the Client column stays put.</CardDescription>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Switch checked={freeze} onChange={() => setFreeze((v) => !v)} />
-                  <span className="cursor-pointer" onClick={() => setFreeze((v) => !v)}>
-                    Freeze first column
-                  </span>
-                </div>
+              <CardHeader>
+                <CardTitle>Clients</CardTitle>
+                <CardDescription>
+                  Universal search, per-column sort &amp; filter, freeze columns, and row actions — all
+                  from the shared DataTable.
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto rounded-lg border">
-                  <table className="w-full min-w-[1500px] border-separate border-spacing-0 text-sm">
-                    <thead>
-                      <tr>
-                        <th className={cn(HEAD, freeze && cn("sticky left-0 z-20", FREEZE_SHADOW))}>
-                          <span className="inline-flex items-center gap-1">
-                            Client
-                            {freeze && <Lock className="size-3 text-muted-foreground/70" />}
-                          </span>
-                        </th>
-                        <th className={HEAD}>Email</th>
-                        <th className={HEAD}>Role</th>
-                        <th className={HEAD}>Status</th>
-                        <th className={HEAD}>Packages</th>
-                        <th className={HEAD}>Sessions</th>
-                        <th className={HEAD}>MRR</th>
-                        <th className={HEAD}>Plan</th>
-                        <th className={HEAD}>Region</th>
-                        <th className={HEAD}>Phone</th>
-                        <th className={HEAD}>Owner</th>
-                        <th className={HEAD}>Joined</th>
-                        <th className={HEAD}>Last active</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {CLIENTS.map((c) => {
-                        const initials = c.name
-                          .split(" ")
-                          .map((w) => w[0])
-                          .join("");
-                        const tone =
-                          c.status === "Active" ? "success" : c.status === "Suspended" ? "warning" : "danger";
-                        return (
-                          <tr key={c.name} className="group">
-                            <td
-                              className={cn(
-                                CELL,
-                                "bg-card font-medium",
-                                freeze && cn("sticky left-0 z-10", FREEZE_SHADOW),
-                              )}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/12 font-heading text-[11px] font-semibold text-primary ring-1 ring-primary/20">
-                                  {initials}
-                                </span>
-                                {c.name}
-                              </div>
-                            </td>
-                            <td className={cn(CELL, "text-muted-foreground")}>{c.email}</td>
-                            <td className={CELL}>
-                              <span
-                                className={cn(
-                                  "rounded-full px-2 py-0.5 text-xs font-medium",
-                                  c.role === "Therapist" ? ROLE_BADGE.therapist : ROLE_BADGE.analyst,
-                                )}
-                              >
-                                {c.role}
-                              </span>
-                            </td>
-                            <td className={CELL}>
-                              <StatusBadge tone={tone as "success" | "warning" | "danger"}>{c.status}</StatusBadge>
-                            </td>
-                            <td className={cn(CELL, "tabular-nums")}>{c.packages}</td>
-                            <td className={cn(CELL, "tabular-nums")}>{c.sessions}</td>
-                            <td className={cn(CELL, "font-mono text-xs")}>{c.mrr}</td>
-                            <td className={cn(CELL, "text-muted-foreground")}>{c.plan}</td>
-                            <td className={cn(CELL, "text-muted-foreground")}>{c.region}</td>
-                            <td className={cn(CELL, "font-mono text-xs text-muted-foreground")}>{c.phone}</td>
-                            <td className={cn(CELL, "text-muted-foreground")}>{c.owner}</td>
-                            <td className={cn(CELL, "font-mono text-xs text-muted-foreground")}>
-                              {fmtDate(c.joined)}
-                            </td>
-                            <td className={cn(CELL, "font-mono text-xs text-muted-foreground")}>
-                              {fmtDate(c.lastActive)}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                <DataTableDemo />
               </CardContent>
             </Card>
           </Section>
 
-          <Section id="overlays" title="Overlays" desc="Dialogs, menus, tooltips, and toasts.">
+          <Section id="overlays" title={t("overlaysTitle")} desc={t("overlaysDesc")}>
             <Card>
               <CardContent className="flex flex-col gap-6 pt-6">
                 <Sub label="Dropdown menu">
@@ -1638,24 +1772,22 @@ export default function DesignSystemPage() {
 
           <Section
             id="availability"
-            title="Availability"
-            desc="App-specific calendar components."
+            title={t("availabilityTitle")}
+            desc={t("availabilityDesc")}
           >
             <Card>
               <CardContent className="flex flex-col gap-6 pt-6">
-                <Alert tone="info" title="Fixed palette">
-                  These calendar colors are intentionally fixed (not theme tokens) so availability
-                  reads the same regardless of theme.
-                </Alert>
                 <Sub label="Status legend">
-                  <div className="rounded-xl bg-zinc-200 px-4 py-2.5 text-sm font-semibold text-foreground">
-                    Available
-                  </div>
-                  <div className="rounded-xl bg-[#e8134e] px-4 py-2.5 text-sm font-semibold text-white">
-                    Unavailable
-                  </div>
-                  <div className="flex items-center gap-1.5 rounded-xl bg-zinc-200 px-4 py-2.5 text-sm font-semibold text-foreground">
-                    <span className="size-3 rounded-full bg-emerald-500" /> Available Online-only
+                  <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3">
+                    <div className="flex items-center justify-center rounded-xl bg-muted px-4 py-2.5 text-center text-sm font-semibold text-muted-foreground ring-1 ring-inset ring-border-strong">
+                      Available In-person
+                    </div>
+                    <div className="flex items-center justify-center rounded-xl bg-danger px-4 py-2.5 text-center text-sm font-semibold text-danger-foreground">
+                      Unavailable
+                    </div>
+                    <div className="flex items-center justify-center gap-1.5 rounded-xl bg-muted px-4 py-2.5 text-center text-sm font-semibold text-muted-foreground ring-1 ring-inset ring-border-strong">
+                      <span className="size-3 rounded-full bg-chart-3" /> Available Online-only
+                    </div>
                   </div>
                 </Sub>
                 <Sub label="Travel-time pills">
@@ -1665,7 +1797,7 @@ export default function DesignSystemPage() {
                       className={cn(
                         "tabular w-16 rounded-full border px-3 py-1.5 text-center text-sm font-medium",
                         m === 45
-                          ? "border-[#2f1a63] bg-[#2f1a63] text-white"
+                          ? "border-primary bg-primary text-primary-foreground"
                           : "border-border bg-card text-foreground",
                       )}
                     >

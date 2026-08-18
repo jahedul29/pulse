@@ -24,7 +24,7 @@ function BarTooltip({
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-lg border bg-popover px-2.5 py-1.5 text-xs shadow-md ring-1 ring-foreground/5">
-      <div className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">{label}</div>
+      <div className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{label}</div>
       <span className="font-mono tabular text-sm font-medium">{fmtNumber(payload[0].value)}</span>
     </div>
   );

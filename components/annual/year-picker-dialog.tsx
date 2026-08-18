@@ -1,6 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Dialog, DialogBody, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
@@ -17,14 +18,15 @@ export function YearPickerDialog({
   value: number;
   onSelect: (year: number) => void;
 }) {
+  const t = useTranslations("annual");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="theme-violet w-[300px] max-w-[300px] font-manrope sm:max-w-[300px]"
+        className="w-[300px] max-w-[300px] font-manrope sm:max-w-[300px]"
       >
         <DialogTitle className="border-b px-4 pt-5 pb-3 text-center text-sm font-bold text-foreground">
-          Select the year
+          {t("yearPickerTitle")}
         </DialogTitle>
         <DialogBody className="p-4">
           <div className="flex flex-col gap-2">

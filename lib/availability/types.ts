@@ -29,8 +29,11 @@ export interface RuleConfig {
 export interface RuleResult {
   id: string;
   label: string;
+  labelKey: string;
   pass: boolean;
   actual: string;
   message: string;
+  messageKey: string;
+  values?: Record<string, string | number>;
   offending?: number[];
 }

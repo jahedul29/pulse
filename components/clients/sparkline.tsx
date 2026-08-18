@@ -1,6 +1,7 @@
 "use client";
 
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
+import { roundedCurve } from "@/lib/chart-curve";
 
 export function Sparkline({
   data,
@@ -22,7 +23,7 @@ export function Sparkline({
           </linearGradient>
         </defs>
         <Area
-          type="monotone"
+          type={roundedCurve(6)}
           dataKey="value"
           stroke={color}
           strokeWidth={2}

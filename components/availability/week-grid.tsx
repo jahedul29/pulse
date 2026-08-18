@@ -1,8 +1,10 @@
 "use client";
 
+import { useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
 import { SLOTS_PER_DAY, WEEKDAY_LABELS, slotToTime } from "@/lib/availability/constants";
 import { validateDay } from "@/lib/availability/rules";
+import { weekdayShortLabels } from "@/lib/i18n/calendar";
 import type { DayState, PaintStatus, RuleConfig } from "@/lib/availability/types";
 import { DayColumn } from "./day-column";
 
@@ -29,6 +31,8 @@ export function WeekGrid({
   onPaint: (dayIndex: number, start: number, end: number, status: PaintStatus) => void;
   onToggleDayOff: (dayIndex: number) => void;
 }) {
+  const locale = useLocale();
+  const weekdays = weekdayShortLabels(locale);
   const offendingFor = (d: number): Set<number> => {
     if (!showViolations) return EMPTY;
     const results = validateDay(days[d], config, { isWorkday: !daysOff.includes(d) });
@@ -48,23 +52,22 @@ export function WeekGrid({
           )}
         >
           <div />
-          {WEEKDAY_LABELS.map((label, d) => {
+          {weekdays.map((label, d) => {
             const isOff = daysOff.includes(d);
             const base =
               "py-1.5 text-center text-[10px] font-semibold uppercase tracking-wide transition-colors md:text-base";
             return (
               <button
-                key={label}
+                key={d}
                 type="button"
                 onClick={() => onToggleDayOff(d)}
-                title={isOff ? "Set as working day" : "Mark day off"}
                 className={cn(
                   base,
                   "cursor-pointer",
                   isOff ? "bg-danger text-danger-foreground" : "text-primary hover:bg-primary/10",
                 )}
               >
-                {label.slice(0, 2)}
+                {label}
               </button>
             );
           })}
@@ -76,7 +79,7 @@ export function WeekGrid({
             {Array.from({ length: SLOTS_PER_DAY }, (_, i) => (
               <div
                 key={i}
-                className="tabular absolute inset-x-0 flex items-center pl-0.5 text-[8px] leading-none text-primary sm:pl-1 md:text-[11px]"
+                className="tabular absolute inset-x-0 flex items-center ps-0.5 text-[8px] leading-none text-primary sm:ps-1 md:text-[11px]"
                 style={{ top: `calc(var(--slot) * ${i})`, height: "var(--slot)" }}
               >
                 {slotToTime(i)} - {slotToTime(i + 1)}
@@ -84,9 +87,9 @@ export function WeekGrid({
             ))}
           </div>
 
-          {WEEKDAY_LABELS.map((label, d) => (
+          {WEEKDAY_LABELS.map((_, d) => (
             <DayColumn
-              key={label}
+              key={d}
               dayIndex={d}
               day={days[d]}
               config={config}

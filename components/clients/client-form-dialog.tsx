@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -31,30 +32,22 @@ import { NATIONS, REGION_NAMES } from "@/lib/mock/data";
 import { cn } from "@/lib/utils";
 import type { Client } from "@/lib/types";
 
-const usPhone = z
-  .string()
-  .min(1, "Enter a phone number")
-  .refine((value) => {
-    const digits = value.replace(/\D/g, "");
-    const national = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
-    return /^[2-9]\d{2}[2-9]\d{6}$/.test(national);
-  }, "Enter a valid US phone number, e.g. +1 (212) 555-0199");
+type FormValues = {
+  fullName: string;
+  email: string;
+  phone: string;
+  gender: "Female" | "Male";
+  dob: string;
+  nationality: string;
+  region: string;
+  countryRegistration: string;
+};
 
-const schema = z.object({
-  fullName: z.string().min(2, "Enter a full name"),
-  email: z.email("Enter a valid email address"),
-  phone: usPhone,
-  gender: z.enum(["Female", "Male"]),
-  dob: z
-    .string()
-    .min(1, "Select a date of birth")
-    .refine((v) => !Number.isNaN(Date.parse(v)) && new Date(v) <= new Date(), "Date can't be in the future"),
-  nationality: z.string().min(1, "Select a nationality"),
-  region: z.string().min(1, "Select a region"),
-  countryRegistration: z.string().min(1, "Select a country"),
-});
-
-type FormValues = z.infer<typeof schema>;
+function isValidUsPhone(value: string): boolean {
+  const digits = value.replace(/\D/g, "");
+  const national = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  return /^[2-9]\d{2}[2-9]\d{6}$/.test(national);
+}
 
 const EMPTY: FormValues = {
   fullName: "",
@@ -78,8 +71,31 @@ export function ClientFormDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const t = useTranslations("clients.form");
+  const tc = useTranslations("common");
   const addClient = useClientStore((s) => s.addClient);
   const updateClient = useClientStore((s) => s.updateClient);
+
+  const schema = useMemo(
+    () =>
+      z.object({
+        fullName: z.string().min(2, t("vName")),
+        email: z.email(t("vEmail")),
+        phone: z.string().min(1, t("vPhoneRequired")).refine(isValidUsPhone, t("vPhoneInvalid")),
+        gender: z.enum(["Female", "Male"]),
+        dob: z
+          .string()
+          .min(1, t("vDobRequired"))
+          .refine(
+            (v) => !Number.isNaN(Date.parse(v)) && new Date(v) <= new Date(),
+            t("vDobFuture"),
+          ),
+        nationality: z.string().min(1, t("vNationality")),
+        region: z.string().min(1, t("vRegion")),
+        countryRegistration: z.string().min(1, t("vCountry")),
+      }),
+    [t],
+  );
 
   const defaults = useMemo<FormValues>(
     () =>
@@ -112,14 +128,14 @@ export function ClientFormDialog({
     if (mode === "add") {
       const created = createClient(values);
       addClient(created);
-      toast.success(`${created.fullName} added`);
+      toast.success(t("addedToast", { name: created.fullName }));
     } else if (client) {
       updateClient(client.id, {
         ...values,
         age: computeAge(values.dob),
         initials: initialsOf(values.fullName),
       });
-      toast.success(`${values.fullName} updated`);
+      toast.success(t("updatedToast", { name: values.fullName }));
     }
     onOpenChange(false);
   };
@@ -128,12 +144,8 @@ export function ClientFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{mode === "add" ? "Add client" : "Edit client"}</DialogTitle>
-          <DialogDescription>
-            {mode === "add"
-              ? "Create a new client account. Profiles can be added afterwards."
-              : "Update this client's account details."}
-          </DialogDescription>
+          <DialogTitle>{mode === "add" ? t("addTitle") : t("editTitle")}</DialogTitle>
+          <DialogDescription>{mode === "add" ? t("addDesc") : t("editDesc")}</DialogDescription>
         </DialogHeader>
 
         <form
@@ -141,7 +153,7 @@ export function ClientFormDialog({
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
           <DialogBody className="grid gap-4 sm:grid-cols-2">
-          <Field label="Full name" error={errors.fullName?.message} className="sm:col-span-2">
+          <Field label={t("fullName")} error={errors.fullName?.message} className="sm:col-span-2">
             <Controller
               control={control}
               name="fullName"
@@ -149,7 +161,7 @@ export function ClientFormDialog({
                 <div className="relative">
                   <Input
                     className="h-9"
-                    placeholder="Jane Doe"
+                    placeholder={t("phName")}
                     autoComplete="off"
                     data-1p-ignore
                     data-lpignore="true"
@@ -160,7 +172,7 @@ export function ClientFormDialog({
             />
           </Field>
 
-          <Field label="Email" error={errors.email?.message}>
+          <Field label={t("email")} error={errors.email?.message}>
             <Controller
               control={control}
               name="email"
@@ -168,8 +180,9 @@ export function ClientFormDialog({
                 <div className="relative">
                   <Input
                     type="email"
-                    className="h-9"
-                    placeholder="jane@mail.com"
+                    dir="ltr"
+                    className="h-9 text-start"
+                    placeholder={t("phEmail")}
                     autoComplete="off"
                     data-1p-ignore
                     data-lpignore="true"
@@ -180,15 +193,16 @@ export function ClientFormDialog({
             />
           </Field>
 
-          <Field label="Phone" error={errors.phone?.message}>
+          <Field label={t("phone")} error={errors.phone?.message}>
             <Controller
               control={control}
               name="phone"
               render={({ field }) => (
                 <div className="relative">
                   <Input
-                    className="h-9"
-                    placeholder="+1 (555) 000-0000"
+                    dir="ltr"
+                    className="h-9 text-start"
+                    placeholder={t("phPhone")}
                     autoComplete="off"
                     data-1p-ignore
                     data-lpignore="true"
@@ -199,25 +213,25 @@ export function ClientFormDialog({
             />
           </Field>
 
-          <Field label="Gender" error={errors.gender?.message}>
+          <Field label={t("gender")} error={errors.gender?.message}>
             <Controller
               control={control}
               name="gender"
               render={({ field }) => (
                 <Select value={field.value} onValueChange={(v) => field.onChange(v ?? "")}>
                   <SelectTrigger className="h-9 w-full">
-                    <SelectValue />
+                    <SelectValue>{(v) => (v === "Male" ? t("genderMale") : t("genderFemale"))}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Female">Female</SelectItem>
-                    <SelectItem value="Male">Male</SelectItem>
+                    <SelectItem value="Female">{t("genderFemale")}</SelectItem>
+                    <SelectItem value="Male">{t("genderMale")}</SelectItem>
                   </SelectContent>
                 </Select>
               )}
             />
           </Field>
 
-          <Field label="Date of birth" error={errors.dob?.message}>
+          <Field label={t("dob")} error={errors.dob?.message}>
             <Controller
               control={control}
               name="dob"
@@ -225,7 +239,7 @@ export function ClientFormDialog({
             />
           </Field>
 
-          <Field label="Nationality" error={errors.nationality?.message}>
+          <Field label={t("nationality")} error={errors.nationality?.message}>
             <Controller
               control={control}
               name="nationality"
@@ -235,7 +249,7 @@ export function ClientFormDialog({
             />
           </Field>
 
-          <Field label="Region" error={errors.region?.message}>
+          <Field label={t("region")} error={errors.region?.message}>
             <Controller
               control={control}
               name="region"
@@ -246,7 +260,7 @@ export function ClientFormDialog({
           </Field>
 
           <Field
-            label="Country of registration"
+            label={t("country")}
             error={errors.countryRegistration?.message}
             className="sm:col-span-2"
           >
@@ -262,9 +276,9 @@ export function ClientFormDialog({
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {tc("cancel")}
             </Button>
-            <Button type="submit">{mode === "add" ? "Add client" : "Save changes"}</Button>
+            <Button type="submit">{mode === "add" ? t("addBtn") : t("saveChanges")}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
