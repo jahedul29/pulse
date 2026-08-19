@@ -66,7 +66,7 @@ export function MetricChartPanel() {
 
   const metricSelect = (value: string, onChange: (v: string) => void, withNone?: boolean) => (
     <Select value={value} onValueChange={(v) => onChange(v ?? value)}>
-      <SelectTrigger className="h-9 w-[190px]">
+      <SelectTrigger className="w-[190px]">
         <SelectValue>{(v) => (v === "none" ? t("chartPanel.none") : t(`metric.${v}`))}</SelectValue>
       </SelectTrigger>
       <SelectContent>
@@ -89,7 +89,7 @@ export function MetricChartPanel() {
           <Ctl label={t("chartPanel.metric2")}>{metricSelect(m2, setM2, true)}</Ctl>
           <Ctl label={t("chartPanel.type")}>
             <Select value={type} onValueChange={(v) => setType((v as ChartType) ?? "line")}>
-              <SelectTrigger className="h-9 w-[130px]">
+              <SelectTrigger className="w-[130px]">
                 <SelectValue>{(v) => t(`chartPanel.${v}`)}</SelectValue>
               </SelectTrigger>
               <SelectContent>
@@ -101,7 +101,7 @@ export function MetricChartPanel() {
           </Ctl>
           <Ctl label={t("chartPanel.period")}>
             <Select value={period} onValueChange={(v) => setPeriod((v as Period) ?? DEFAULT_PERIOD)}>
-              <SelectTrigger className="h-9 w-[110px]">
+              <SelectTrigger className="w-[110px]">
                 <SelectValue>{(v) => v}</SelectValue>
               </SelectTrigger>
               <SelectContent>

@@ -6,6 +6,7 @@ import { IntlProvider } from "@/components/i18n-provider";
 import "overlayscrollbars/overlayscrollbars.css";
 import "./globals.css";
 import { AppScroll } from "@/components/scrollbars";
+import { Toaster } from "@/components/ui/sonner";
 import { dirFor } from "@/i18n/routing";
 
 const manrope = Manrope({
@@ -49,6 +50,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <IntlProvider locale={locale} messages={messages}>
           <DirectionProvider direction={dirFor(locale)}>
             <AppScroll>{children}</AppScroll>
+            <Toaster />
           </DirectionProvider>
         </IntlProvider>
       </body>

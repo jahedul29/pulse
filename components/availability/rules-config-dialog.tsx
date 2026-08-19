@@ -115,7 +115,7 @@ export function RulesConfigDialog({
               value={String(draft.maxDaysOff)}
               onValueChange={(v) => setDraft({ ...draft, maxDaysOff: Number(v) })}
             >
-              <SelectTrigger className="h-9 w-full">
+              <SelectTrigger className="w-full">
                 <SelectValue>
                   {(v) => t("rulesConfig.days", { count: Number(v) })}
                 </SelectValue>
@@ -164,7 +164,7 @@ function MinutesField({
     <div className="flex flex-col gap-1.5">
       <Label>{label}</Label>
       <Select value={String(value)} onValueChange={(v) => onChange(Number(v))}>
-        <SelectTrigger className="h-9 w-full">
+        <SelectTrigger className="w-full">
           <SelectValue>{(v) => (v ? fmtDuration(Number(v)) : "")}</SelectValue>
         </SelectTrigger>
         <SelectContent>

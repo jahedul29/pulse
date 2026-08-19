@@ -1,0 +1,39 @@
+"use client"
+
+import * as React from "react"
+import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox"
+import { Check } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+function Checkbox({
+  className,
+  label,
+  ...props
+}: React.ComponentProps<typeof CheckboxPrimitive.Root> & { label?: React.ReactNode }) {
+  const box = (
+    <CheckboxPrimitive.Root
+      data-slot="checkbox"
+      className={cn(
+        "peer grid size-4 shrink-0 place-items-center rounded-[min(var(--radius-sm),6px)] border border-border-strong bg-transparent outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/60 data-[checked]:border-primary data-[checked]:bg-primary data-[checked]:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50",
+        className
+      )}
+      {...props}
+    >
+      <CheckboxPrimitive.Indicator className="flex items-center justify-center text-current">
+        <Check className="size-3" strokeWidth={3} />
+      </CheckboxPrimitive.Indicator>
+    </CheckboxPrimitive.Root>
+  )
+
+  if (label == null) return box
+
+  return (
+    <label className="flex cursor-pointer items-center gap-2 text-sm select-none">
+      {box}
+      {label}
+    </label>
+  )
+}
+
+export { Checkbox }
