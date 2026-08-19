@@ -370,7 +370,7 @@
     "invalidCredentials": "Incorrect email or password",
     "serverError": "Something went wrong. Please try again.",
     "mfaTitle": "Two-step verification",
-    "mfaSubtitle": "Enter the 6-digit verification code for {email}.",
+    "mfaSubtitle": "Enter the 6-digit verification code for <em>{email}</em>.",
     "mfaCodeLabel": "Verification code",
     "mfaWrongCode": "That code is incorrect. Try again.",
     "mfaDemoHint": "Demo code: {code}",

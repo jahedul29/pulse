@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PeriodToggle } from "@/components/common/period-toggle";
@@ -15,6 +16,8 @@ import {
 } from "@/lib/mock/data";
 import { coercePeriod } from "@/lib/period";
 import { getTranslations } from "next-intl/server";
+
+export const metadata: Metadata = { title: "Clients & Profiles" };
 
 export default async function ClientsPage({
   searchParams,

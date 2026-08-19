@@ -32,7 +32,10 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ABAPRO — Admin & BI",
+  title: {
+    default: "ABAPRO Admin",
+    template: "%s - ABAPRO Admin",
+  },
   description: "Clients & Profiles console for the ABAPRO physiotherapy platform.",
 };
 

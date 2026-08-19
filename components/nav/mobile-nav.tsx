@@ -1,9 +1,10 @@
 "use client";
 
-import { Activity, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/lib/ui-store";
+import { Logo } from "@/components/common/logo";
 import { NavItems } from "./nav-items";
 
 export function MobileNav() {
@@ -29,8 +30,8 @@ export function MobileNav() {
         aria-hidden={!open}
       >
         <div className="flex items-center gap-2.5 px-5 py-5">
-          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
-            <Activity className="size-5" />
+          <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-xl bg-primary">
+            <Logo className="h-7 w-auto" />
           </span>
           <div className="leading-tight">
             <div className="font-heading text-base font-semibold">{t("common.appName")}</div>
