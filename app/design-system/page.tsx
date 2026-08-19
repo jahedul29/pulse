@@ -43,6 +43,7 @@ import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/common/data-table";
 import { Switch } from "@/components/common/toggle-switch";
+import { Logo } from "@/components/common/logo";
 import { DirhamSign, DollarSign as DollarMark } from "@/components/icons/currency-signs";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -622,8 +623,8 @@ function SidebarDemo({ collapsed }: { collapsed: boolean }) {
       )}
     >
       <div className={cn("flex items-center gap-2.5 py-5", collapsed ? "justify-center px-0" : "px-5")}>
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
-          <Activity className="size-5" />
+        <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-xl bg-primary">
+          <Logo className="h-7 w-auto" />
         </span>
         {!collapsed && (
           <div className="leading-tight">

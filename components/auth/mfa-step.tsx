@@ -55,7 +55,10 @@ export function MfaStep({
   return (
     <div className="flex flex-col gap-5 animate-in fade-in-0 duration-200">
       <p className="text-sm text-center text-muted-foreground text-pretty">
-        {t("mfaSubtitle", { email })}
+        {t.rich("mfaSubtitle", {
+          email,
+          em: (chunks) => <span className="font-medium text-primary">{chunks}</span>,
+        })}
       </p>
 
       <OTPField.Root
@@ -102,6 +105,7 @@ export function MfaStep({
         onClick={() => submit(code)}
         disabled={busy || code.length < LEN}
         aria-busy={busy}
+        size="xl"
         className="w-full"
       >
         {busy ? (
