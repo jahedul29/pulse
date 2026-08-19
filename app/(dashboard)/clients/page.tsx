@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PeriodToggle } from "@/components/common/period-toggle";
 import { KpiCard } from "@/components/clients/kpi-card";
 import { MetricChartPanel } from "@/components/clients/metric-chart-panel";
 import { Donut } from "@/components/clients/donut";
@@ -24,6 +26,12 @@ export default async function ClientsPage({
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6">
+      <div className="flex justify-end">
+        <Suspense fallback={<div className="h-8 w-72 rounded-lg border bg-card" />}>
+          <PeriodToggle />
+        </Suspense>
+      </div>
+
       <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         {kpis.map((k) => (
           <KpiCard key={k.key} kpi={k} period={period} />

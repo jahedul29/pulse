@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -26,10 +25,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DateField } from "@/components/clients/date-field";
+import { Field } from "@/components/ui/field";
 import { useClientStore } from "@/lib/store";
 import { computeAge, createClient, initialsOf } from "@/lib/clients";
 import { NATIONS, REGION_NAMES } from "@/lib/mock/data";
-import { cn } from "@/lib/utils";
 import type { Client } from "@/lib/types";
 
 type FormValues = {
@@ -153,7 +152,7 @@ export function ClientFormDialog({
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
           <DialogBody className="grid gap-4 sm:grid-cols-2">
-          <Field label={t("fullName")} error={errors.fullName?.message} className="sm:col-span-2">
+          <Field reserveMessage={false} label={t("fullName")} error={errors.fullName?.message} className="sm:col-span-2">
             <Controller
               control={control}
               name="fullName"
@@ -172,7 +171,7 @@ export function ClientFormDialog({
             />
           </Field>
 
-          <Field label={t("email")} error={errors.email?.message}>
+          <Field reserveMessage={false} label={t("email")} error={errors.email?.message}>
             <Controller
               control={control}
               name="email"
@@ -193,7 +192,7 @@ export function ClientFormDialog({
             />
           </Field>
 
-          <Field label={t("phone")} error={errors.phone?.message}>
+          <Field reserveMessage={false} label={t("phone")} error={errors.phone?.message}>
             <Controller
               control={control}
               name="phone"
@@ -213,13 +212,13 @@ export function ClientFormDialog({
             />
           </Field>
 
-          <Field label={t("gender")} error={errors.gender?.message}>
+          <Field reserveMessage={false} label={t("gender")} error={errors.gender?.message}>
             <Controller
               control={control}
               name="gender"
               render={({ field }) => (
                 <Select value={field.value} onValueChange={(v) => field.onChange(v ?? "")}>
-                  <SelectTrigger className="h-9 w-full">
+                  <SelectTrigger className="w-full">
                     <SelectValue>{(v) => (v === "Male" ? t("genderMale") : t("genderFemale"))}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -231,7 +230,7 @@ export function ClientFormDialog({
             />
           </Field>
 
-          <Field label={t("dob")} error={errors.dob?.message}>
+          <Field reserveMessage={false} label={t("dob")} error={errors.dob?.message}>
             <Controller
               control={control}
               name="dob"
@@ -239,7 +238,7 @@ export function ClientFormDialog({
             />
           </Field>
 
-          <Field label={t("nationality")} error={errors.nationality?.message}>
+          <Field reserveMessage={false} label={t("nationality")} error={errors.nationality?.message}>
             <Controller
               control={control}
               name="nationality"
@@ -249,7 +248,7 @@ export function ClientFormDialog({
             />
           </Field>
 
-          <Field label={t("region")} error={errors.region?.message}>
+          <Field reserveMessage={false} label={t("region")} error={errors.region?.message}>
             <Controller
               control={control}
               name="region"
@@ -297,7 +296,7 @@ function SelectField({
 }) {
   return (
     <Select value={value} onValueChange={(v) => onChange(v ?? "")}>
-      <SelectTrigger className="h-9 w-full">
+      <SelectTrigger className="w-full">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -311,22 +310,3 @@ function SelectField({
   );
 }
 
-function Field({
-  label,
-  error,
-  className,
-  children,
-}: {
-  label: string;
-  error?: string;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className={cn("flex flex-col gap-1.5", className)}>
-      <Label>{label}</Label>
-      {children}
-      {error && <span className="text-xs text-danger">{error}</span>}
-    </div>
-  );
-}

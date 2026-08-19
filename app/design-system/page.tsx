@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   Activity,
-  AlertCircle,
   Bell,
   CalendarDays,
   Check,
@@ -13,7 +12,6 @@ import {
   Copy,
   DollarSign,
   Eye,
-  EyeOff,
   Fingerprint,
   Inbox,
   Info,
@@ -56,7 +54,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field } from "@/components/ui/field";
+import { PasswordInput } from "@/components/ui/password-input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -561,43 +561,6 @@ function StatCard({ stat }: { stat: (typeof STATS)[number] }) {
   );
 }
 
-function Field({
-  label,
-  htmlFor,
-  error,
-  success,
-  hint,
-  className,
-  children,
-}: {
-  label: string;
-  htmlFor?: string;
-  error?: string;
-  success?: string;
-  hint?: string;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className={cn("flex flex-col gap-1.5", className)}>
-      <Label htmlFor={htmlFor}>{label}</Label>
-      {children}
-      <div className="min-h-4 text-xs leading-4">
-        {error ? (
-          <p className="flex items-center gap-1 font-medium text-danger">
-            <AlertCircle className="size-3.5 shrink-0" /> {error}
-          </p>
-        ) : success ? (
-          <p className="flex items-center gap-1 font-medium text-success">
-            <Check className="size-3.5 shrink-0" /> {success}
-          </p>
-        ) : hint ? (
-          <p className="text-muted-foreground">{hint}</p>
-        ) : null}
-      </div>
-    </div>
-  );
-}
 
 function IconInput({
   leading,
@@ -623,32 +586,6 @@ function IconInput({
   );
 }
 
-
-function Checkbox({
-  checked,
-  onChange,
-  label,
-}: {
-  checked: boolean;
-  onChange: () => void;
-  label: string;
-}) {
-  return (
-    <button type="button" onClick={onChange} className="flex cursor-pointer items-center gap-2 text-sm">
-      <span
-        role="checkbox"
-        aria-checked={checked}
-        className={cn(
-          "grid size-4 place-items-center rounded border transition-colors",
-          checked ? "border-primary bg-primary text-primary-foreground" : "border-input bg-transparent",
-        )}
-      >
-        {checked && <Check className="size-3" />}
-      </span>
-      {label}
-    </button>
-  );
-}
 
 function Radio({
   checked,
@@ -782,7 +719,7 @@ function fmtDMY(d: Date | undefined, locale: string): string {
   return fmtDate(iso, locale);
 }
 
-const TRIGGER = "h-8 w-full justify-between font-normal";
+const TRIGGER = "h-9 w-full justify-between font-normal";
 
 function DatePicker() {
   const [open, setOpen] = useState(false);
@@ -831,7 +768,7 @@ function DateTimePicker() {
             type="time"
             value={time}
             onChange={(e) => setTime(e.target.value)}
-            className="h-8 flex-1 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/40"
+            className="h-9 flex-1 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/40"
           />
           <Button size="sm" onClick={() => setOpen(false)}>
             Done
@@ -882,7 +819,6 @@ export default function DesignSystemPage() {
   const [alertOpen, setAlertOpen] = useState(false);
   const [guidelinesOpen, setGuidelinesOpen] = useState(false);
   const [noticeOpen, setNoticeOpen] = useState(false);
-  const [showPw, setShowPw] = useState(false);
   const [notify, setNotify] = useState(true);
   const [marketing, setMarketing] = useState(false);
   const [plan, setPlan] = useState("monthly");
@@ -1207,8 +1143,10 @@ export default function DesignSystemPage() {
                 <Sub label="Sizes">
                   <Button size="xs">Extra small</Button>
                   <Button size="sm">Small</Button>
-                  <Button size="default">Default</Button>
+                  <Button size="md">Medium</Button>
                   <Button size="lg">Large</Button>
+                  <Button size="xl">Extra large</Button>
+                  <Button size="2xl">2XL</Button>
                 </Sub>
                 <Sub label="With icon / icon-only">
                   <Button>
@@ -1284,17 +1222,7 @@ export default function DesignSystemPage() {
                   />
                 </Field>
                 <Field label="Password" htmlFor="f-pw" hint="At least 8 characters.">
-                  <div className="relative flex items-center">
-                    <Input id="f-pw" type={showPw ? "text" : "password"} defaultValue="secret123" className="pe-9" />
-                    <button
-                      type="button"
-                      onClick={() => setShowPw((v) => !v)}
-                      aria-label={showPw ? "Hide password" : "Show password"}
-                      className="absolute end-2 top-1/2 -translate-y-1/2 cursor-pointer text-muted-foreground hover:text-foreground"
-                    >
-                      {showPw ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                    </button>
-                  </div>
+                  <PasswordInput id="f-pw" defaultValue="secret123" />
                 </Field>
                 <Field label="Phone" htmlFor="f-phone">
                   <IconInput
@@ -1319,14 +1247,14 @@ export default function DesignSystemPage() {
                     <span className="border-e border-input px-2.5 text-sm text-muted-foreground">https://</span>
                     <input
                       id="f-web"
-                      className="h-8 w-full bg-transparent px-2.5 text-sm outline-none placeholder:text-muted-foreground"
+                      className="h-9 w-full bg-transparent px-2.5 text-sm outline-none placeholder:text-muted-foreground"
                       placeholder="abapro.health"
                     />
                   </div>
                 </Field>
                 <Field label="Role">
                   <Select defaultValue="therapist">
-                    <SelectTrigger className="h-8 w-full">
+                    <SelectTrigger className="w-full">
                       <SelectValue>{(v) => (v === "therapist" ? "Therapist" : "Analyst")}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
@@ -1345,6 +1273,60 @@ export default function DesignSystemPage() {
                     placeholder="Internal notes…"
                     className="w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/40"
                   />
+                </Field>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Control sizes</CardTitle>
+                <CardDescription>
+                  Shared scale (Input + Select): sm 32 · md 36 (default) · lg 40 px on desktop; each +4px on
+                  mobile.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-5 sm:grid-cols-3">
+                <Field label="Input · sm">
+                  <Input size="sm" placeholder="sm" />
+                </Field>
+                <Field label="Input · md">
+                  <Input size="md" placeholder="md (default)" />
+                </Field>
+                <Field label="Input · lg">
+                  <Input size="lg" placeholder="lg" />
+                </Field>
+                <Field label="Select · sm">
+                  <Select defaultValue="a">
+                    <SelectTrigger size="sm" className="w-full">
+                      <SelectValue>{(v) => (v === "a" ? "Small" : "Other")}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="a">Small</SelectItem>
+                      <SelectItem value="b">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Select · md">
+                  <Select defaultValue="a">
+                    <SelectTrigger size="md" className="w-full">
+                      <SelectValue>{(v) => (v === "a" ? "Medium" : "Other")}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="a">Medium</SelectItem>
+                      <SelectItem value="b">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Select · lg">
+                  <Select defaultValue="a">
+                    <SelectTrigger size="lg" className="w-full">
+                      <SelectValue>{(v) => (v === "a" ? "Large" : "Other")}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="a">Large</SelectItem>
+                      <SelectItem value="b">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </Field>
               </CardContent>
             </Card>
@@ -1400,7 +1382,7 @@ export default function DesignSystemPage() {
                     id="f-err"
                     leading={<Mail className="size-4" />}
                     defaultValue="not-an-email"
-                    className="border-danger ring-1 ring-danger/30 focus-visible:border-danger focus-visible:ring-danger/30"
+                    aria-invalid
                   />
                 </Field>
                 <Field label="Username" htmlFor="f-ok" success="Available.">
@@ -1423,8 +1405,8 @@ export default function DesignSystemPage() {
               </CardHeader>
               <CardContent className="flex flex-col gap-6">
                 <Sub label="Checkboxes">
-                  <Checkbox checked={notify} onChange={() => setNotify((v) => !v)} label="Email notifications" />
-                  <Checkbox checked={marketing} onChange={() => setMarketing((v) => !v)} label="Product updates" />
+                  <Checkbox checked={notify} onCheckedChange={setNotify} label="Email notifications" />
+                  <Checkbox checked={marketing} onCheckedChange={setMarketing} label="Product updates" />
                 </Sub>
                 <Sub label="Radio group — billing cycle">
                   {["monthly", "quarterly", "yearly"].map((p) => (

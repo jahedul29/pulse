@@ -5,8 +5,8 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SECTIONS } from "@/lib/nav";
-import { PeriodToggle } from "@/components/common/period-toggle";
 import { LocaleSwitcher } from "@/components/nav/locale-switcher";
+import { ProfileMenu } from "@/components/nav/profile-menu";
 import { useClientStore } from "@/lib/store";
 import { useSpecialistStore } from "@/lib/specialists";
 import { useUiStore } from "@/lib/ui-store";
@@ -46,7 +46,6 @@ export function Topbar() {
   }
 
   const title = detailName ?? sectionLabel;
-  const showPeriod = pathname === "/clients";
 
   return (
     <header className="sticky top-0 z-20 flex flex-wrap items-center gap-3 border-b bg-background/85 px-4 py-3 backdrop-blur md:px-5">
@@ -90,8 +89,8 @@ export function Topbar() {
           className="h-9 w-56 rounded-lg border bg-card pe-3 ps-8 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         />
       </label>
-      {showPeriod && <PeriodToggle />}
       <LocaleSwitcher />
+      <ProfileMenu />
     </header>
   );
 }

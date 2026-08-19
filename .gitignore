@@ -43,3 +43,5 @@ next-env.d.ts
 # agent scaffold files
 CLAUDE.md
 AGENTS.md
+.claude/
+.impeccable/

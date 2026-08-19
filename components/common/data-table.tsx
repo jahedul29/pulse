@@ -288,7 +288,7 @@ export function DataTable<TData>({
                 value={String(Math.min(Math.max(freezeCount, 1), effectiveMax))}
                 onValueChange={(v) => v != null && setFreezeCount(Number(v))}
               >
-                <SelectTrigger className="h-9 w-[64px]">
+                <SelectTrigger className="w-[64px]">
                   <SelectValue>{(v) => v}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>

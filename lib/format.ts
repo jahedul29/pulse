@@ -39,3 +39,17 @@ export function fmtDate(iso: string, locale = "en"): string {
   const month = monthFmt(locale).format(new Date(Date.UTC(y, m - 1, d)));
   return `${String(d).padStart(2, "0")}-${month}-${y}`;
 }
+
+export function fmtDateTimeParts(epochMs: number, locale = "en"): { time: string; date: string } {
+  const dt = new Date(epochMs);
+  const hh = String(dt.getHours()).padStart(2, "0");
+  const mm = String(dt.getMinutes()).padStart(2, "0");
+  const month = new Intl.DateTimeFormat(locale, { month: "short" }).format(dt);
+  const day = String(dt.getDate()).padStart(2, "0");
+  return { time: `${hh}:${mm}`, date: `${day}-${month}-${dt.getFullYear()}` };
+}
+
+export function fmtDateTime(epochMs: number, locale = "en"): string {
+  const { time, date } = fmtDateTimeParts(epochMs, locale);
+  return `${time} ${date}`;
+}

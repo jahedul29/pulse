@@ -66,7 +66,7 @@ export function AppScroll({ children }: { children: ReactNode }) {
       data-overlayscrollbars-initialize=""
       className="h-dvh w-full overflow-y-auto"
     >
-      {children}
+      <div className="flex min-h-full flex-col">{children}</div>
     </div>
   );
 }
