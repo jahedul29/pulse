@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { OTPField } from "@base-ui/react/otp-field";
 import { ArrowLeft, Loader2, ShieldCheck } from "lucide-react";
@@ -26,13 +26,13 @@ export function MfaStep({
   const t = useTranslations("auth");
   const verify = useAuthStore((s) => s.verify);
 
-  const [code, setCode] = React.useState("");
-  const [busy, setBusy] = React.useState(false);
-  const [error, setError] = React.useState(false);
-  const [shake, setShake] = React.useState(false);
-  const submitting = React.useRef(false);
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(false);
+  const [shake, setShake] = useState(false);
+  const submitting = useRef(false);
 
-  const submit = React.useCallback(
+  const submit = useCallback(
     async (value: string) => {
       if (submitting.current || value.length < LEN) return;
       submitting.current = true;

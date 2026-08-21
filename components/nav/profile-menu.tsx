@@ -1,10 +1,11 @@
 "use client";
 
-import * as React from "react";
+import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { LogOut } from "lucide-react";
+import { LogOut, MonitorSmartphone } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAuthStore } from "@/lib/auth/store";
 
@@ -17,10 +18,11 @@ function initialsOf(name: string) {
 
 export function ProfileMenu() {
   const t = useTranslations("auth");
+  const ts = useTranslations("sessions");
   const router = useRouter();
   const session = useAuthStore((s) => s.session);
   const signOut = useAuthStore((s) => s.signOut);
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useState(false);
 
   if (!session) return null;
 
@@ -57,6 +59,14 @@ export function ProfileMenu() {
           </span>
         </div>
         <div className="border-t p-1">
+          <Link
+            href="/admin/settings/sessions"
+            onClick={() => setOpen(false)}
+            className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm text-foreground transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+          >
+            <MonitorSmartphone className="size-4" />
+            {ts("menuLabel")}
+          </Link>
           <button
             type="button"
             onClick={onSignOut}

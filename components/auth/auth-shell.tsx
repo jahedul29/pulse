@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 import { HeroPanel } from "./hero-panel";
@@ -22,8 +22,8 @@ export function AuthShell({
   subtitle?: string;
   animationKey?: string;
   align?: "start" | "center";
-  children: React.ReactNode;
-  footer?: React.ReactNode;
+  children: ReactNode;
+  footer?: ReactNode;
 }) {
   return (
     <div className="grid min-h-svh w-full lg:grid-cols-2">

@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { ArrowLeft } from "lucide-react";
 
@@ -22,7 +22,7 @@ export function StatusNotice({
   tone = "primary",
   support = false,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   title: string;
   body: string;
   onBack: () => void;

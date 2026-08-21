@@ -5,10 +5,10 @@ import { Plus } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, accountTone } from "@/components/common/status-badge";
 import { DataTable } from "@/components/common/data-table";
+import { ProfileCell } from "@/components/common/profile-cell";
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
 import { ClientRowActions } from "@/components/clients/client-row-actions";
 import { useClientStore } from "@/lib/store";
@@ -32,24 +32,13 @@ export function ClientTable() {
         size: 240,
         filterFn: "includesString",
         meta: { filter: "text", filterLabel: t("colClient") },
-        cell: ({ row }) => {
-          const c = row.original;
-          return (
-            <div className="flex items-center gap-3">
-              <Avatar className="size-8">
-                <AvatarFallback className="bg-accent text-xs font-medium text-accent-foreground">
-                  {c.initials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <span className="block truncate font-medium">{c.fullName}</span>
-                <span className="block truncate font-mono text-xs text-muted-foreground">
-                  {c.refCode}
-                </span>
-              </div>
-            </div>
-          );
-        },
+        cell: ({ row }) => (
+          <ProfileCell
+            name={row.original.fullName}
+            initials={row.original.initials}
+            subtitle={row.original.refCode}
+          />
+        ),
       },
       {
         accessorKey: "region",
@@ -74,7 +63,9 @@ export function ClientTable() {
           const c = row.original;
           return (
             <div className="flex items-center gap-1.5">
-              <StatusBadge tone={accountTone(c.status)}>{t(`status.${c.status}`)}</StatusBadge>
+              <StatusBadge tone={accountTone(c.status)} equalWidth={false} className="min-w-[6.5rem]">
+                {t(`status.${c.status}`)}
+              </StatusBadge>
               {c.activePackage && (
                 <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
                   {t("pkg")}
@@ -89,7 +80,7 @@ export function ClientTable() {
         accessorFn: (c) => c.profiles.length,
         header: t("colProfiles"),
         filterFn: "inNumberRange",
-        cell: ({ row }) => <span className="font-mono tabular">{row.original.profiles.length}</span>,
+        cell: ({ row }) => <span className="tabular">{row.original.profiles.length}</span>,
         meta: { headClassName: "text-end", cellClassName: "text-end", filter: "range", filterLabel: t("colProfiles") },
       },
       {
@@ -97,14 +88,14 @@ export function ClientTable() {
         accessorFn: (c) => c.wallet.balance,
         header: t("colWallet"),
         filterFn: "inNumberRange",
-        cell: ({ row }) => <Money value={row.original.wallet.balance} className="font-mono" />,
+        cell: ({ row }) => <Money value={row.original.wallet.balance} className="tabular" />,
         meta: { headClassName: "text-end", cellClassName: "text-end", filter: "range", filterLabel: t("colWallet") },
       },
       {
         accessorKey: "joinedAt",
         header: t("colJoined"),
         cell: ({ row }) => (
-          <span className="font-mono text-xs tabular text-muted-foreground">
+          <span className="text-xs tabular text-muted-foreground">
             {fmtDate(row.original.joinedAt, locale)}
           </span>
         ),
@@ -130,10 +121,9 @@ export function ClientTable() {
         emptyLabel={t("tableEmpty")}
         itemsLabel={t("itemsLabel")}
         getSearchText={(c) => `${c.fullName} ${c.email} ${c.refCode} ${c.region}`}
-        filterLabels={{ filter: tc("filter"), clear: tc("clear"), min: tc("min"), max: tc("max") }}
+        filterLabels={{ filter: tc("filter"), clear: tc("clear"), clearFilters: tc("clearFilters"), min: tc("min"), max: tc("max") }}
         enableFreeze
         maxFreeze={3}
-        freezeLabels={{ label: tc("freeze") }}
         onRowClick={(c) => router.push(`/clients/${c.id}`)}
         rowAriaLabel={(c) => t("openAria", { name: c.fullName })}
         toolbar={

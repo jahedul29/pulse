@@ -1,7 +1,17 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
-import { ArrowDown, ArrowUp, ChevronsUpDown, Filter, Search } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { ArrowDown, ArrowUp, CalendarIcon, ChevronsUpDown, Filter, FilterX, Pin, Search } from "lucide-react";
 import {
   flexRender,
   getCoreRowModel,
@@ -20,13 +30,6 @@ import {
 } from "@tanstack/react-table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -35,21 +38,60 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Pagination } from "@/components/common/pagination";
-import { Switch } from "@/components/common/toggle-switch";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Calendar } from "@/components/ui/calendar";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { fmtDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 declare module "@tanstack/react-table" {
   interface ColumnMeta<TData extends RowData, TValue> {
     headClassName?: string;
     cellClassName?: string;
-    filter?: "text" | "select" | "range";
+    filter?: "text" | "select" | "range" | "dateRange";
     filterOptions?: { value: string; label: string }[];
     filterLabel?: string;
   }
 }
 
+export const toolbarIconButtonClass = "max-sm:w-[42px] max-sm:px-0";
+
 export const selectFilterFn: FilterFn<unknown> = (row, columnId, value) =>
   !Array.isArray(value) || value.length === 0 || value.includes(String(row.getValue(columnId)));
+
+export const dateRangeFilterFn: FilterFn<unknown> = (row, columnId, value) => {
+  if (!Array.isArray(value)) return true;
+  const [min, max] = value as [number?, number?];
+  const v = Number(row.getValue(columnId));
+  if (min != null && v < min) return false;
+  if (max != null && v > max) return false;
+  return true;
+};
+
+function startOfDay(ms: number): number {
+  const d = new Date(ms);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+function endOfDay(ms: number): number {
+  const d = new Date(ms);
+  d.setHours(23, 59, 59, 999);
+  return d.getTime();
+}
+function toIso(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function cellSizeStyle<TData>(column: Column<TData, unknown>, pinned: boolean): CSSProperties | undefined {
+  const explicit = column.columnDef.size != null;
+  if (!pinned && !explicit) return undefined;
+  const w = column.getSize();
+  const style: CSSProperties = { width: w, minWidth: w, maxWidth: w };
+  if (pinned) style.insetInlineStart = column.getStart("left");
+  return style;
+}
 
 type DataTableProps<TData> = {
   columns: ColumnDef<TData, unknown>[];
@@ -60,12 +102,21 @@ type DataTableProps<TData> = {
   pageSize?: number;
   onRowClick?: (row: TData) => void;
   rowAriaLabel?: (row: TData) => string;
+  rowClassName?: (row: TData) => string | undefined;
   getSearchText?: (row: TData) => string;
   toolbar?: ReactNode;
-  filterLabels?: { filter?: string; clear?: string; min?: string; max?: string };
+  filterLabels?: {
+    filter?: string;
+    clear?: string;
+    clearFilters?: string;
+    min?: string;
+    max?: string;
+    search?: string;
+    from?: string;
+    to?: string;
+  };
   enableFreeze?: boolean;
   maxFreeze?: number;
-  freezeLabels?: { label?: string; toggle?: string };
 };
 
 function RangeFilter<TData>({
@@ -104,7 +155,14 @@ function RangeFilter<TData>({
   );
 }
 
-function SelectFilter<TData>({ column }: { column: Column<TData, unknown> }) {
+function SelectFilter<TData>({
+  column,
+  searchLabel,
+}: {
+  column: Column<TData, unknown>;
+  searchLabel?: string;
+}) {
+  const [q, setQ] = useState("");
   const value = (column.getFilterValue() as string[] | undefined) ?? [];
   const options =
     column.columnDef.meta?.filterOptions ??
@@ -112,26 +170,113 @@ function SelectFilter<TData>({ column }: { column: Column<TData, unknown> }) {
       .filter((v) => v != null && v !== "")
       .map((v) => ({ value: String(v), label: String(v) }))
       .sort((a, b) => a.label.localeCompare(b.label));
+  const shown = options.filter((o) => o.label.toLowerCase().includes(q.trim().toLowerCase()));
   const toggle = (v: string) => {
     const next = value.includes(v) ? value.filter((x) => x !== v) : [...value, v];
     column.setFilterValue(next.length ? next : undefined);
   };
   return (
-    <div className="flex max-h-52 flex-col gap-0.5 overflow-auto">
-      {options.map((o) => (
-        <label
-          key={o.value}
-          className="flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-sm hover:bg-muted"
-        >
-          <input
-            type="checkbox"
-            checked={value.includes(o.value)}
-            onChange={() => toggle(o.value)}
-            className="size-3.5 accent-[var(--primary)]"
+    <div className="flex flex-col gap-1.5">
+      <div className="relative flex items-center">
+        <Search className="pointer-events-none absolute start-2.5 size-4 text-muted-foreground" />
+        <Input
+          size="sm"
+          autoFocus
+          placeholder={searchLabel}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          className="ps-8"
+        />
+      </div>
+      <div className="max-h-52 overflow-y-auto">
+        <div className="flex flex-col gap-0.5">
+        {shown.map((o) => (
+          <label
+            key={o.value}
+            className="flex cursor-pointer items-center gap-2.5 rounded-md px-1.5 py-1.5 text-start text-sm transition-colors hover:bg-muted"
+          >
+            <Checkbox
+              checked={value.includes(o.value)}
+              onCheckedChange={() => toggle(o.value)}
+            />
+            <span className="truncate">{o.label}</span>
+          </label>
+        ))}
+        {shown.length === 0 && (
+          <div className="px-1.5 py-2 text-center text-xs text-muted-foreground">—</div>
+        )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DateFilterField({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: number | undefined;
+  onChange: (ms: number | undefined) => void;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const locale = useLocale();
+  const selected = value != null ? new Date(value) : undefined;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className={cn("w-full justify-between font-normal", value == null && "text-muted-foreground")}
           />
-          {o.label}
-        </label>
-      ))}
+        }
+      >
+        {selected ? fmtDate(toIso(selected), locale) : placeholder}
+        <CalendarIcon className="size-4 opacity-70" />
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-auto p-0">
+        <Calendar
+          mode="single"
+          selected={selected}
+          defaultMonth={selected ?? undefined}
+          onSelect={(date) => {
+            onChange(date ? date.getTime() : undefined);
+            setOpen(false);
+          }}
+          autoFocus
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function DateRangeFilter<TData>({
+  column,
+  labels,
+}: {
+  column: Column<TData, unknown>;
+  labels: { from?: string; to?: string };
+}) {
+  const [min, max] = (column.getFilterValue() as [number?, number?] | undefined) ?? [];
+  const set = (which: "min" | "max", ms: number | undefined) => {
+    const nextMin = which === "min" ? (ms == null ? undefined : startOfDay(ms)) : min;
+    const nextMax = which === "max" ? (ms == null ? undefined : endOfDay(ms)) : max;
+    column.setFilterValue(nextMin == null && nextMax == null ? undefined : [nextMin, nextMax]);
+  };
+  return (
+    <div className="flex flex-col gap-2">
+      <label className="flex flex-col gap-1">
+        <span className="text-xs">{labels.from ?? "From"}</span>
+        <DateFilterField value={min} onChange={(ms) => set("min", ms)} placeholder={labels.from ?? "From"} />
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-xs">{labels.to ?? "To"}</span>
+        <DateFilterField value={max} onChange={(ms) => set("max", ms)} placeholder={labels.to ?? "To"} />
+      </label>
     </div>
   );
 }
@@ -147,31 +292,38 @@ function ColumnFilter<TData>({
   if (!kind) return null;
   const value = column.getFilterValue();
   const active =
-    kind === "range"
+    kind === "range" || kind === "dateRange"
       ? Array.isArray(value) && (value[0] != null || value[1] != null)
       : kind === "select"
         ? Array.isArray(value) && value.length > 0
         : Boolean(value);
   return (
     <Popover>
-      <PopoverTrigger
-        aria-label={[labels.filter ?? "Filter", column.columnDef.meta?.filterLabel]
-          .filter(Boolean)
-          .join(" — ")}
-        onClick={(e) => e.stopPropagation()}
-        className={cn(
-          "relative inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md transition-all focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none",
-          active
-            ? "bg-primary/10 text-primary opacity-100"
-            : "text-muted-foreground opacity-0 max-md:opacity-100 group-hover/head:opacity-60 hover:bg-muted hover:text-foreground hover:!opacity-100",
-        )}
-      >
-        <Filter className="size-3.5" />
-        {active && (
-          <span className="absolute -end-0.5 -top-0.5 size-1.5 rounded-full bg-primary" />
-        )}
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-56 space-y-2 p-3">
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <PopoverTrigger
+              aria-label={[labels.filter ?? "Filter", column.columnDef.meta?.filterLabel]
+                .filter(Boolean)
+                .join(" — ")}
+              onClick={(e) => e.stopPropagation()}
+              className={cn(
+                "relative inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md transition-all focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none",
+                active
+                  ? "bg-primary/10 text-primary opacity-100"
+                  : "text-muted-foreground opacity-0 max-md:opacity-100 group-hover/head:opacity-60 hover:bg-muted hover:text-foreground hover:!opacity-100",
+              )}
+            />
+          }
+        >
+          <Filter className="size-3.5" />
+          {active && (
+            <span className="absolute -end-0.5 -top-0.5 size-1.5 rounded-full bg-primary" />
+          )}
+        </TooltipTrigger>
+        <TooltipContent>{labels.filter ?? "Filter"}</TooltipContent>
+      </Tooltip>
+      <PopoverContent align="start" className="w-56 gap-2 p-3">
         {column.columnDef.meta?.filterLabel && (
           <div className="text-xs font-medium text-muted-foreground">
             {column.columnDef.meta.filterLabel}
@@ -186,7 +338,8 @@ function ColumnFilter<TData>({
           />
         )}
         {kind === "range" && <RangeFilter column={column} labels={labels} />}
-        {kind === "select" && <SelectFilter column={column} />}
+        {kind === "dateRange" && <DateRangeFilter column={column} labels={labels} />}
+        {kind === "select" && <SelectFilter column={column} searchLabel={labels.search} />}
         {active && (
           <button
             type="button"
@@ -210,26 +363,29 @@ export function DataTable<TData>({
   pageSize = 8,
   onRowClick,
   rowAriaLabel,
+  rowClassName,
   getSearchText,
   toolbar,
   filterLabels = {},
   enableFreeze = false,
   maxFreeze = 3,
-  freezeLabels = {},
 }: DataTableProps<TData>) {
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [freezeCount, setFreezeCount] = useState(1);
-  const [freezeOn, setFreezeOn] = useState(false);
+  const [freezeCount, setFreezeCount] = useState(0);
+  const [rowH, setRowH] = useState(0);
+  const tf = useTranslations("common");
 
   const resolvedColumns = useMemo(
     () =>
-      columns.map((c) =>
-        c.meta?.filter === "select" && !c.filterFn
-          ? { ...c, filterFn: selectFilterFn as FilterFn<TData> }
-          : c,
-      ),
+      columns.map((c) => {
+        if (c.filterFn) return c;
+        if (c.meta?.filter === "select") return { ...c, filterFn: selectFilterFn as FilterFn<TData> };
+        if (c.meta?.filter === "dateRange")
+          return { ...c, filterFn: dateRangeFilterFn as FilterFn<TData> };
+        return c;
+      }),
     [columns],
   );
 
@@ -237,7 +393,7 @@ export function DataTable<TData>({
     (c) => c.id ?? ("accessorKey" in c ? String((c as { accessorKey: unknown }).accessorKey) : ""),
   );
   const effectiveMax = Math.min(maxFreeze, columnIds.length - 1);
-  const pinnedLeft = freezeOn ? columnIds.slice(0, Math.min(freezeCount, effectiveMax)) : [];
+  const pinnedLeft = freezeCount > 0 ? columnIds.slice(0, Math.min(freezeCount, effectiveMax)) : [];
 
   const table = useReactTable({
     data,
@@ -267,11 +423,70 @@ export function DataTable<TData>({
   const start = total === 0 ? 0 : pageIndex * size + 1;
   const end = Math.min(pageIndex * size + size, total);
   const colCount = table.getAllLeafColumns().length;
+  const activeFilterCount = columnFilters.length + (globalFilter.trim() ? 1 : 0);
+  const clearAllFilters = () => {
+    setColumnFilters([]);
+    setGlobalFilter("");
+  };
+  const togglePin = (colIndex: number) =>
+    setFreezeCount(colIndex < freezeCount ? colIndex : colIndex + 1);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [edge, setEdge] = useState({ atStart: true, atEnd: true });
+  const [bar, setBar] = useState({ overflow: false, leftPct: 0, widthPct: 100 });
+  const [dragging, setDragging] = useState(false);
+  const syncEdge = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    const x = Math.abs(el.scrollLeft);
+    setEdge({ atStart: x <= 1, atEnd: max <= 1 || x >= max - 1 });
+    setBar({
+      overflow: max > 1,
+      widthPct: Math.max(8, (el.clientWidth / el.scrollWidth) * 100),
+      leftPct: (x / el.scrollWidth) * 100,
+    });
+  }, []);
+  const onThumbDown = (e: ReactPointerEvent) => {
+    e.preventDefault();
+    const el = scrollRef.current;
+    const track = trackRef.current;
+    if (!el || !track) return;
+    setDragging(true);
+    const startX = e.clientX;
+    const startLeft = el.scrollLeft;
+    const ratio = el.scrollWidth / track.clientWidth;
+    const onMove = (ev: PointerEvent) => {
+      el.scrollLeft = startLeft + (ev.clientX - startX) * ratio;
+    };
+    const onUp = () => {
+      setDragging(false);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    syncEdge();
+    const dataRow = el.querySelector("tbody tr[data-row]");
+    if (dataRow) {
+      const h = dataRow.getBoundingClientRect().height;
+      setRowH((prev) => (Math.abs(prev - h) > 0.5 ? h : prev));
+    }
+    const ro = new ResizeObserver(syncEdge);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [syncEdge, pageRows.length, colCount, freezeCount]);
 
   return (
+    <TooltipProvider>
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <label className="relative flex w-full max-w-sm items-center">
+      <div className="flex items-center gap-3">
+        <label className="relative flex min-w-0 flex-1 items-center max-w-sm">
           <Search className="pointer-events-none absolute start-2.5 size-4 text-muted-foreground" />
           <input
             value={globalFilter}
@@ -280,38 +495,55 @@ export function DataTable<TData>({
             className="h-9 w-full rounded-lg border bg-card ps-8 pe-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           />
         </label>
-        <div className="flex items-center gap-2">
-          {enableFreeze && effectiveMax > 0 && (
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">{freezeLabels.label ?? "Freeze"}</span>
-              <Select
-                value={String(Math.min(Math.max(freezeCount, 1), effectiveMax))}
-                onValueChange={(v) => v != null && setFreezeCount(Number(v))}
-              >
-                <SelectTrigger className="w-[64px]">
-                  <SelectValue>{(v) => v}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: effectiveMax }, (_, i) => (
-                    <SelectItem key={i + 1} value={String(i + 1)}>
-                      {i + 1}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Switch
-                checked={freezeOn}
-                onCheckedChange={setFreezeOn}
-                aria-label={freezeLabels.toggle ?? freezeLabels.label ?? "Freeze"}
-              />
-            </div>
-          )}
+        <div className="flex items-center gap-2 ms-auto">
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  onClick={clearAllFilters}
+                  aria-label={filterLabels.clearFilters ?? "Clear filters"}
+                  aria-hidden={activeFilterCount === 0}
+                  tabIndex={activeFilterCount === 0 ? -1 : 0}
+                  className={cn(
+                    "h-9 w-[42px] px-0 border-danger text-danger transition-opacity duration-200 hover:border-danger hover:bg-danger-muted hover:text-danger motion-reduce:transition-none dark:border-danger dark:bg-transparent dark:hover:bg-danger/15",
+                    activeFilterCount === 0 && "pointer-events-none opacity-0",
+                  )}
+                />
+              }
+            >
+              <FilterX className="size-4" />
+            </TooltipTrigger>
+            <TooltipContent>{filterLabels.clearFilters ?? "Clear filters"}</TooltipContent>
+          </Tooltip>
           {toolbar}
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border">
-        <Table>
+      <div data-no-os className="relative overflow-hidden rounded-lg border">
+        <div
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-y-0 end-0 z-30 w-6 bg-gradient-to-l from-black/[0.06] to-transparent transition-opacity duration-200 rtl:bg-gradient-to-r motion-reduce:transition-none dark:from-black/35",
+            edge.atEnd && "opacity-0",
+          )}
+        />
+        {pinnedLeft.length === 0 && (
+          <div
+            aria-hidden
+            className={cn(
+              "pointer-events-none absolute inset-y-0 start-0 z-30 w-6 bg-gradient-to-r from-black/[0.06] to-transparent transition-opacity duration-200 rtl:bg-gradient-to-l motion-reduce:transition-none dark:from-black/35",
+              edge.atStart && "opacity-0",
+            )}
+          />
+        )}
+        <Table
+          className="min-w-full table-fixed"
+          containerClassName="[scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          containerProps={{ ref: scrollRef, onScroll: syncEdge }}
+        >
           <TableHeader>
             {table.getHeaderGroups().map((hg) => (
               <TableRow key={hg.id} className="hover:bg-transparent">
@@ -319,6 +551,9 @@ export function DataTable<TData>({
                   const sorted = header.column.getIsSorted();
                   const pinned = header.column.getIsPinned() === "left";
                   const lastPinned = pinned && pinnedLeft[pinnedLeft.length - 1] === header.column.id;
+                  const colIndex = columnIds.indexOf(header.column.id);
+                  const canPin = enableFreeze && colIndex >= 0 && colIndex < effectiveMax;
+                  const isFrozen = colIndex >= 0 && colIndex < freezeCount;
                   const label = header.isPlaceholder
                     ? null
                     : flexRender(header.column.columnDef.header, header.getContext());
@@ -326,20 +561,13 @@ export function DataTable<TData>({
                     <TableHead
                       key={header.id}
                       className={cn(
+                        "group/head",
                         header.column.columnDef.meta?.headClassName,
                         pinned && "sticky z-20 bg-card",
-                        lastPinned && "border-e border-border",
+                        lastPinned &&
+                          "dt-freeze-divider",
                       )}
-                      style={
-                        pinned
-                          ? {
-                              insetInlineStart: header.column.getStart("left"),
-                              width: header.column.getSize(),
-                              minWidth: header.column.getSize(),
-                              maxWidth: header.column.getSize(),
-                            }
-                          : undefined
-                      }
+                      style={cellSizeStyle(header.column, pinned)}
                       aria-sort={
                         sorted === "asc"
                           ? "ascending"
@@ -348,26 +576,69 @@ export function DataTable<TData>({
                             : undefined
                       }
                     >
-                      <span className="group/head inline-flex items-center gap-1">
+                      <span className="inline-flex items-center gap-1">
                         {header.column.getCanSort() ? (
-                          <button
-                            type="button"
-                            onClick={header.column.getToggleSortingHandler()}
-                            className="inline-flex cursor-pointer items-center gap-1 select-none transition-colors hover:text-foreground"
-                          >
-                            {label}
-                            {sorted === "asc" ? (
-                              <ArrowUp className="size-3.5 text-primary" />
-                            ) : sorted === "desc" ? (
-                              <ArrowDown className="size-3.5 text-primary" />
-                            ) : (
-                              <ChevronsUpDown className="size-3.5 opacity-0 transition-opacity group-hover/head:opacity-40" />
-                            )}
-                          </button>
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <button
+                                  type="button"
+                                  onClick={header.column.getToggleSortingHandler()}
+                                  className="inline-flex cursor-pointer items-center gap-1 select-none transition-colors hover:text-foreground"
+                                />
+                              }
+                            >
+                              {label}
+                              {sorted === "asc" ? (
+                                <ArrowUp className="size-3.5 text-primary" />
+                              ) : sorted === "desc" ? (
+                                <ArrowDown className="size-3.5 text-primary" />
+                              ) : (
+                                <ChevronsUpDown className="size-3.5 opacity-0 transition-opacity group-hover/head:opacity-40" />
+                              )}
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {sorted === "asc"
+                                ? tf("sortDesc")
+                                : sorted === "desc"
+                                  ? tf("sortClear")
+                                  : tf("sortAsc")}
+                            </TooltipContent>
+                          </Tooltip>
                         ) : (
                           label
                         )}
                         <ColumnFilter column={header.column} labels={filterLabels} />
+                        {canPin && (
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <button
+                                  type="button"
+                                  onClick={() => togglePin(colIndex)}
+                                  aria-label={isFrozen ? tf("unfreeze") : tf("freezeToHere")}
+                                  aria-pressed={isFrozen}
+                                  className={cn(
+                                    "inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded transition-opacity",
+                                    isFrozen
+                                      ? "text-primary"
+                                      : "text-muted-foreground opacity-0 group-hover/head:opacity-60 hover:!opacity-100 focus-visible:opacity-100",
+                                  )}
+                                />
+                              }
+                            >
+                              <Pin
+                                className={cn(
+                                  "size-3.5 transition-transform motion-reduce:transition-none",
+                                  isFrozen && "rotate-45 fill-current",
+                                )}
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {isFrozen ? tf("unfreeze") : tf("freezeToHere")}
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                       </span>
                     </TableHead>
                   );
@@ -379,6 +650,7 @@ export function DataTable<TData>({
             {pageRows.map((row) => (
               <TableRow
                 key={row.id}
+                data-row
                 onClick={onRowClick ? () => onRowClick(row.original) : undefined}
                 onKeyDown={
                   onRowClick
@@ -396,6 +668,7 @@ export function DataTable<TData>({
                 className={cn(
                   onRowClick &&
                     "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+                  rowClassName?.(row.original),
                 )}
               >
                 {row.getVisibleCells().map((cell) => {
@@ -407,18 +680,10 @@ export function DataTable<TData>({
                       className={cn(
                         cell.column.columnDef.meta?.cellClassName,
                         pinned && "sticky z-10 bg-card",
-                        lastPinned && "border-e border-border",
+                        lastPinned &&
+                          "dt-freeze-divider",
                       )}
-                      style={
-                        pinned
-                          ? {
-                              insetInlineStart: cell.column.getStart("left"),
-                              width: cell.column.getSize(),
-                              minWidth: cell.column.getSize(),
-                              maxWidth: cell.column.getSize(),
-                            }
-                          : undefined
-                      }
+                      style={cellSizeStyle(cell.column, pinned)}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
@@ -426,6 +691,11 @@ export function DataTable<TData>({
                 })}
               </TableRow>
             ))}
+            {rowH > 0 && pageRows.length > 0 && pageRows.length < size && (
+              <TableRow aria-hidden className="pointer-events-none border-transparent hover:bg-transparent">
+                <TableCell colSpan={colCount} style={{ height: (size - pageRows.length) * rowH }} />
+              </TableRow>
+            )}
             {total === 0 && (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={colCount} className="py-10 text-center text-sm text-muted-foreground">
@@ -435,6 +705,23 @@ export function DataTable<TData>({
             )}
           </TableBody>
         </Table>
+        {bar.overflow && (
+          <div className="border-t border-border bg-muted/40 px-0.5 py-0.5">
+            <div ref={trackRef} className="relative h-1.5">
+              <div
+                aria-hidden
+                onPointerDown={onThumbDown}
+                className={cn(
+                  "absolute inset-y-0 touch-none rounded-full transition-colors",
+                  dragging
+                    ? "cursor-grabbing bg-foreground/50"
+                    : "cursor-grab bg-foreground/30 hover:bg-foreground/45",
+                )}
+                style={{ left: `${bar.leftPct}%`, width: `${bar.widthPct}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <Pagination
@@ -448,5 +735,6 @@ export function DataTable<TData>({
         label={itemsLabel}
       />
     </div>
+    </TooltipProvider>
   );
 }

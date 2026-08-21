@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useCallback, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -36,26 +36,26 @@ export function LoginForm({ returnTo }: { returnTo?: string | null }) {
   const router = useRouter();
   const attempt = useAuthStore((s) => s.attempt);
 
-  const [view, setView] = React.useState<View>("form");
-  const [email, setEmail] = React.useState("");
-  const [password, setPassword] = React.useState("");
-  const [remember, setRemember] = React.useState(false);
-  const [emailError, setEmailError] = React.useState(false);
-  const [credError, setCredError] = React.useState(false);
-  const [busy, setBusy] = React.useState(false);
-  const [lockedUntil, setLockedUntil] = React.useState(0);
+  const [view, setView] = useState<View>("form");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(false);
+  const [emailError, setEmailError] = useState(false);
+  const [credError, setCredError] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [lockedUntil, setLockedUntil] = useState(0);
 
-  const pwRef = React.useRef<HTMLInputElement>(null);
-  const emailRef = React.useRef<HTMLInputElement>(null);
+  const pwRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
 
   const canSubmit = email.trim().length > 0 && password.length > 0 && !busy;
 
-  const goToDest = React.useCallback(() => {
+  const goToDest = useCallback(() => {
     toast.success(t("signedIn"));
     router.replace(safeDest(returnTo ?? null));
   }, [router, returnTo, t]);
 
-  const onSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setCredError(false);
     if (!EMAIL_RE.test(email.trim())) {
@@ -271,7 +271,7 @@ export function LoginForm({ returnTo }: { returnTo?: string | null }) {
 
 function DemoHint() {
   const t = useTranslations("auth");
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useState(false);
   return (
     <div className="rounded-lg border border-border bg-muted/40 text-xs text-muted-foreground">
       <button

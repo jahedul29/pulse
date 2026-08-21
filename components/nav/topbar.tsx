@@ -37,15 +37,26 @@ export function Topbar() {
     ? (specialistName ?? clientName ?? t("nav.details"))
     : undefined;
 
+  const adminLabel: string | undefined =
+    pathname === "/admin/audit/logins"
+      ? t("nav.loginAudit")
+      : pathname === "/admin/accounts"
+        ? t("adminAccounts.title")
+        : pathname === "/admin/settings/sessions"
+          ? t("sessions.title")
+          : undefined;
+
   const trail: Crumb[] = [{ label: t("common.appName"), href: "/" }];
-  if (detailName) {
+  if (adminLabel) {
+    trail.push({ label: adminLabel });
+  } else if (detailName) {
     trail.push({ label: sectionLabel, href: `/${section.slug}` });
     trail.push({ label: detailName });
   } else {
     trail.push({ label: sectionLabel });
   }
 
-  const title = detailName ?? sectionLabel;
+  const title = adminLabel ?? detailName ?? sectionLabel;
 
   return (
     <header className="sticky top-0 z-20 flex flex-wrap items-center gap-3 border-b bg-background/85 px-4 py-3 backdrop-blur md:px-5">

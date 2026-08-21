@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, CalendarClock, Loader2, LockKeyhole } from "lucide-react";
 
@@ -19,8 +19,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 function useRemaining(target: number) {
-  const [remaining, setRemaining] = React.useState(() => Math.max(0, target - Date.now()));
-  React.useEffect(() => {
+  const [remaining, setRemaining] = useState(() => Math.max(0, target - Date.now()));
+  useEffect(() => {
     const tick = () => setRemaining(Math.max(0, target - Date.now()));
     tick();
     const iv = setInterval(tick, 1000);
@@ -52,13 +52,13 @@ export function AccountLockout({
   const t = useTranslations("auth");
   const common = useTranslations("common");
   const locale = useLocale();
-  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const remaining = useRemaining(lockedUntil);
   const expired = remaining <= 0;
-  const [initial] = React.useState(() => Math.max(1, lockedUntil - Date.now()));
+  const [initial] = useState(() => Math.max(1, lockedUntil - Date.now()));
 
-  const fired = React.useRef(false);
-  React.useEffect(() => {
+  const fired = useRef(false);
+  useEffect(() => {
     if (expired && !fired.current) {
       fired.current = true;
       onExpire?.();
