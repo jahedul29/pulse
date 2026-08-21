@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { DataTable } from "@/components/common/data-table";
+import { ProfileCell } from "@/components/common/profile-cell";
 import { cn } from "@/lib/utils";
 import { ROLE_BADGE, useSpecialistStore, type Specialist } from "@/lib/specialists";
 
@@ -29,20 +30,13 @@ export function SpecialistsTable() {
         size: 260,
         filterFn: "includesString",
         meta: { filter: "text", filterLabel: t("personnel.colSpecialist") },
-        cell: ({ row }) => {
-          const s = row.original;
-          return (
-            <div className="flex items-center gap-3">
-              <div className="grid size-9 place-items-center rounded-full bg-primary/12 font-heading text-xs font-semibold text-primary ring-1 ring-primary/20">
-                {s.initials}
-              </div>
-              <div className="min-w-0">
-                <div className="font-medium">{s.name}</div>
-                <div className="text-xs text-muted-foreground">{s.email}</div>
-              </div>
-            </div>
-          );
-        },
+        cell: ({ row }) => (
+          <ProfileCell
+            name={row.original.name}
+            initials={row.original.initials}
+            subtitle={row.original.email}
+          />
+        ),
       },
       {
         accessorKey: "role",
@@ -123,12 +117,12 @@ export function SpecialistsTable() {
           filterLabels={{
             filter: t("common.filter"),
             clear: t("common.clear"),
+            clearFilters: t("common.clearFilters"),
             min: t("common.min"),
             max: t("common.max"),
           }}
           enableFreeze
           maxFreeze={3}
-          freezeLabels={{ label: t("common.freeze") }}
         />
       </CardContent>
     </Card>

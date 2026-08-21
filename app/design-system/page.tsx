@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Copy,
   DollarSign,
+  Download,
   Eye,
   Fingerprint,
   Inbox,
@@ -41,7 +42,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { DataTable } from "@/components/common/data-table";
+import { DataTable, toolbarIconButtonClass } from "@/components/common/data-table";
 import { Switch } from "@/components/common/toggle-switch";
 import { Logo } from "@/components/common/logo";
 import { DirhamSign, DollarSign as DollarMark } from "@/components/icons/currency-signs";
@@ -99,6 +100,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { StatusBadge } from "@/components/common/status-badge";
+import { ProfileCell } from "@/components/common/profile-cell";
+import { exportCsv } from "@/lib/export/csv";
 import { GuidelinesDialog } from "@/components/availability/guidelines-dialog";
 import { NoticeDialog, NoticeHl } from "@/components/availability/notice-dialog";
 import { configFor } from "@/lib/availability/rules";
@@ -334,29 +337,15 @@ function DataTableDemo() {
       {
         accessorKey: "name",
         header: "Client",
-        size: 220,
+        size: 180,
         filterFn: "includesString",
         meta: { filter: "text", filterLabel: "Client" },
-        cell: ({ row }) => {
-          const c = row.original;
-          const initials = c.name
-            .split(" ")
-            .map((w) => w[0])
-            .join("");
-          return (
-            <div className="flex items-center gap-2">
-              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/12 font-heading text-xs font-semibold text-primary ring-1 ring-primary/20">
-                {initials}
-              </span>
-              <span className="font-medium">{c.name}</span>
-            </div>
-          );
-        },
+        cell: ({ row }) => <ProfileCell name={row.original.name} />,
       },
       {
         accessorKey: "email",
         header: "Email",
-        size: 220,
+        size: 200,
         filterFn: "includesString",
         meta: { filter: "text", filterLabel: "Email" },
         cell: ({ row }) => <span className="text-muted-foreground">{row.original.email}</span>,
@@ -364,7 +353,7 @@ function DataTableDemo() {
       {
         accessorKey: "role",
         header: "Role",
-        size: 150,
+        size: 120,
         meta: {
           filter: "select",
           filterLabel: "Role",
@@ -387,6 +376,7 @@ function DataTableDemo() {
       {
         accessorKey: "status",
         header: "Status",
+        size: 120,
         meta: {
           filter: "select",
           filterLabel: "Status",
@@ -395,44 +385,58 @@ function DataTableDemo() {
         cell: ({ row }) => {
           const s = row.original.status;
           const tone = s === "Active" ? "success" : s === "Suspended" ? "warning" : "danger";
-          return <StatusBadge tone={tone as "success" | "warning" | "danger"}>{s}</StatusBadge>;
+          return (
+            <StatusBadge tone={tone as "success" | "warning" | "danger"} equalWidth={false} className="w-full">
+              {s}
+            </StatusBadge>
+          );
         },
       },
       {
         accessorKey: "sessions",
         header: "Sessions",
+        size: 110,
         filterFn: "inNumberRange",
-        cell: ({ row }) => <span className="font-mono tabular">{row.original.sessions}</span>,
-        meta: { headClassName: "text-end", cellClassName: "text-end", filter: "range", filterLabel: "Sessions" },
+        cell: ({ row }) => <span className="tabular">{row.original.sessions}</span>,
+        meta: { headClassName: "text-start", cellClassName: "text-start", filter: "range", filterLabel: "Sessions" },
       },
       {
         id: "mrr",
         accessorFn: (c) => Number(c.mrr.replace(/[^0-9.]/g, "")),
         header: "MRR",
+        size: 100,
         filterFn: "inNumberRange",
-        cell: ({ row }) => <span className="font-mono text-xs">{row.original.mrr}</span>,
-        meta: { headClassName: "text-end", cellClassName: "text-end", filter: "range", filterLabel: "MRR" },
+        cell: ({ row }) => <span className="text-xs tabular">{row.original.mrr}</span>,
+        meta: { headClassName: "text-start", cellClassName: "text-start", filter: "range", filterLabel: "MRR" },
       },
       {
         accessorKey: "region",
         header: "Region",
-        size: 150,
+        size: 120,
         meta: { filter: "select", filterLabel: "Region" },
         cell: ({ row }) => <span className="text-muted-foreground">{row.original.region}</span>,
       },
       {
-        accessorKey: "joined",
+        id: "joined",
+        accessorFn: (r) => new Date(`${r.joined}T00:00:00`).getTime(),
         header: "Joined",
+        size: 120,
         cell: ({ row }) => (
-          <span className="font-mono text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground tabular">
             {fmtDate(row.original.joined, locale)}
           </span>
         ),
-        meta: { headClassName: "text-end", cellClassName: "text-end" },
+        meta: {
+          headClassName: "text-start",
+          cellClassName: "text-start",
+          filter: "dateRange",
+          filterLabel: "Joined",
+        },
       },
       {
         id: "actions",
         header: "Actions",
+        size: 190,
         enableSorting: false,
         cell: ({ row }) => <DemoActions name={row.original.name} />,
         meta: { headClassName: "text-end", cellClassName: "text-end" },
@@ -440,6 +444,21 @@ function DataTableDemo() {
     ],
     [locale],
   );
+
+  const onExport = () => {
+    const headers = ["Client", "Email", "Role", "Status", "Sessions", "MRR", "Region", "Joined"];
+    const rows = CLIENTS.map((c) => [
+      c.name,
+      c.email,
+      c.role,
+      c.status,
+      String(c.sessions),
+      c.mrr,
+      c.region,
+      c.joined,
+    ]);
+    exportCsv("clients-demo.csv", headers, rows);
+  };
 
   return (
     <DataTable
@@ -450,10 +469,21 @@ function DataTableDemo() {
       itemsLabel="clients"
       pageSize={5}
       getSearchText={(c) => `${c.name} ${c.email} ${c.role} ${c.region}`}
-      filterLabels={{ filter: "Filter", clear: "Clear", min: "Min", max: "Max" }}
+      filterLabels={{ filter: "Filter", clear: "Clear", clearFilters: "Clear filters", min: "Min", max: "Max", search: "Search", from: "From", to: "To" }}
       enableFreeze
       maxFreeze={3}
-      freezeLabels={{ label: "Freeze" }}
+      toolbar={
+        <Button
+          variant="outline"
+          size="lg"
+          onClick={onExport}
+          aria-label="Export"
+          className={toolbarIconButtonClass}
+        >
+          <Download />
+          <span className="hidden sm:inline">Export</span>
+        </Button>
+      }
     />
   );
 }
@@ -686,9 +716,6 @@ function TopbarDemo() {
     <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-card px-4 py-3">
       <span className="grid size-9 shrink-0 place-items-center rounded-lg border text-muted-foreground">
         <Menu className="size-5" />
-      </span>
-      <span className="grid size-9 shrink-0 place-items-center rounded-lg border text-muted-foreground">
-        <PanelLeftClose className="size-5" />
       </span>
       <div className="mr-auto min-w-0">
         <div className="truncate font-heading text-lg leading-tight font-semibold">Alex Rivera</div>
@@ -1102,7 +1129,7 @@ export default function DesignSystemPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Top app bar</CardTitle>
-                <CardDescription>Menu, collapse toggle, breadcrumb, and universal search.</CardDescription>
+                <CardDescription>Menu, breadcrumb, and universal search.</CardDescription>
               </CardHeader>
               <CardContent>
                 <TopbarDemo />

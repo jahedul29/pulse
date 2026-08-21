@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { authenticate, verifyMfa, REMEMBER_DAYS } from "./mock";
+import { currentDeviceLabel } from "@/lib/device";
 import type { AttemptOutcome, AuditEntry, LoginResult, Session } from "./types";
 
 const SESSION_COOKIE = "abapro_session";
@@ -14,14 +15,6 @@ function id() {
 
 function mockIp() {
   return `203.0.113.${Math.floor(Math.random() * 254) + 1}`;
-}
-
-function deviceLabel() {
-  if (typeof navigator === "undefined") return "Unknown device";
-  const ua = navigator.userAgent;
-  const os = /Mac/.test(ua) ? "macOS" : /Windows/.test(ua) ? "Windows" : /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iOS" : "Linux";
-  const browser = /Edg/.test(ua) ? "Edge" : /Chrome/.test(ua) ? "Chrome" : /Firefox/.test(ua) ? "Firefox" : /Safari/.test(ua) ? "Safari" : "Browser";
-  return `${browser} · ${os}`;
 }
 
 function writeSessionCookie(token: string) {
@@ -58,7 +51,7 @@ export const useAuthStore = create<AuthState>()(
               stage,
               at: Date.now(),
               ip: mockIp(),
-              device: deviceLabel(),
+              device: currentDeviceLabel(),
             },
             ...s.audit,
           ].slice(0, 200),

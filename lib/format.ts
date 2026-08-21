@@ -1,3 +1,6 @@
+import { formatDistanceToNow } from "date-fns";
+import { ar, enUS } from "date-fns/locale";
+
 const money = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -52,4 +55,11 @@ export function fmtDateTimeParts(epochMs: number, locale = "en"): { time: string
 export function fmtDateTime(epochMs: number, locale = "en"): string {
   const { time, date } = fmtDateTimeParts(epochMs, locale);
   return `${time} ${date}`;
+}
+
+export function fmtRelative(epochMs: number, locale = "en"): string {
+  return formatDistanceToNow(new Date(epochMs), {
+    addSuffix: true,
+    locale: locale === "ar" ? ar : enUS,
+  });
 }

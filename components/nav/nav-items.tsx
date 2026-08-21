@@ -1,5 +1,6 @@
 "use client";
 
+import { ScrollText } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -47,6 +48,30 @@ export function NavItems({
           </Link>
         );
       })}
+
+      {(() => {
+        const href = "/admin/audit/logins";
+        const active = pathname === href || pathname.startsWith(`${href}/`);
+        const label = t("loginAudit");
+        return (
+          <Link
+            href={href}
+            onClick={onNavigate}
+            title={collapsed ? label : undefined}
+            aria-label={collapsed ? label : undefined}
+            className={cn(
+              "group flex items-center gap-3 rounded-lg py-2 text-sm font-medium transition-colors",
+              collapsed ? "justify-center px-0" : "px-3",
+              active
+                ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+            )}
+          >
+            <ScrollText className="size-4 shrink-0" />
+            {!collapsed && <span className="truncate">{label}</span>}
+          </Link>
+        );
+      })()}
     </nav>
   );
 }

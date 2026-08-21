@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -18,11 +18,11 @@ export function AdminAccounts() {
   const unlock = useAdminStore((s) => s.unlock);
   const canUnlock = useHasPermission(PERMISSIONS.ACCOUNT_LOCK_EDIT);
   const session = useAuthStore((s) => s.session);
-  const [expired, setExpired] = React.useState<ReadonlySet<string>>(() => new Set());
+  const [expired, setExpired] = useState<ReadonlySet<string>>(() => new Set());
   const mounted = useIsClient();
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6 p-4 md:p-6">
+    <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <header className="flex flex-col gap-1">
         <h1 className="font-heading text-2xl font-semibold tracking-tight">{t("title")}</h1>
         <p className="text-sm text-muted-foreground text-pretty">{t("subtitle")}</p>
