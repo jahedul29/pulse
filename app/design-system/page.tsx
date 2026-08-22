@@ -34,8 +34,6 @@ import {
   SlidersHorizontal,
   Sun,
   Trash2,
-  TrendingDown,
-  TrendingUp,
   Upload,
   Users,
   X,
@@ -105,7 +103,6 @@ import { exportCsv } from "@/lib/export/csv";
 import { GuidelinesDialog } from "@/components/availability/guidelines-dialog";
 import { NoticeDialog, NoticeHl } from "@/components/availability/notice-dialog";
 import { configFor } from "@/lib/availability/rules";
-import { ROLE_BADGE, ROLE_LABEL } from "@/lib/specialists";
 import { SECTIONS } from "@/lib/nav";
 import { Alert } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -115,6 +112,8 @@ import { MetricChartPanel } from "@/components/clients/metric-chart-panel";
 import { BarChart } from "@/components/clients/bar-chart";
 import { Donut } from "@/components/clients/donut";
 import { Sparkline } from "@/components/clients/sparkline";
+import { StatCard } from "@/components/common/stat-card";
+import { HidableGrid } from "@/components/common/hidable-grid";
 import {
   Tooltip,
   TooltipContent,
@@ -224,13 +223,13 @@ const STATS: {
   value: string;
   delta: string;
   tone: "success" | "danger";
-  color: string;
+  hint: string;
   icon: typeof Users;
 }[] = [
-  { slug: "new", label: "New clients", value: "1.3K", delta: "+7%", tone: "success", color: "var(--color-chart-1)", icon: Users },
-  { slug: "active", label: "Active packages", value: "862", delta: "+9%", tone: "success", color: "var(--color-chart-2)", icon: Package },
-  { slug: "susp", label: "Suspended", value: "37", delta: "+71%", tone: "danger", color: "var(--color-chart-4)", icon: PauseCircle },
-  { slug: "del", label: "Deleted", value: "21", delta: "+68%", tone: "danger", color: "var(--color-chart-5)", icon: Trash2 },
+  { slug: "new", label: "New clients", value: "1.3K", delta: "+7%", tone: "success", hint: "First-time registrations in period", icon: Users },
+  { slug: "active", label: "Active packages", value: "862", delta: "+9%", tone: "success", hint: "Live subscriptions this period", icon: Package },
+  { slug: "susp", label: "Suspended", value: "37", delta: "+71%", tone: "danger", hint: "Accounts on hold", icon: PauseCircle },
+  { slug: "del", label: "Deleted", value: "21", delta: "+68%", tone: "danger", hint: "Removed accounts", icon: Trash2 },
 ];
 const BARS = [
   { label: "Mon", value: 42 },
@@ -362,16 +361,7 @@ function DataTableDemo() {
             { value: "Analyst", label: "Analyst" },
           ],
         },
-        cell: ({ row }) => (
-          <span
-            className={cn(
-              "inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium min-w-[var(--badge-w)]",
-              row.original.role === "Therapist" ? ROLE_BADGE.therapist : ROLE_BADGE.analyst,
-            )}
-          >
-            {row.original.role}
-          </span>
-        ),
+        cell: ({ row }) => <StatusBadge tone="neutral">{row.original.role}</StatusBadge>,
       },
       {
         accessorKey: "status",
@@ -386,7 +376,7 @@ function DataTableDemo() {
           const s = row.original.status;
           const tone = s === "Active" ? "success" : s === "Suspended" ? "warning" : "danger";
           return (
-            <StatusBadge tone={tone as "success" | "warning" | "danger"} equalWidth={false} className="w-full">
+            <StatusBadge tone={tone as "success" | "warning" | "danger"} equalWidth={false} className="min-w-[6rem]">
               {s}
             </StatusBadge>
           );
@@ -473,16 +463,23 @@ function DataTableDemo() {
       enableFreeze
       maxFreeze={3}
       toolbar={
-        <Button
-          variant="outline"
-          size="lg"
-          onClick={onExport}
-          aria-label="Export"
-          className={toolbarIconButtonClass}
-        >
-          <Download />
-          <span className="hidden sm:inline">Export</span>
-        </Button>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={onExport}
+                aria-label="Export"
+                className={toolbarIconButtonClass}
+              />
+            }
+          >
+            <Download className="size-4" />
+            <span className="hidden sm:inline">Export</span>
+          </TooltipTrigger>
+          <TooltipContent>Export</TooltipContent>
+        </Tooltip>
       }
     />
   );
@@ -548,47 +545,6 @@ function Tile({ kind }: { kind: "available" | "unavailable" | "online" | "offend
     >
       {kind === "online" && <span className="size-2 rounded-full bg-chart-3" />}
     </div>
-  );
-}
-
-function StatCard({ stat }: { stat: (typeof STATS)[number] }) {
-  const Icon = stat.icon;
-  const rising = stat.delta.trim().startsWith("+");
-  return (
-    <Card
-      size="sm"
-      className="group relative overflow-hidden transition duration-200 hover:-translate-y-0.5 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-    >
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 opacity-90 transition-opacity duration-200 group-hover:opacity-100">
-        <Sparkline id={stat.slug} data={TREND} color={stat.color} />
-      </div>
-      <CardContent className="relative flex flex-col gap-2 pb-11">
-        <div className="flex items-center justify-between">
-          <span
-            className="grid size-8 place-items-center rounded-lg"
-            style={{
-              backgroundColor: `color-mix(in oklab, ${stat.color}, transparent 86%)`,
-              color: stat.color,
-            }}
-          >
-            <Icon className="size-4" />
-          </span>
-          <span
-            className={cn(
-              "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-medium",
-              stat.tone === "success" ? "bg-success text-success-foreground" : "bg-danger text-danger-foreground",
-            )}
-          >
-            {rising ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
-            {stat.delta}
-          </span>
-        </div>
-        <div className="font-heading text-3xl leading-none font-bold tabular-nums">{stat.value}</div>
-        <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-          {stat.label}
-        </span>
-      </CardContent>
-    </Card>
   );
 }
 
@@ -1159,41 +1115,61 @@ export default function DesignSystemPage() {
 
           <Section id="buttons" title={t("buttonsTitle")} desc={t("buttonsDesc")}>
             <Card>
-              <CardContent className="flex flex-col gap-6 pt-6">
+              <CardContent className="flex flex-col gap-6">
                 <Sub label="Variants">
-                  <Button>Primary</Button>
-                  <Button variant="outline">Outline</Button>
-                  <Button variant="secondary">Secondary</Button>
-                  <Button variant="ghost">Ghost</Button>
-                  <Button variant="destructive">Destructive</Button>
-                  <Button variant="link">Link</Button>
+                  <Button size="lg" className="min-w-[6.5rem]">Primary</Button>
+                  <Button size="lg" variant="outline" className="min-w-[6.5rem]">Outline</Button>
+                  <Button size="lg" variant="secondary" className="min-w-[6.5rem]">Secondary</Button>
+                  <Button size="lg" variant="ghost" className="min-w-[6.5rem]">Ghost</Button>
+                  <Button size="lg" variant="destructive" className="min-w-[6.5rem]">Destructive</Button>
+                  <Button size="lg" variant="link" className="min-w-[6.5rem]">Link</Button>
                 </Sub>
-                <Sub label="Sizes">
-                  <Button size="xs">Extra small</Button>
-                  <Button size="sm">Small</Button>
-                  <Button size="md">Medium</Button>
-                  <Button size="lg">Large</Button>
-                  <Button size="xl">Extra large</Button>
-                  <Button size="2xl">2XL</Button>
+                <Sub label="Icon">
+                  <Button size="lg" className="min-w-[7.9rem]">
+                    <Plus className="size-4" /> Primary
+                  </Button>
+                  <Button size="lg" variant="outline" className="min-w-[7.9rem]">
+                    <Download className="size-4" /> Outline
+                  </Button>
+                  <Button size="lg" variant="secondary" className="min-w-[7.9rem]">
+                    <Save className="size-4" /> Secondary
+                  </Button>
+                  <Button size="lg" variant="ghost" className="min-w-[7.9rem]">
+                    <SlidersHorizontal className="size-4" /> Ghost
+                  </Button>
+                  <Button size="lg" variant="destructive" className="min-w-[7.9rem]">
+                    <Trash2 className="size-4" /> Destructive
+                  </Button>
                 </Sub>
-                <Sub label="With icon / icon-only">
-                  <Button>
-                    <Save className="size-3.5" /> Save
+                <Sub label="Icon button">
+                  <Button size="icon-lg" aria-label="Primary">
+                    <Plus className="size-4" />
                   </Button>
-                  <Button variant="outline">
-                    <Plus className="size-3.5" /> Add client
+                  <Button size="icon-lg" variant="outline" aria-label="Outline">
+                    <Download className="size-4" />
                   </Button>
-                  <Button variant="ghost" size="icon">
+                  <Button size="icon-lg" variant="secondary" aria-label="Secondary">
+                    <Save className="size-4" />
+                  </Button>
+                  <Button size="icon-lg" variant="ghost" aria-label="Ghost">
                     <SlidersHorizontal className="size-4" />
                   </Button>
+                  <Button size="icon-lg" variant="destructive" aria-label="Destructive">
+                    <Trash2 className="size-4" />
+                  </Button>
+                </Sub>
+                <Sub label="Sizes">
+                  <Button size="xs" className="min-w-[6rem]">Extra small</Button>
+                  <Button size="sm" className="min-w-[6rem]">Small</Button>
+                  <Button size="md" className="min-w-[6rem]">Medium</Button>
+                  <Button size="lg" className="min-w-[6rem]">Large</Button>
+                  <Button size="xl" className="min-w-[6rem]">Extra large</Button>
+                  <Button size="2xl" className="min-w-[6rem]">2XL</Button>
                 </Sub>
                 <Sub label="States">
-                  <Button disabled>Disabled</Button>
-                  <Button disabled>
-                    <Loader2 className="size-3.5 animate-spin" /> Saving…
-                  </Button>
-                  <Button variant="outline" className="ring-2 ring-ring/40">
-                    Focused
+                  <Button size="lg" disabled className="min-w-[6.4rem]">Disabled</Button>
+                  <Button size="lg" disabled className="min-w-[6.4rem]">
+                    <Loader2 className="size-4 animate-spin" /> Saving…
                   </Button>
                 </Sub>
               </CardContent>
@@ -1202,20 +1178,12 @@ export default function DesignSystemPage() {
 
           <Section id="badges" title={t("badgesTitle")} desc={t("badgesDesc")}>
             <Card>
-              <CardContent className="flex flex-col gap-6 pt-6">
+              <CardContent className="flex flex-col gap-6">
                 <Sub label="Status">
                   <StatusBadge tone="success">Active</StatusBadge>
                   <StatusBadge tone="warning">Suspended</StatusBadge>
                   <StatusBadge tone="danger">Deleted</StatusBadge>
                   <StatusBadge tone="neutral">Draft</StatusBadge>
-                </Sub>
-                <Sub label="Specialist roles">
-                  <span className={cn("inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium min-w-[var(--badge-w)]", ROLE_BADGE.therapist)}>
-                    {ROLE_LABEL.therapist}
-                  </span>
-                  <span className={cn("inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium min-w-[var(--badge-w)]", ROLE_BADGE.analyst)}>
-                    {ROLE_LABEL.analyst}
-                  </span>
                 </Sub>
                 <Sub label="Business hours state">
                   <span className="inline-flex items-center gap-1.5 text-xs text-foreground">
@@ -1534,11 +1502,27 @@ export default function DesignSystemPage() {
           </Section>
 
           <Section id="data" title={t("dataTitle")} desc={t("dataDesc")}>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {STATS.map((s) => (
-                <StatCard key={s.slug} stat={s} />
-              ))}
-            </div>
+            <HidableGrid
+              items={STATS}
+              getKey={(s) => s.slug}
+              className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+              restoreLabel={(n) => `Show hidden (${n})`}
+              renderItem={(s, api) => (
+                <StatCard
+                  slug={s.slug}
+                  icon={s.icon}
+                  value={s.value}
+                  delta={s.delta}
+                  up={!s.delta.trim().startsWith("-")}
+                  good={s.tone === "success"}
+                  label={s.label}
+                  subtitle={s.hint}
+                  trend={TREND}
+                  onHide={api.hide}
+                  hideLabel={`Hide ${s.label}`}
+                />
+              )}
+            />
 
             <MetricChartPanel />
 
@@ -1653,9 +1637,7 @@ export default function DesignSystemPage() {
                       <TableRow>
                         <TableCell>Alex Rivera</TableCell>
                         <TableCell>
-                          <span className={cn("inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium min-w-[var(--badge-w)]", ROLE_BADGE.therapist)}>
-                            Therapist
-                          </span>
+                          <StatusBadge tone="neutral">Therapist</StatusBadge>
                         </TableCell>
                         <TableCell>
                           <span className="inline-flex items-center gap-1.5 text-xs text-foreground">
@@ -1666,9 +1648,7 @@ export default function DesignSystemPage() {
                       <TableRow>
                         <TableCell>Priya Nair</TableCell>
                         <TableCell>
-                          <span className={cn("inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium min-w-[var(--badge-w)]", ROLE_BADGE.analyst)}>
-                            Analyst
-                          </span>
+                          <StatusBadge tone="neutral">Analyst</StatusBadge>
                         </TableCell>
                         <TableCell>
                           <span className="text-xs text-muted-foreground">Not defined</span>
@@ -1712,7 +1692,7 @@ export default function DesignSystemPage() {
 
           <Section id="overlays" title={t("overlaysTitle")} desc={t("overlaysDesc")}>
             <Card>
-              <CardContent className="flex flex-col gap-6 pt-6">
+              <CardContent className="flex flex-col gap-6">
                 <Sub label="Dropdown menu">
                   <Popover open={menuOpen} onOpenChange={setMenuOpen}>
                     <PopoverTrigger render={<Button variant="outline" size="sm" />}>
@@ -1786,7 +1766,7 @@ export default function DesignSystemPage() {
             desc={t("availabilityDesc")}
           >
             <Card>
-              <CardContent className="flex flex-col gap-6 pt-6">
+              <CardContent className="flex flex-col gap-6">
                 <Sub label="Status legend">
                   <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3">
                     <div className="flex items-center justify-center rounded-xl bg-muted px-4 py-2.5 text-center text-sm font-semibold text-muted-foreground ring-1 ring-inset ring-border-strong">

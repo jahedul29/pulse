@@ -384,6 +384,8 @@ export const kpis: Kpi[] = [
   ),
 ];
 
+export const FEATURED_KPI_KEYS = ["new", "activePkg", "suspended", "deleted"] as const;
+
 export const packageSplit: SplitDatum[] = [
   { name: "Monthly", value: 46, fill: "var(--color-chart-1)" },
   { name: "Quarterly", value: 28, fill: "var(--color-chart-2)" },

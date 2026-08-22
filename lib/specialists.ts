@@ -3,16 +3,6 @@ import { SLOTS_PER_DAY } from "@/lib/availability/constants";
 import { configFor } from "@/lib/availability/rules";
 import type { DayState, RuleConfig, SpecialistType } from "@/lib/availability/types";
 
-export const ROLE_LABEL: Record<SpecialistType, string> = {
-  therapist: "Therapist",
-  analyst: "Analyst",
-};
-
-export const ROLE_BADGE: Record<SpecialistType, string> = {
-  therapist: "bg-accent text-accent-foreground ring-1 ring-primary/20",
-  analyst: "bg-warning text-warning-foreground",
-};
-
 export interface Specialist {
   id: string;
   name: string;
