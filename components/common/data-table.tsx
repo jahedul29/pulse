@@ -45,6 +45,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { fmtDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useDragScroll } from "@/lib/use-drag-scroll";
 
 declare module "@tanstack/react-table" {
   interface ColumnMeta<TData extends RowData, TValue> {
@@ -482,6 +483,8 @@ export function DataTable<TData>({
     return () => ro.disconnect();
   }, [syncEdge, pageRows.length, colCount, freezeCount]);
 
+  useDragScroll(scrollRef);
+
   return (
     <TooltipProvider>
     <div className="space-y-3">
@@ -501,20 +504,22 @@ export function DataTable<TData>({
               render={
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="destructive"
                   size="lg"
                   onClick={clearAllFilters}
                   aria-label={filterLabels.clearFilters ?? "Clear filters"}
                   aria-hidden={activeFilterCount === 0}
                   tabIndex={activeFilterCount === 0 ? -1 : 0}
                   className={cn(
-                    "h-9 w-[42px] px-0 border-danger text-danger transition-opacity duration-200 hover:border-danger hover:bg-danger-muted hover:text-danger motion-reduce:transition-none dark:border-danger dark:bg-transparent dark:hover:bg-danger/15",
+                    toolbarIconButtonClass,
+                    "transition-opacity duration-200 motion-reduce:transition-none",
                     activeFilterCount === 0 && "pointer-events-none opacity-0",
                   )}
                 />
               }
             >
               <FilterX className="size-4" />
+              <span className="hidden sm:inline">{filterLabels.clearFilters ?? "Clear filters"}</span>
             </TooltipTrigger>
             <TooltipContent>{filterLabels.clearFilters ?? "Clear filters"}</TooltipContent>
           </Tooltip>
@@ -541,7 +546,10 @@ export function DataTable<TData>({
         )}
         <Table
           className="min-w-full table-fixed"
-          containerClassName="[scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          containerClassName={cn(
+            "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+            bar.overflow && "cursor-grab",
+          )}
           containerProps={{ ref: scrollRef, onScroll: syncEdge }}
         >
           <TableHeader>

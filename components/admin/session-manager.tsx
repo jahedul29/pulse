@@ -184,7 +184,7 @@ export function SessionManager() {
         header: t("colCurrent"),
         cell: ({ row }) =>
           row.original.current ? (
-            <StatusBadge tone="success" equalWidth={false} className="w-full">
+            <StatusBadge tone="success" equalWidth={false}>
               {t("thisDevice")}
             </StatusBadge>
           ) : null,
@@ -228,16 +228,23 @@ export function SessionManager() {
             rowClassName={(s) => (s.current ? "bg-primary/5" : undefined)}
             toolbar={
               otherCount > 0 ? (
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={() => setConfirmOpen(true)}
-                  aria-label={t("signOutAll")}
-                  className={toolbarIconButtonClass}
-                >
-                  <LogOut className="rtl:-scale-x-100" />
-                  <span className="hidden sm:inline">{t("signOutAll")}</span>
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={() => setConfirmOpen(true)}
+                        aria-label={t("signOutAll")}
+                        className={toolbarIconButtonClass}
+                      />
+                    }
+                  >
+                    <LogOut className="rtl:-scale-x-100" />
+                    <span className="hidden sm:inline">{t("signOutAll")}</span>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("signOutAll")}</TooltipContent>
+                </Tooltip>
               ) : null
             }
           />

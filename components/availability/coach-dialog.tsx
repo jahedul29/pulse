@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { Grab } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ export function CoachDialog({
   const dayRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const cellRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const rippleRef = useRef<HTMLSpanElement>(null);
+  const dragRef = useRef<HTMLDivElement>(null);
   const timers = useRef<number[]>([]);
   const center = useRef<{ x: number; y: number; s: number } | null>(null);
   const tap = useRef(0);
@@ -42,6 +44,7 @@ export function CoachDialog({
   const [cells, setCells] = useState<Record<string, Status>>({});
   const [hole, setHole] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [ripple, setRipple] = useState<{ x: number; y: number; s: number; key: number } | null>(null);
+  const [drag, setDrag] = useState<{ x: number; y1: number; y2: number; dur: number; key: number } | null>(null);
   const [playing, setPlaying] = useState(false);
 
   const clearTimers = () => {
@@ -79,6 +82,17 @@ export function CoachDialog({
     if (center.current) setRipple({ ...center.current, key: tap.current });
   };
 
+  const startDrag = (k1: string, k2: string, travelMs: number) => {
+    const e1 = cellRefs.current[k1];
+    const e2 = cellRefs.current[k2];
+    if (!e1 || !e2) return;
+    tap.current += 1;
+    const x = e1.offsetLeft + e1.offsetWidth / 2;
+    const y1 = e1.offsetTop + e1.offsetHeight / 2;
+    const y2 = e2.offsetTop + e2.offsetHeight / 2;
+    setDrag({ x, y1, y2, dur: travelMs, key: tap.current });
+  };
+
   const nextStatus = useCallback(
     (s: Status): Status =>
       s === "available"
@@ -105,11 +119,12 @@ export function CoachDialog({
     setCells({});
     setHole(null);
     setRipple(null);
+    setDrag(null);
 
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const gap = reduce ? 320 : 850;
     const clickGap = reduce ? 380 : 900;
-    const paintGap = reduce ? 90 : 180;
+    const paintGap = reduce ? 130 : 280;
 
     let t = 300;
 
@@ -135,8 +150,10 @@ export function CoachDialog({
     const passesB = supportsOnline ? 2 : 1;
     for (let pass = 0; pass < passesB; pass++) {
       after(t, () => spotRange(SAMPLE_B[0], SAMPLE_B[SAMPLE_B.length - 1]));
-      after(t + 160, doPulse);
-      SAMPLE_B.forEach((key, i) => after(t + 240 + i * paintGap, () => cycleCell(key)));
+      after(t + 110, () =>
+        startDrag(SAMPLE_B[0], SAMPLE_B[SAMPLE_B.length - 1], (SAMPLE_B.length - 1) * paintGap),
+      );
+      SAMPLE_B.forEach((key, i) => after(t + 260 + i * paintGap, () => cycleCell(key)));
       t += 320 + SAMPLE_B.length * paintGap + 340;
     }
 
@@ -145,6 +162,7 @@ export function CoachDialog({
       setCells({});
       setHole(null);
       setRipple(null);
+      setDrag(null);
       setPlaying(false);
     });
   }, [supportsOnline, cycleCell]);
@@ -174,6 +192,29 @@ export function CoachDialog({
     );
     return () => anim.cancel();
   }, [ripple]);
+
+  useEffect(() => {
+    if (!drag || !dragRef.current) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const dy = drag.y2 - drag.y1;
+    const press = 150;
+    const release = 220;
+    const total = press + drag.dur + release;
+    const anim = dragRef.current.animate(
+      [
+        { transform: "translate(-50%, -50%) scale(1.35)", opacity: 0 },
+        { transform: "translate(-50%, -50%) scale(0.82)", opacity: 1, offset: press / total },
+        {
+          transform: `translate(-50%, -50%) translateY(${dy}px) scale(0.82)`,
+          opacity: 1,
+          offset: (press + drag.dur) / total,
+        },
+        { transform: `translate(-50%, -50%) translateY(${dy}px) scale(1.35)`, opacity: 0 },
+      ],
+      { duration: total, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "forwards" },
+    );
+    return () => anim.cancel();
+  }, [drag]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -276,6 +317,23 @@ export function CoachDialog({
                 opacity: 0,
               }}
             />
+          )}
+
+          {drag && (
+            <div
+              key={`drag-${drag.key}`}
+              ref={dragRef}
+              aria-hidden
+              className="pointer-events-none absolute z-30 grid size-8 place-items-center rounded-full bg-card shadow-md ring-1 ring-primary/40"
+              style={{
+                left: drag.x,
+                top: drag.y1,
+                transform: "translate(-50%, -50%)",
+                opacity: 0,
+              }}
+            >
+              <Grab className="size-4 text-primary" />
+            </div>
           )}
         </div>
 

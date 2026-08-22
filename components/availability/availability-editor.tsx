@@ -9,8 +9,8 @@ import { SLOTS_PER_DAY } from "@/lib/availability/constants";
 import { weekdayShortLabels } from "@/lib/i18n/calendar";
 import { addBlock, setAvailable, validateDay } from "@/lib/availability/rules";
 import type { DayState, PaintStatus, RuleConfig } from "@/lib/availability/types";
-import { ROLE_BADGE, useSpecialistStore, type Specialist } from "@/lib/specialists";
-import { cn } from "@/lib/utils";
+import { useSpecialistStore, type Specialist } from "@/lib/specialists";
+import { StatusBadge } from "@/components/common/status-badge";
 import { CoachDialog } from "./coach-dialog";
 import { PaintControls } from "./control-bar";
 import { GuidelinesDialog } from "./guidelines-dialog";
@@ -164,11 +164,7 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
           </div>
           <div>
             <div className="font-heading text-sm font-semibold leading-tight">{specialist.name}</div>
-            <span
-              className={cn("inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium min-w-[var(--badge-w)]", ROLE_BADGE[specialist.role])}
-            >
-              {t(`common.role.${specialist.role}`)}
-            </span>
+            <StatusBadge tone="neutral">{t(`common.role.${specialist.role}`)}</StatusBadge>
           </div>
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2">

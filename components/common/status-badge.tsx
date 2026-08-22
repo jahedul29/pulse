@@ -6,7 +6,7 @@ const TONE: Record<Tone, string> = {
   success: "bg-success text-success-foreground",
   warning: "bg-warning text-warning-foreground",
   danger: "bg-danger text-danger-foreground",
-  neutral: "bg-muted text-muted-foreground",
+  neutral: "bg-border-strong text-foreground",
 };
 
 export function StatusDot({ tone }: { tone: Tone }) {

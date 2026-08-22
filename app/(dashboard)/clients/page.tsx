@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PeriodToggle } from "@/components/common/period-toggle";
-import { KpiCard } from "@/components/clients/kpi-card";
+import { KpiGrid } from "@/components/clients/kpi-grid";
 import { MetricChartPanel } from "@/components/clients/metric-chart-panel";
 import { Donut } from "@/components/clients/donut";
 import { TerritoryPanel } from "@/components/clients/territory-panel";
 import { ClientTable } from "@/components/clients/client-table";
 import {
   cancellationSplit,
+  FEATURED_KPI_KEYS,
   kpis,
   packageSplit,
   supervisionSplit,
@@ -35,10 +36,11 @@ export default async function ClientsPage({
         </Suspense>
       </div>
 
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        {kpis.map((k) => (
-          <KpiCard key={k.key} kpi={k} period={period} />
-        ))}
+      <section>
+        <KpiGrid
+          kpis={kpis.filter((k) => FEATURED_KPI_KEYS.includes(k.key as (typeof FEATURED_KPI_KEYS)[number]))}
+          period={period}
+        />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">

@@ -15,8 +15,9 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 import { DataTable } from "@/components/common/data-table";
 import { ProfileCell } from "@/components/common/profile-cell";
+import { StatusBadge } from "@/components/common/status-badge";
 import { cn } from "@/lib/utils";
-import { ROLE_BADGE, useSpecialistStore, type Specialist } from "@/lib/specialists";
+import { useSpecialistStore, type Specialist } from "@/lib/specialists";
 
 export function SpecialistsTable() {
   const t = useTranslations();
@@ -51,14 +52,7 @@ export function SpecialistsTable() {
           })),
         },
         cell: ({ row }) => (
-          <span
-            className={cn(
-              "inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium min-w-[var(--badge-w)]",
-              ROLE_BADGE[row.original.role],
-            )}
-          >
-            {t(`common.role.${row.original.role}`)}
-          </span>
+          <StatusBadge tone="neutral">{t(`common.role.${row.original.role}`)}</StatusBadge>
         ),
       },
       {

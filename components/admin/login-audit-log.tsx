@@ -8,6 +8,7 @@ import { Download } from "lucide-react";
 import { fmtDateTimeParts } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DataTable, toolbarIconButtonClass } from "@/components/common/data-table";
 import { StatusBadge } from "@/components/common/status-badge";
 import { ProfileCell } from "@/components/common/profile-cell";
@@ -125,7 +126,7 @@ export function LoginAuditLog() {
           filterLabel: t("colResult"),
         },
         cell: ({ row }) => (
-          <StatusBadge tone={resultTone(row.original.result)} equalWidth={false} className="w-full">
+          <StatusBadge tone={resultTone(row.original.result)} equalWidth={false} className="min-w-[8rem]">
             {t(`result_${row.original.result}`)}
           </StatusBadge>
         ),
@@ -205,16 +206,23 @@ export function LoginAuditLog() {
                 : undefined
             }
             toolbar={
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={onExport}
-                aria-label={t("export")}
-                className={toolbarIconButtonClass}
-              >
-                <Download />
-                <span className="hidden sm:inline">{t("export")}</span>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={onExport}
+                      aria-label={t("export")}
+                      className={toolbarIconButtonClass}
+                    />
+                  }
+                >
+                  <Download className="size-4" />
+                  <span className="hidden sm:inline">{t("export")}</span>
+                </TooltipTrigger>
+                <TooltipContent>{t("export")}</TooltipContent>
+              </Tooltip>
             }
           />
         </CardContent>
