@@ -105,7 +105,7 @@ type DataTableProps<TData> = {
   rowAriaLabel?: (row: TData) => string;
   rowClassName?: (row: TData) => string | undefined;
   getSearchText?: (row: TData) => string;
-  toolbar?: ReactNode;
+  toolbar?: ReactNode | ((rows: TData[]) => ReactNode);
   filterLabels?: {
     filter?: string;
     clear?: string;
@@ -421,6 +421,10 @@ export function DataTable<TData>({
   const { pageIndex, pageSize: size } = table.getState().pagination;
   const total = table.getFilteredRowModel().rows.length;
   const pageRows = table.getRowModel().rows;
+  const toolbarNode =
+    typeof toolbar === "function"
+      ? toolbar(table.getSortedRowModel().rows.map((r) => r.original))
+      : toolbar;
   const start = total === 0 ? 0 : pageIndex * size + 1;
   const end = Math.min(pageIndex * size + size, total);
   const colCount = table.getAllLeafColumns().length;
@@ -523,7 +527,7 @@ export function DataTable<TData>({
             </TooltipTrigger>
             <TooltipContent>{filterLabels.clearFilters ?? "Clear filters"}</TooltipContent>
           </Tooltip>
-          {toolbar}
+          {toolbarNode}
         </div>
       </div>
 

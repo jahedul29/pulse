@@ -37,18 +37,33 @@ export function Topbar() {
     ? (specialistName ?? clientName ?? t("nav.details"))
     : undefined;
 
-  const adminLabel: string | undefined =
+  const adminTrail: Crumb[] | undefined =
     pathname === "/admin/audit/logins"
-      ? t("nav.loginAudit")
+      ? [{ label: t("nav.loginAudit") }]
       : pathname === "/admin/accounts"
-        ? t("adminAccounts.title")
+        ? [{ label: t("adminAccounts.title") }]
         : pathname === "/admin/settings/sessions"
-          ? t("sessions.title")
-          : undefined;
+          ? [{ label: t("sessions.title") }]
+          : pathname === "/admin/roles"
+            ? [{ label: t("rbac.rolesTitle") }]
+            : pathname.startsWith("/admin/roles/")
+              ? [
+                  { label: t("rbac.rolesTitle"), href: "/admin/roles" },
+                  { label: t("rbac.matrixTitle") },
+                ]
+              : pathname === "/admin/access"
+                ? [{ label: t("rbac.accessTitle") }]
+                : pathname === "/admin/audit/actions"
+                  ? [{ label: t("actionLog.title") }]
+                  : pathname === "/admin/audit/changes"
+                    ? [{ label: t("changeLog.title") }]
+                    : pathname === "/admin/settings/security"
+                      ? [{ label: t("securityPolicy.title") }]
+                      : undefined;
 
   const trail: Crumb[] = [{ label: t("common.appName"), href: "/" }];
-  if (adminLabel) {
-    trail.push({ label: adminLabel });
+  if (adminTrail) {
+    trail.push(...adminTrail);
   } else if (detailName) {
     trail.push({ label: sectionLabel, href: `/${section.slug}` });
     trail.push({ label: detailName });
@@ -56,7 +71,7 @@ export function Topbar() {
     trail.push({ label: sectionLabel });
   }
 
-  const title = adminLabel ?? detailName ?? sectionLabel;
+  const title = adminTrail ? adminTrail[adminTrail.length - 1].label : (detailName ?? sectionLabel);
 
   return (
     <header className="sticky top-0 z-20 flex flex-wrap items-center gap-3 border-b bg-background/85 px-4 py-3 backdrop-blur md:px-5">

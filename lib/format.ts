@@ -43,18 +43,44 @@ export function fmtDate(iso: string, locale = "en"): string {
   return `${String(d).padStart(2, "0")}-${month}-${y}`;
 }
 
+const dateTimeFmtCache = new Map<string, Intl.DateTimeFormat>();
+
+function dateTimeFmt(locale: string): Intl.DateTimeFormat {
+  let fmt = dateTimeFmtCache.get(locale);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat(`${locale}-u-nu-latn`, {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    });
+    dateTimeFmtCache.set(locale, fmt);
+  }
+  return fmt;
+}
+
 export function fmtDateTimeParts(epochMs: number, locale = "en"): { time: string; date: string } {
-  const dt = new Date(epochMs);
-  const hh = String(dt.getHours()).padStart(2, "0");
-  const mm = String(dt.getMinutes()).padStart(2, "0");
-  const month = new Intl.DateTimeFormat(locale, { month: "short" }).format(dt);
-  const day = String(dt.getDate()).padStart(2, "0");
-  return { time: `${hh}:${mm}`, date: `${day}-${month}-${dt.getFullYear()}` };
+  const parts = dateTimeFmt(locale).formatToParts(new Date(epochMs));
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+  return {
+    time: `${get("hour")}:${get("minute")}`,
+    date: `${get("day")}-${get("month")}-${get("year")}`,
+  };
 }
 
 export function fmtDateTime(epochMs: number, locale = "en"): string {
   const { time, date } = fmtDateTimeParts(epochMs, locale);
   return `${time} ${date}`;
+}
+
+export function startOfTomorrow(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 1);
+  return d;
 }
 
 export function fmtRelative(epochMs: number, locale = "en"): string {

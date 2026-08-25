@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-type Tone = "success" | "warning" | "danger" | "neutral";
+export type Tone = "success" | "warning" | "danger" | "neutral";
 
 const TONE: Record<Tone, string> = {
   success: "bg-success text-success-foreground",

@@ -1,4 +1,4 @@
-function escapeCell(value: string | number): string {
+export function escapeCell(value: string | number): string {
   let s = String(value);
   if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;

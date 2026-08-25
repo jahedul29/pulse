@@ -154,7 +154,7 @@ export function LoginAuditLog() {
     [t, locale, adminOptions],
   );
 
-  const onExport = () => {
+  const onExport = (exportRows: LoginAuditEntry[]) => {
     const headers = [
       t("colAdmin"),
       t("colIdentifier"),
@@ -163,7 +163,7 @@ export function LoginAuditLog() {
       t("colTimestamp"),
       "IP",
     ];
-    const csvRows = rows.map((r) => [
+    const csvRows = exportRows.map((r) => [
       r.adminName ?? t("unmatchedAdmin"),
       shownIdentifier(r),
       t(`result_${r.result}`),
@@ -205,14 +205,14 @@ export function LoginAuditLog() {
                 ? "[&>td:first-child]:border-s-2 [&>td:first-child]:border-danger/60"
                 : undefined
             }
-            toolbar={
+            toolbar={(visibleRows) => (
               <Tooltip>
                 <TooltipTrigger
                   render={
                     <Button
                       variant="outline"
                       size="lg"
-                      onClick={onExport}
+                      onClick={() => onExport(visibleRows)}
                       aria-label={t("export")}
                       className={toolbarIconButtonClass}
                     />
@@ -223,7 +223,7 @@ export function LoginAuditLog() {
                 </TooltipTrigger>
                 <TooltipContent>{t("export")}</TooltipContent>
               </Tooltip>
-            }
+            )}
           />
         </CardContent>
       </Card>
