@@ -5,6 +5,7 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { ButtonRow } from "@/components/ui/button-row"
 import { XIcon } from "lucide-react"
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
@@ -111,18 +112,17 @@ function DialogFooter({
   return (
     <div
       data-slot="dialog-footer"
-      className={cn(
-        "flex shrink-0 flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end",
-        className
-      )}
+      className={cn("shrink-0 rounded-b-xl border-t bg-muted/50 p-4", className)}
       {...props}
     >
-      {children}
-      {showCloseButton && (
-        <DialogPrimitive.Close render={<Button variant="outline" />}>
-          Close
-        </DialogPrimitive.Close>
-      )}
+      <ButtonRow className="sm:ms-auto">
+        {children}
+        {showCloseButton && (
+          <DialogPrimitive.Close render={<Button variant="outline" />}>
+            Close
+          </DialogPrimitive.Close>
+        )}
+      </ButtonRow>
     </div>
   )
 }

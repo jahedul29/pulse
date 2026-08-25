@@ -21,7 +21,17 @@ export function HeroPanel({ className }: { className?: string }) {
   const greeting =
     hour == null
       ? ""
-      : t(hour < 12 ? "greetingMorning" : hour < 18 ? "greetingAfternoon" : "greetingEvening");
+      : t(
+          hour < 5
+            ? "greetingNight"
+            : hour < 12
+              ? "greetingMorning"
+              : hour < 17
+                ? "greetingAfternoon"
+                : hour < 22
+                  ? "greetingEvening"
+                  : "greetingNight",
+        );
 
   return (
     <div

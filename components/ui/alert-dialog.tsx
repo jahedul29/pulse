@@ -5,6 +5,7 @@ import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { ButtonRow } from "@/components/ui/button-row"
 
 function AlertDialog({ ...props }: AlertDialogPrimitive.Root.Props) {
   return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />
@@ -79,17 +80,17 @@ function AlertDialogHeader({
 
 function AlertDialogFooter({
   className,
+  children,
   ...props
 }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="alert-dialog-footer"
-      className={cn(
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2 sm:flex-row sm:justify-end",
-        className
-      )}
+      className={cn("-mx-4 -mb-4 rounded-b-xl border-t bg-muted/50 p-4", className)}
       {...props}
-    />
+    >
+      <ButtonRow className="sm:ms-auto">{children}</ButtonRow>
+    </div>
   )
 }
 
@@ -143,11 +144,13 @@ function AlertDialogDescription({
 
 function AlertDialogAction({
   className,
+  size = "lg",
   ...props
 }: React.ComponentProps<typeof Button>) {
   return (
     <Button
       data-slot="alert-dialog-action"
+      size={size}
       className={cn(className)}
       {...props}
     />
@@ -157,7 +160,7 @@ function AlertDialogAction({
 function AlertDialogCancel({
   className,
   variant = "outline",
-  size = "md",
+  size = "lg",
   ...props
 }: AlertDialogPrimitive.Close.Props &
   Pick<React.ComponentProps<typeof Button>, "variant" | "size">) {

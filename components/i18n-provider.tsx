@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { IntlErrorCode, NextIntlClientProvider, type AbstractIntlMessages } from "next-intl";
 import { enFallback } from "@/lib/i18n/fallback";
+import { TIME_ZONE } from "@/i18n/routing";
 
 export function IntlProvider({
   locale,
@@ -17,6 +18,7 @@ export function IntlProvider({
     <NextIntlClientProvider
       locale={locale}
       messages={messages}
+      timeZone={TIME_ZONE}
       onError={(error) => {
         if (error.code === IntlErrorCode.MISSING_MESSAGE) {
           if (process.env.NODE_ENV !== "production") console.warn(`[i18n] ${error.message}`);
