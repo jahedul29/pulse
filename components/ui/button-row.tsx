@@ -2,12 +2,25 @@ import { type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-function ButtonRow({ className, children }: { className?: string; children: ReactNode }) {
+type ButtonRowLayout = "stack" | "split";
+
+function ButtonRow({
+  className,
+  children,
+  layout = "stack",
+}: {
+  className?: string;
+  children: ReactNode;
+  layout?: ButtonRowLayout;
+}) {
   return (
     <div
       data-slot="button-row"
       className={cn(
-        "flex flex-col gap-2 sm:grid sm:w-fit sm:grid-flow-col sm:auto-cols-fr",
+        "[&>*]:min-w-24",
+        layout === "split"
+          ? "grid grid-cols-2 gap-2 sm:w-fit sm:grid-cols-none sm:grid-flow-col sm:auto-cols-fr"
+          : "flex flex-col gap-2 sm:grid sm:w-fit sm:grid-flow-col sm:auto-cols-fr",
         className,
       )}
     >
@@ -17,3 +30,4 @@ function ButtonRow({ className, children }: { className?: string; children: Reac
 }
 
 export { ButtonRow };
+export type { ButtonRowLayout };

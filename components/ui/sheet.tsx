@@ -6,7 +6,7 @@ import { XIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ButtonRow } from "@/components/ui/button-row";
+import { ButtonRow, type ButtonRowLayout } from "@/components/ui/button-row";
 
 function Sheet({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="sheet" {...props} />;
@@ -121,7 +121,12 @@ function SheetBody({ className, ...props }: ComponentProps<"div">) {
   );
 }
 
-function SheetFooter({ className, children, ...props }: ComponentProps<"div">) {
+function SheetFooter({
+  className,
+  children,
+  layout,
+  ...props
+}: ComponentProps<"div"> & { layout?: ButtonRowLayout }) {
   return (
     <div
       data-slot="sheet-footer"
@@ -131,7 +136,9 @@ function SheetFooter({ className, children, ...props }: ComponentProps<"div">) {
       )}
       {...props}
     >
-      <ButtonRow className="sm:ms-auto">{children}</ButtonRow>
+      <ButtonRow layout={layout} className="sm:ms-auto">
+        {children}
+      </ButtonRow>
     </div>
   );
 }

@@ -13,6 +13,22 @@ import { useUiStore } from "@/lib/ui-store";
 
 type Crumb = { label: string; href?: string };
 
+const ADMIN_TITLE_KEYS: Record<string, string> = {
+  "/admin/audit/logins": "nav.loginAudit",
+  "/admin/accounts": "adminAccounts.title",
+  "/admin/settings/sessions": "sessions.title",
+  "/admin/roles": "rbac.rolesTitle",
+  "/admin/access": "rbac.accessTitle",
+  "/admin/audit/actions": "actionLog.title",
+  "/admin/audit/changes": "changeLog.title",
+  "/admin/settings/security": "securityPolicy.title",
+  "/admin/notifications/templates": "notifications.templates.title",
+  "/admin/notifications/mapping": "notifications.mapping.title",
+  "/admin/notifications/log": "notifications.log.title",
+  "/admin/notifications/routing": "notifications.routing.title",
+  "/admin/notifications/alerts": "notifications.alerts.title",
+};
+
 export function Topbar() {
   const t = useTranslations();
   const pathname = usePathname();
@@ -37,29 +53,15 @@ export function Topbar() {
     ? (specialistName ?? clientName ?? t("nav.details"))
     : undefined;
 
-  const adminTrail: Crumb[] | undefined =
-    pathname === "/admin/audit/logins"
-      ? [{ label: t("nav.loginAudit") }]
-      : pathname === "/admin/accounts"
-        ? [{ label: t("adminAccounts.title") }]
-        : pathname === "/admin/settings/sessions"
-          ? [{ label: t("sessions.title") }]
-          : pathname === "/admin/roles"
-            ? [{ label: t("rbac.rolesTitle") }]
-            : pathname.startsWith("/admin/roles/")
-              ? [
-                  { label: t("rbac.rolesTitle"), href: "/admin/roles" },
-                  { label: t("rbac.matrixTitle") },
-                ]
-              : pathname === "/admin/access"
-                ? [{ label: t("rbac.accessTitle") }]
-                : pathname === "/admin/audit/actions"
-                  ? [{ label: t("actionLog.title") }]
-                  : pathname === "/admin/audit/changes"
-                    ? [{ label: t("changeLog.title") }]
-                    : pathname === "/admin/settings/security"
-                      ? [{ label: t("securityPolicy.title") }]
-                      : undefined;
+  let adminTrail: Crumb[] | undefined;
+  if (pathname.startsWith("/admin/roles/")) {
+    adminTrail = [
+      { label: t("rbac.rolesTitle"), href: "/admin/roles" },
+      { label: t("rbac.matrixTitle") },
+    ];
+  } else if (ADMIN_TITLE_KEYS[pathname]) {
+    adminTrail = [{ label: t(ADMIN_TITLE_KEYS[pathname]) }];
+  }
 
   const trail: Crumb[] = [{ label: t("common.appName"), href: "/" }];
   if (adminTrail) {
