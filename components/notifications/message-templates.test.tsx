@@ -56,6 +56,18 @@ describe("MessageTemplates", () => {
     expect(screen.getByRole("button", { name: "Create template" })).toBeInTheDocument();
   });
 
+  it("blocks create and shows required errors on empty submit", async () => {
+    render(<MessageTemplates />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "New template" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Create template" }));
+
+    expect(await within(dialog).findByText("A message code is required.")).toBeInTheDocument();
+    expect(within(dialog).getByText("English copy is required.")).toBeInTheDocument();
+    expect(within(dialog).getByText("Arabic copy is required.")).toBeInTheDocument();
+  });
+
   it("loads edit data from the API seam and populates the editor", async () => {
     detailMock.mockResolvedValue({
       code: "AUTH_OTP",

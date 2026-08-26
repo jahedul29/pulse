@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 
@@ -28,6 +30,7 @@ import { fmtDateTimeParts } from "@/lib/format";
 import { usePolicyStore } from "@/lib/security-policy/store";
 import { useAuthStore } from "@/lib/auth/store";
 import { fetchPolicyVersions } from "@/lib/security-policy/api";
+import { policySchema, reasonSchema, type ReasonForm } from "@/lib/security-policy/schemas";
 import type { PolicyVersion, SecurityPolicy } from "@/lib/security-policy/types";
 
 type NumKey =
@@ -57,16 +60,40 @@ export function SecurityPolicyEditor() {
   const [history, setHistory] = useState<PolicyVersion[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
-  const [draft, setDraft] = useState<SecurityPolicy | null>(null);
-  const [dirty, setDirty] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
-  const [reason, setReason] = useState("");
-  const [reasonError, setReasonError] = useState("");
 
   const current = useMemo(
     () => versionsState.find((v) => v.effectiveTo == null)?.policy ?? null,
     [versionsState],
   );
+
+  const policySchemaMemo = useMemo(
+    () =>
+      policySchema({
+        atLeast: (n) => t("atLeast", { n }),
+        passwordFloor: t("passwordFloor"),
+        mustBeNumber: t("mustBeNumber"),
+        mustBeInteger: t("mustBeInteger"),
+      }),
+    [t],
+  );
+  const policyForm = useForm<SecurityPolicy>({
+    resolver: zodResolver(policySchemaMemo),
+    mode: "onSubmit",
+    defaultValues: current ?? undefined,
+  });
+  const { register, control, reset, getValues, handleSubmit, formState } = policyForm;
+  const dirty = formState.isDirty;
+
+  const reasonForm = useForm<ReasonForm>({
+    resolver: zodResolver(reasonSchema({ reasonRequired: t("reasonRequired") })),
+    mode: "onSubmit",
+    defaultValues: { reason: "" },
+  });
+
+  useEffect(() => {
+    if (current && !dirty) reset(current);
+  }, [current, dirty, reset]);
 
   useEffect(() => {
     let active = true;
@@ -75,8 +102,6 @@ export function SecurityPolicyEditor() {
         if (!active) return;
         setHistory(v);
         setLoaded(true);
-        const cur = v.find((x) => x.effectiveTo == null);
-        if (cur) setDraft((prev) => prev ?? cur.policy);
       })
       .catch(() => {
         if (!active) return;
@@ -88,39 +113,22 @@ export function SecurityPolicyEditor() {
     };
   }, [versionsState]);
 
-  const setNum = (key: NumKey, value: number) => {
-    const v = Math.max(0, value);
-    setDraft((d) => (d ? { ...d, [key]: v } : d));
-    setDirty(true);
-  };
-  const setBool = (key: BoolKey, value: boolean) => {
-    setDraft((d) => (d ? { ...d, [key]: value } : d));
-    setDirty(true);
-  };
-
   const onReset = () => {
-    if (current) setDraft(current);
-    setDirty(false);
+    if (current) reset(current);
   };
 
-  const openSave = () => {
-    setReason("");
-    setReasonError("");
+  const openSave = handleSubmit(() => {
+    reasonForm.reset({ reason: "" });
     setSaveOpen(true);
-  };
+  });
 
-  const confirmSave = () => {
-    if (!draft) return;
-    const trimmed = reason.trim();
-    if (!trimmed) {
-      setReasonError(t("reasonRequired"));
-      return;
-    }
-    savePolicy(draft, trimmed, actorName);
-    setDirty(false);
+  const confirmSave = reasonForm.handleSubmit((rv) => {
+    const values = getValues();
+    savePolicy(values, rv.reason, actorName);
+    reset(values);
     setSaveOpen(false);
     toast.success(t("savedToast"));
-  };
+  });
 
   const fmt = (ms: number) => fmtDateTimeParts(ms, locale).date;
   const fmtMins = (m: number) => {
@@ -144,7 +152,7 @@ export function SecurityPolicyEditor() {
     );
   }
 
-  if (!loaded || !draft) {
+  if (!loaded || !current) {
     return (
       <div className="mx-auto flex max-w-5xl flex-col gap-6">
         <Skeleton className="h-8 w-56" />
@@ -156,17 +164,19 @@ export function SecurityPolicyEditor() {
   }
 
   const numField = (key: NumKey, label: string, unit: string, hint?: string) => (
-    <Field label={label} htmlFor={`sp-${key}`} hint={hint} reserveMessage={false}>
+    <Field
+      label={label}
+      htmlFor={`sp-${key}`}
+      hint={hint}
+      error={formState.errors[key]?.message}
+      reserveMessage={false}
+    >
       <div className="flex items-center gap-2">
         <Input
           id={`sp-${key}`}
           type="number"
           min={0}
-          value={draft[key]}
-          onChange={(e) => {
-            const n = e.currentTarget.valueAsNumber;
-            setNum(key, Number.isNaN(n) ? 0 : n);
-          }}
+          {...register(key, { valueAsNumber: true })}
           className="w-24"
         />
         <span className="text-sm text-muted-foreground">{unit}</span>
@@ -180,7 +190,13 @@ export function SecurityPolicyEditor() {
         <span className="text-sm font-medium">{label}</span>
         {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
       </span>
-      <Switch checked={draft[key]} onCheckedChange={(v) => setBool(key, v)} />
+      <Controller
+        control={control}
+        name={key}
+        render={({ field }) => (
+          <Switch checked={field.value} onCheckedChange={field.onChange} />
+        )}
+      />
     </label>
   );
 
@@ -250,7 +266,7 @@ export function SecurityPolicyEditor() {
             </CardContent>
             <CardFooter className="flex-col items-stretch gap-3 sm:flex-row sm:items-center">
               {dirty && <span className="text-xs text-muted-foreground">{t("unsaved")}</span>}
-              <ButtonRow className="sm:ms-auto">
+              <ButtonRow layout="split" className="sm:ms-auto">
                 <Button variant="secondary" size="lg" onClick={onReset} disabled={!dirty}>
                   {t("reset")}
                 </Button>
@@ -352,21 +368,21 @@ export function SecurityPolicyEditor() {
             <DialogDescription>{t("saveDesc")}</DialogDescription>
           </DialogHeader>
           <DialogBody>
-            <Field label={t("reasonLabel")} htmlFor="sp-reason" error={reasonError}>
+            <Field
+              label={t("reasonLabel")}
+              htmlFor="sp-reason"
+              error={reasonForm.formState.errors.reason?.message}
+            >
               <Textarea
                 id="sp-reason"
                 rows={3}
-                value={reason}
-                onChange={(e) => {
-                  setReason(e.target.value);
-                  if (reasonError) setReasonError("");
-                }}
+                {...reasonForm.register("reason")}
                 placeholder={t("reasonPlaceholder")}
                 autoFocus
               />
             </Field>
           </DialogBody>
-          <DialogFooter>
+          <DialogFooter layout="split">
             <Button variant="outline" size="lg" onClick={() => setSaveOpen(false)}>
               {tc("cancel")}
             </Button>

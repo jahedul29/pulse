@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useForm, useWatch, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Braces, Pencil, Plus, Trash2 } from "lucide-react";
@@ -8,7 +10,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field } from "@/components/ui/field";
+import { Field, FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Label } from "@/components/ui/label";
@@ -49,6 +51,7 @@ import { fetchTemplates, fetchTemplateDetail } from "@/lib/notifications/api";
 import { useRecordDetail } from "@/lib/use-record-detail";
 import { MERGE_VARIABLES, htmlToPlainText, renderTemplate } from "@/lib/notifications/variables";
 import { sanitizeTemplateHtml } from "@/lib/notifications/sanitize";
+import { templateSchema, type TemplateForm } from "@/lib/notifications/schemas";
 import { MESSAGE_CATEGORIES } from "@/lib/notifications/types";
 import type { MessageCategory, MessageTemplate } from "@/lib/notifications/types";
 
@@ -100,13 +103,6 @@ export function MessageTemplates() {
 
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
   const [editingCode, setEditingCode] = useState<string | null>(null);
-  const [baseline, setBaseline] = useState<MessageTemplate | null>(null);
-  const [hydratedCode, setHydratedCode] = useState<string | null>(null);
-  const [code, setCode] = useState("");
-  const [category, setCategory] = useState<MessageCategory>("validation");
-  const [en, setEn] = useState("");
-  const [ar, setAr] = useState("");
-  const [codeError, setCodeError] = useState("");
   const [deleting, setDeleting] = useState<MessageTemplate | null>(null);
 
   const detail = useRecordDetail(
@@ -114,15 +110,36 @@ export function MessageTemplates() {
     fetchTemplateDetail,
   );
 
-  if (dialogMode === "edit" && detail.data && hydratedCode !== detail.data.code) {
-    const d = detail.data;
-    setHydratedCode(d.code);
-    setBaseline(d);
-    setCode(d.code);
-    setCategory(d.category);
-    setEn(d.en);
-    setAr(d.ar);
-  }
+  const schema = useMemo(
+    () =>
+      templateSchema(
+        {
+          codeRequired: t("templates.codeRequired"),
+          codeFormat: t("templates.codeFormat"),
+          codeExists: t("templates.codeExists"),
+          enRequired: t("templates.enRequired"),
+          arRequired: t("templates.arRequired"),
+        },
+        { existingCodes: templatesState.map((x) => x.code), isCreate: dialogMode === "create" },
+      ),
+    [t, templatesState, dialogMode],
+  );
+
+  const form = useForm<TemplateForm>({
+    resolver: zodResolver(schema),
+    mode: "onSubmit",
+    defaultValues: { code: "", category: "validation", en: "", ar: "" },
+  });
+  const { reset, register, control, handleSubmit, formState } = form;
+  const enVal = useWatch({ control, name: "en" });
+  const arVal = useWatch({ control, name: "ar" });
+
+  useEffect(() => {
+    if (dialogMode === "edit" && detail.data) {
+      const d = detail.data;
+      reset({ code: d.code, category: d.category, en: d.en, ar: d.ar });
+    }
+  }, [dialogMode, detail.data, reset]);
 
   const editorLabels = {
     bold: t("editor.bold"),
@@ -151,45 +168,30 @@ export function MessageTemplates() {
   }, [templatesState]);
 
   const openCreate = () => {
-    setDialogMode("create");
+    reset({ code: "", category: "validation", en: "", ar: "" });
     setEditingCode(null);
-    setBaseline(null);
-    setHydratedCode(null);
-    setCode("");
-    setCategory("validation");
-    setEn("");
-    setAr("");
-    setCodeError("");
+    setDialogMode("create");
   };
 
-  const openEdit = (tpl: MessageTemplate) => {
-    setDialogMode("edit");
-    setEditingCode(tpl.code);
-    setBaseline(null);
-    setHydratedCode(null);
-    setCode("");
-    setCategory(tpl.category);
-    setEn("");
-    setAr("");
-    setCodeError("");
-  };
+  const openEdit = useCallback(
+    (tpl: MessageTemplate) => {
+      reset({ code: tpl.code, category: tpl.category, en: "", ar: "" });
+      setEditingCode(tpl.code);
+      setDialogMode("edit");
+    },
+    [reset],
+  );
 
   const closeDialog = () => setDialogMode(null);
 
-  const submitDialog = () => {
-    const trimmed = code.trim();
-    if (dialogMode === "create") {
-      if (!trimmed) {
-        setCodeError(t("templates.codeRequired"));
-        return;
-      }
-      if (templatesState.some((x) => x.code === trimmed)) {
-        setCodeError(t("templates.codeExists"));
-        return;
-      }
-    }
-    const finalCode = dialogMode === "edit" && editingCode ? editingCode : trimmed;
-    upsertTemplate({ code: finalCode, category, en: en.trim(), ar: ar.trim(), updatedAt: Date.now() });
+  const onSubmit = (values: TemplateForm) => {
+    const finalCode = dialogMode === "edit" && editingCode ? editingCode : values.code;
+    upsertTemplate({
+      code: finalCode,
+      category: values.category,
+      en: values.en,
+      ar: values.ar,
+    });
     toast.success(
       dialogMode === "edit" ? t("templates.updatedToast") : t("templates.createdToast", { code: finalCode }),
     );
@@ -202,11 +204,6 @@ export function MessageTemplates() {
     toast.success(t("templates.deletedToast", { code: deleting.code }));
     setDeleting(null);
   };
-
-  const dirty =
-    dialogMode === "create" ||
-    (baseline != null &&
-      (category !== baseline.category || en.trim() !== baseline.en || ar.trim() !== baseline.ar));
 
   const columns = useMemo<ColumnDef<MessageTemplate, unknown>[]>(
     () => [
@@ -318,7 +315,7 @@ export function MessageTemplates() {
         },
       },
     ],
-    [t, locale],
+    [t, locale, openEdit],
   );
 
   return (
@@ -409,32 +406,42 @@ export function MessageTemplates() {
             ) : (
               <>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={t("templates.codeLabel")} htmlFor="tpl-code" error={codeError} reserveMessage={false}>
+              <Field
+                label={t("templates.codeLabel")}
+                htmlFor="tpl-code"
+                error={formState.errors.code?.message}
+                reserveMessage={false}
+              >
                 <Input
                   id="tpl-code"
-                  value={code}
-                  onChange={(e) => {
-                    setCode(e.target.value);
-                    if (codeError) setCodeError("");
-                  }}
+                  {...register("code")}
                   placeholder={t("templates.codePlaceholder")}
                   disabled={dialogMode === "edit"}
                   autoFocus={dialogMode === "create"}
                 />
               </Field>
               <Field label={t("templates.categoryLabel")} reserveMessage={false}>
-                <Select value={category} onValueChange={(v) => setCategory((v ?? "validation") as MessageCategory)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue>{(v) => (v ? t(`categories.${v}`) : "")}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MESSAGE_CATEGORIES.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {t(`categories.${c}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Controller
+                  control={control}
+                  name="category"
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={(v) => field.onChange((v ?? "validation") as MessageCategory)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue>{(v) => (v ? t(`categories.${v}`) : "")}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MESSAGE_CATEGORIES.map((c) => (
+                          <SelectItem key={c} value={c}>
+                            {t(`categories.${c}`)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </Field>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -442,73 +449,91 @@ export function MessageTemplates() {
                 <div className="flex items-center justify-between gap-2">
                   <Label>{t("templates.enLabel")}</Label>
                   <span className="text-xs text-muted-foreground tabular">
-                    {t("templates.chars", { count: htmlToPlainText(en).length })}
+                    {t("templates.chars", { count: htmlToPlainText(enVal).length })}
                   </span>
                 </div>
-                <RichTextEditor
-                  value={en}
-                  onChange={setEn}
-                  ariaLabel={t("templates.enLabel")}
-                  labels={editorLabels}
-                  extraTools={(editor) => (
-                    <VarInserter
-                      label={t("templates.insertVariable")}
-                      onInsert={(tok) => editor.chain().focus().insertContent(`{${tok}}`).run()}
+                <Controller
+                  control={control}
+                  name="en"
+                  render={({ field }) => (
+                    <RichTextEditor
+                      value={field.value}
+                      onChange={field.onChange}
+                      ariaLabel={t("templates.enLabel")}
+                      labels={editorLabels}
+                      extraTools={(editor) => (
+                        <VarInserter
+                          label={t("templates.insertVariable")}
+                          onInsert={(tok) => editor.chain().focus().insertContent(`{${tok}}`).run()}
+                        />
+                      )}
                     />
                   )}
                 />
+                {formState.errors.en && <FieldError>{formState.errors.en.message}</FieldError>}
                 <div className="rounded-lg border bg-muted/30 p-2 text-sm">
-                  {htmlToPlainText(en) ? (
-                    <div dangerouslySetInnerHTML={{ __html: sanitizeTemplateHtml(renderTemplate(en, "en")) }} />
+                  {htmlToPlainText(enVal) ? (
+                    <div dangerouslySetInnerHTML={{ __html: sanitizeTemplateHtml(renderTemplate(enVal, "en")) }} />
                   ) : (
                     <span className="text-muted-foreground">{t("templates.previewEmpty")}</span>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {t("templates.pushPreview")}: {htmlToPlainText(renderTemplate(en, "en")) || "—"}
+                  {t("templates.pushPreview")}: {htmlToPlainText(renderTemplate(enVal, "en")) || "—"}
                 </p>
               </div>
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between gap-2">
                   <Label>{t("templates.arLabel")}</Label>
                   <span className="text-xs text-muted-foreground tabular">
-                    {t("templates.chars", { count: htmlToPlainText(ar).length })}
+                    {t("templates.chars", { count: htmlToPlainText(arVal).length })}
                   </span>
                 </div>
-                <RichTextEditor
-                  value={ar}
-                  onChange={setAr}
-                  dir="rtl"
-                  ariaLabel={t("templates.arLabel")}
-                  labels={editorLabels}
-                  extraTools={(editor) => (
-                    <VarInserter
-                      label={t("templates.insertVariable")}
-                      onInsert={(tok) => editor.chain().focus().insertContent(`{${tok}}`).run()}
+                <Controller
+                  control={control}
+                  name="ar"
+                  render={({ field }) => (
+                    <RichTextEditor
+                      value={field.value}
+                      onChange={field.onChange}
+                      dir="rtl"
+                      ariaLabel={t("templates.arLabel")}
+                      labels={editorLabels}
+                      extraTools={(editor) => (
+                        <VarInserter
+                          label={t("templates.insertVariable")}
+                          onInsert={(tok) => editor.chain().focus().insertContent(`{${tok}}`).run()}
+                        />
+                      )}
                     />
                   )}
                 />
+                {formState.errors.ar && <FieldError>{formState.errors.ar.message}</FieldError>}
                 <div dir="rtl" className="rounded-lg border bg-muted/30 p-2 text-sm">
-                  {htmlToPlainText(ar) ? (
-                    <div dangerouslySetInnerHTML={{ __html: sanitizeTemplateHtml(renderTemplate(ar, "ar")) }} />
+                  {htmlToPlainText(arVal) ? (
+                    <div dangerouslySetInnerHTML={{ __html: sanitizeTemplateHtml(renderTemplate(arVal, "ar")) }} />
                   ) : (
                     <span className="text-muted-foreground">{t("templates.previewEmpty")}</span>
                   )}
                 </div>
                 <p dir="rtl" className="text-xs text-muted-foreground">
-                  {t("templates.pushPreview")}: {htmlToPlainText(renderTemplate(ar, "ar")) || "—"}
+                  {t("templates.pushPreview")}: {htmlToPlainText(renderTemplate(arVal, "ar")) || "—"}
                 </p>
               </div>
             </div>
               </>
             )}
           </DialogBody>
-          <DialogFooter>
+          <DialogFooter layout="split">
             <Button variant="outline" size="lg" onClick={closeDialog}>
               {tc("cancel")}
             </Button>
             {(dialogMode === "create" || (!detail.loading && !detail.error)) && (
-              <Button size="lg" onClick={submitDialog} disabled={!dirty}>
+              <Button
+                size="lg"
+                onClick={handleSubmit(onSubmit)}
+                disabled={dialogMode === "edit" && !formState.isDirty}
+              >
                 {dialogMode === "edit" ? tc("save") : t("templates.create")}
               </Button>
             )}
@@ -524,7 +549,7 @@ export function MessageTemplates() {
               {deleting ? t("templates.deleteBody", { code: deleting.code }) : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter layout="split">
             <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}

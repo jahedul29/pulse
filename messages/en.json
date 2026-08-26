@@ -555,6 +555,7 @@
     "createdToast": "Role “{name}” created",
     "renamedToast": "Role renamed",
     "nameRequired": "Enter a role name",
+    "nameExists": "A role with this name already exists.",
     "deleteTitle": "Delete role?",
     "deleteBody": "“{name}” will be removed and its grants revoked. This can't be undone.",
     "deleteConfirm": "Delete role",
@@ -625,6 +626,7 @@
     "revokeBody": "{name} will lose everything “{role}” grants.",
     "revokeConfirm": "Revoke",
     "duplicateRole": "That role is already granted.",
+    "roleRequired": "Select a role.",
     "duplicateOverlay": "That overlay already exists.",
     "mod_dashboard": "Dashboard",
     "mod_events": "Events & Tickets",
@@ -739,6 +741,10 @@
     "reasonLabel": "Reason for change",
     "reasonPlaceholder": "e.g. Tightening after the Q3 audit",
     "reasonRequired": "Add a reason for this change.",
+    "atLeast": "Must be at least {n}.",
+    "passwordFloor": "Between 6 and 128 characters.",
+    "mustBeNumber": "Enter a number.",
+    "mustBeInteger": "Enter a whole number.",
     "savedToast": "Security policy updated",
     "cancel": "Cancel",
     "reset": "Reset",
@@ -821,6 +827,9 @@
       "create": "Create template",
       "codeRequired": "A message code is required.",
       "codeExists": "That message code already exists.",
+      "codeFormat": "Use only A–Z, 0–9 and underscores.",
+      "enRequired": "English copy is required.",
+      "arRequired": "Arabic copy is required.",
       "createdToast": "Created {code}",
       "updatedToast": "Template saved",
       "deletedToast": "Deleted {code}",
@@ -854,6 +863,7 @@
       "drawerHint": "Toggle each role and pick the template that fires for it.",
       "templateLabel": "Message template",
       "noTemplate": "No template",
+      "templateRequired": "Pick a template for each notified role.",
       "savedToast": "Mapping saved"
     },
     "log": {
@@ -893,6 +903,7 @@
       "colUrgency": "Urgency",
       "drawerHint": "Choose who is alerted, whether a ticket opens, and the urgency level. Its color (green / amber / red) follows the urgency.",
       "generatesTicket": "Generates a trouble ticket",
+      "recipientRequired": "Select at least one recipient.",
       "savedToast": "Routing saved"
     },
     "alerts": {

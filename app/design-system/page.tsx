@@ -797,7 +797,6 @@ function DateRangePicker() {
 
 export default function DesignSystemPage() {
   const t = useTranslations("designSystem");
-  const locale = useLocale();
   const [dark, setDark] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);

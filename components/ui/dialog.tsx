@@ -5,7 +5,7 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { ButtonRow } from "@/components/ui/button-row"
+import { ButtonRow, type ButtonRowLayout } from "@/components/ui/button-row"
 import { XIcon } from "lucide-react"
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
@@ -104,10 +104,12 @@ function DialogBody({ className, ...props }: React.ComponentProps<"div">) {
 function DialogFooter({
   className,
   showCloseButton = false,
+  layout,
   children,
   ...props
 }: React.ComponentProps<"div"> & {
   showCloseButton?: boolean
+  layout?: ButtonRowLayout
 }) {
   return (
     <div
@@ -115,7 +117,7 @@ function DialogFooter({
       className={cn("shrink-0 rounded-b-xl border-t bg-muted/50 p-4", className)}
       {...props}
     >
-      <ButtonRow className="sm:ms-auto">
+      <ButtonRow layout={layout} className="sm:ms-auto">
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close render={<Button variant="outline" />}>

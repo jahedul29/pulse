@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useForm, useWatch, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
@@ -30,8 +32,16 @@ import { DataTable } from "@/components/common/data-table";
 import { useNotificationStore } from "@/lib/notifications/store";
 import { fetchEventMappings } from "@/lib/notifications/api";
 import { useRetained } from "@/lib/use-retained";
+import { mappingSchema, type MappingForm } from "@/lib/notifications/schemas";
 import { RECIPIENT_ROLES } from "@/lib/notifications/types";
 import type { EventMapping } from "@/lib/notifications/types";
+
+const EMPTY_MAPPING: MappingForm = {
+  eventId: "",
+  eventName: "",
+  recipients: { client: false, rbt: false, sltot: false, bcba: false },
+  templateByRole: {},
+};
 
 export function EdrMapping() {
   const t = useTranslations("notifications");
@@ -44,8 +54,30 @@ export function EdrMapping() {
   const [rows, setRows] = useState<EventMapping[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [draft, setDraft] = useState<EventMapping | null>(null);
-  const shownDraft = useRetained(draft);
+  const [editing, setEditing] = useState<EventMapping | null>(null);
+  const shown = useRetained(editing);
+
+  const schema = useMemo(
+    () => mappingSchema({ templateRequired: t("mapping.templateRequired") }),
+    [t],
+  );
+  const form = useForm<MappingForm>({
+    resolver: zodResolver(schema),
+    mode: "onSubmit",
+    defaultValues: EMPTY_MAPPING,
+  });
+  const { control, handleSubmit, reset, setValue, formState } = form;
+  const recipientsVal = useWatch({ control, name: "recipients" });
+
+  const openMapping = (m: EventMapping) => {
+    reset({
+      eventId: m.eventId,
+      eventName: m.eventName,
+      recipients: m.recipients,
+      templateByRole: { ...m.templateByRole },
+    });
+    setEditing(m);
+  };
 
   useEffect(() => {
     let active = true;
@@ -70,14 +102,20 @@ export function EdrMapping() {
     [templatesState],
   );
 
-  const original = draft ? mappingsState.find((m) => m.eventId === draft.eventId) : null;
-  const dirty = draft != null && original != null && JSON.stringify(draft) !== JSON.stringify(original);
-
-  const saveDraft = () => {
-    if (!draft) return;
-    setMapping(draft);
+  const onSubmit = (values: MappingForm) => {
+    const templateByRole: EventMapping["templateByRole"] = {};
+    for (const role of RECIPIENT_ROLES) {
+      const tpl = values.templateByRole[role];
+      if (values.recipients[role] && tpl) templateByRole[role] = tpl;
+    }
+    setMapping({
+      eventId: values.eventId,
+      eventName: values.eventName,
+      recipients: values.recipients,
+      templateByRole,
+    });
     toast.success(t("mapping.savedToast"));
-    setDraft(null);
+    setEditing(null);
   };
 
   const columns = useMemo<ColumnDef<EventMapping, unknown>[]>(() => {
@@ -155,7 +193,7 @@ export function EdrMapping() {
               searchPlaceholder={t("mapping.search")}
               emptyLabel={t("mapping.empty")}
               itemsLabel={t("mapping.items")}
-              onRowClick={(r) => setDraft(r)}
+              onRowClick={(r) => openMapping(r)}
               rowAriaLabel={(r) => r.eventName}
               getSearchText={(r) => r.eventName}
               filterLabels={{ filter: t("mapping.filter"), clear: t("mapping.clear"), clearFilters: tc("clearFilters") }}
@@ -166,66 +204,72 @@ export function EdrMapping() {
         </CardContent>
       </Card>
 
-      <Sheet open={draft != null} onOpenChange={(o) => !o && setDraft(null)}>
-        {shownDraft && (
+      <Sheet open={editing != null} onOpenChange={(o) => !o && setEditing(null)}>
+        {shown && (
           <SheetContent>
             <SheetHeader>
-              <SheetTitle>{shownDraft.eventName}</SheetTitle>
+              <SheetTitle>{shown.eventName}</SheetTitle>
               <SheetDescription>{t("mapping.drawerHint")}</SheetDescription>
             </SheetHeader>
             <SheetBody className="flex flex-col gap-5">
               {RECIPIENT_ROLES.map((role) => {
-                const notifies = shownDraft.recipients[role];
+                const notifies = recipientsVal?.[role] ?? false;
                 return (
                   <div key={role} className="flex flex-col gap-2 border-b pb-4 last:border-b-0">
                     <label className="flex items-center justify-between gap-3">
                       <span className="text-sm font-medium">{t(`roles.${role}`)}</span>
-                      <Switch
-                        checked={notifies}
-                        onCheckedChange={(v) => {
-                          const templateByRole = { ...shownDraft.templateByRole };
-                          if (!v) delete templateByRole[role];
-                          setDraft({
-                            ...shownDraft,
-                            recipients: { ...shownDraft.recipients, [role]: v },
-                            templateByRole,
-                          });
-                        }}
-                        aria-label={t(`roles.${role}`)}
+                      <Controller
+                        control={control}
+                        name={`recipients.${role}`}
+                        render={({ field }) => (
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={(v) => {
+                              field.onChange(v);
+                              if (!v) setValue(`templateByRole.${role}`, undefined, { shouldDirty: true });
+                            }}
+                            aria-label={t(`roles.${role}`)}
+                          />
+                        )}
                       />
                     </label>
-                    <Field label={t("mapping.templateLabel")} reserveMessage={false}>
-                      <Select
-                        value={shownDraft.templateByRole[role] ?? ""}
-                        onValueChange={(v) =>
-                          setDraft({
-                            ...shownDraft,
-                            templateByRole: { ...shownDraft.templateByRole, [role]: v ?? undefined },
-                          })
-                        }
-                        disabled={!notifies}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue>{(v) => (v ? String(v) : t("mapping.noTemplate"))}</SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {templateOptions.map((code) => (
-                            <SelectItem key={code} value={code}>
-                              {code}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <Field
+                      label={t("mapping.templateLabel")}
+                      error={formState.errors.templateByRole?.[role]?.message}
+                      reserveMessage={false}
+                    >
+                      <Controller
+                        control={control}
+                        name={`templateByRole.${role}`}
+                        render={({ field }) => (
+                          <Select
+                            value={field.value ?? ""}
+                            onValueChange={(v) => field.onChange(v ?? undefined)}
+                            disabled={!notifies}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue>{(v) => (v ? String(v) : t("mapping.noTemplate"))}</SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {templateOptions.map((code) => (
+                                <SelectItem key={code} value={code}>
+                                  {code}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
                     </Field>
                   </div>
                 );
               })}
             </SheetBody>
             <SheetFooter layout="split">
-              <Button variant="outline" size="lg" onClick={() => setDraft(null)}>
+              <Button variant="outline" size="lg" onClick={() => setEditing(null)}>
                 {tc("cancel")}
               </Button>
-              <Button size="lg" onClick={saveDraft} disabled={!dirty}>
+              <Button size="lg" onClick={handleSubmit(onSubmit)} disabled={!formState.isDirty}>
                 {tc("save")}
               </Button>
             </SheetFooter>
