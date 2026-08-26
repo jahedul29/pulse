@@ -1,0 +1,64 @@
+stages:
+  - test
+  - deploy
+
+default:
+  image: node:24-bookworm
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+  before_script:
+    - npm ci --cache .npm --prefer-offline
+  interruptible: true
+
+quality:
+  stage: test
+  script:
+    - npm run lint
+    - npm run typecheck
+    - npm test
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+
+e2e:
+  stage: test
+  variables:
+    PLAYWRIGHT_BROWSERS_PATH: "$CI_PROJECT_DIR/.pw-browsers"
+  cache:
+    - key:
+        files:
+          - package-lock.json
+      paths:
+        - .npm/
+    - key: "pw-$CI_COMMIT_REF_SLUG"
+      paths:
+        - .pw-browsers/
+  script:
+    - npx playwright install --with-deps chromium
+    - npm run test:e2e
+  artifacts:
+    when: always
+    paths:
+      - playwright-report/
+    expire_in: 1 week
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+
+# Deploy is intentionally manual: GitHub owns auto-deploy today, and both
+# pipelines target the same Vercel project. To make GitLab the deploy owner,
+# change `when: manual` to `on_success` here and disable the GitHub deploy job.
+# Requires CI/CD variables: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID.
+deploy:
+  stage: deploy
+  script:
+    - npx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
+    - npx vercel@latest build --prod --token="$VERCEL_TOKEN"
+    - npx vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual

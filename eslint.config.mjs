@@ -12,6 +12,12 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated test/CI artifacts:
+    "coverage/**",
+    "playwright-report/**",
+    "test-results/**",
+    // Vendored agent/skill scaffold (not app source):
+    ".claude/**",
   ]),
 ]);
 

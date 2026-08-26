@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { HelpCircle, Info, RotateCcw, Save, SlidersHorizontal } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -52,11 +52,7 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
   const [showViolations, setShowViolations] = useState(false);
   const [notice, setNotice] = useState<"max-availability" | "travel" | null>(null);
   const [shake, setShake] = useState<{ cols: number[]; nonce: number }>({ cols: [], nonce: 0 });
-  const [coachOpen, setCoachOpen] = useState(false);
-
-  useEffect(() => {
-    setCoachOpen(true);
-  }, []);
+  const [coachOpen, setCoachOpen] = useState(true);
 
   const needsTravel = specialist.role === "therapist" && config.travelTimeMins === 0;
 

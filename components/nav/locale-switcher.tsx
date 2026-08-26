@@ -19,8 +19,8 @@ export function LocaleSwitcher() {
   const select = (next: Locale) => {
     setOpen(false);
     if (next === locale) return;
-    document.documentElement.lang = next;
-    document.documentElement.dir = dirFor(next);
+    document.documentElement.setAttribute("lang", next);
+    document.documentElement.setAttribute("dir", dirFor(next));
     startTransition(async () => {
       await setUserLocale(next);
       router.refresh();
