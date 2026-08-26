@@ -555,6 +555,7 @@
     "createdToast": "تم إنشاء الدور «{name}»",
     "renamedToast": "تمت إعادة تسمية الدور",
     "nameRequired": "أدخل اسم الدور",
+    "nameExists": "يوجد دور بهذا الاسم بالفعل.",
     "deleteTitle": "حذف الدور؟",
     "deleteBody": "ستتم إزالة «{name}» وإلغاء منحه. لا يمكن التراجع عن ذلك.",
     "deleteConfirm": "حذف الدور",
@@ -625,6 +626,7 @@
     "revokeBody": "سيفقد {name} كل ما يمنحه «{role}».",
     "revokeConfirm": "إلغاء",
     "duplicateRole": "هذا الدور مُمنوح بالفعل.",
+    "roleRequired": "اختر دورًا.",
     "duplicateOverlay": "هذه الصلاحية موجودة بالفعل.",
     "mod_dashboard": "لوحة التحكم",
     "mod_events": "الفعاليات والتذاكر",
@@ -739,6 +741,10 @@
     "reasonLabel": "سبب التغيير",
     "reasonPlaceholder": "مثال: تشديد بعد تدقيق الربع الثالث",
     "reasonRequired": "أضف سببًا لهذا التغيير.",
+    "atLeast": "يجب أن يكون {n} على الأقل.",
+    "passwordFloor": "بين 6 و128 حرفًا.",
+    "mustBeNumber": "أدخل رقمًا.",
+    "mustBeInteger": "أدخل رقمًا صحيحًا.",
     "savedToast": "تم تحديث سياسة الأمان",
     "cancel": "إلغاء",
     "reset": "إعادة تعيين",
@@ -821,6 +827,9 @@
       "create": "إنشاء قالب",
       "codeRequired": "رمز الرسالة مطلوب.",
       "codeExists": "رمز الرسالة هذا موجود بالفعل.",
+      "codeFormat": "استخدم فقط A–Z و0–9 والشرطة السفلية.",
+      "enRequired": "النص الإنجليزي مطلوب.",
+      "arRequired": "النص العربي مطلوب.",
       "createdToast": "تم إنشاء {code}",
       "updatedToast": "تم حفظ القالب",
       "deletedToast": "تم حذف {code}",
@@ -854,6 +863,7 @@
       "drawerHint": "فعّل كل دور واختر القالب الذي يُرسَل له.",
       "templateLabel": "قالب الرسالة",
       "noTemplate": "بدون قالب",
+      "templateRequired": "اختر قالبًا لكل دور يتم تنبيهه.",
       "savedToast": "تم حفظ الربط"
     },
     "log": {
@@ -893,6 +903,7 @@
       "colUrgency": "الأولوية",
       "drawerHint": "اختر من يتم تنبيهه، وهل تُفتح تذكرة، ومستوى الأولوية. يتبع لونها (أخضر / كهرماني / أحمر) مستوى الأولوية.",
       "generatesTicket": "تُنشئ تذكرة مشكلة",
+      "recipientRequired": "اختر مستلمًا واحدًا على الأقل.",
       "savedToast": "تم حفظ التوجيه"
     },
     "alerts": {

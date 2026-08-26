@@ -35,4 +35,18 @@ describe("AlertRoutingEditor", () => {
     await userEvent.click(toggles[0]);
     expect(save).toBeEnabled();
   });
+
+  it("blocks save with a recipient error when every recipient is off", async () => {
+    render(<AlertRoutingEditor />);
+
+    await userEvent.click(await screen.findByRole("link", { name: "Session missed" }));
+    const dialog = await screen.findByRole("dialog");
+
+    for (const sw of within(dialog).getAllByRole("switch")) {
+      if (sw.getAttribute("aria-checked") === "true") await userEvent.click(sw);
+    }
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(await within(dialog).findByText("Select at least one recipient.")).toBeInTheDocument();
+  });
 });

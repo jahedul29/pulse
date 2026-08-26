@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field } from "@/components/ui/field";
+import { Field, FieldError } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -31,9 +33,18 @@ import { DataTable } from "@/components/common/data-table";
 import { useNotificationStore } from "@/lib/notifications/store";
 import { fetchAlertRouting } from "@/lib/notifications/api";
 import { useRetained } from "@/lib/use-retained";
+import { routingSchema, type RoutingForm } from "@/lib/notifications/schemas";
 import { urgencyTone } from "@/lib/notifications/tones";
 import { RECIPIENT_ROLES, URGENCIES } from "@/lib/notifications/types";
 import type { AlertRouting, Urgency } from "@/lib/notifications/types";
+
+const EMPTY_ROUTING: RoutingForm = {
+  eventId: "",
+  eventName: "",
+  recipients: { client: false, rbt: false, sltot: false, bcba: false },
+  generatesTicket: false,
+  urgency: "low",
+};
 
 export function AlertRoutingEditor() {
   const t = useTranslations("notifications");
@@ -45,8 +56,24 @@ export function AlertRoutingEditor() {
   const [rows, setRows] = useState<AlertRouting[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [draft, setDraft] = useState<AlertRouting | null>(null);
-  const shownDraft = useRetained(draft);
+  const [editing, setEditing] = useState<AlertRouting | null>(null);
+  const shown = useRetained(editing);
+
+  const schema = useMemo(
+    () => routingSchema({ recipientRequired: t("routing.recipientRequired") }),
+    [t],
+  );
+  const form = useForm<RoutingForm>({
+    resolver: zodResolver(schema),
+    mode: "onSubmit",
+    defaultValues: EMPTY_ROUTING,
+  });
+  const { control, handleSubmit, reset, formState } = form;
+
+  const openRouting = (r: AlertRouting) => {
+    reset(r);
+    setEditing(r);
+  };
 
   useEffect(() => {
     let active = true;
@@ -66,14 +93,10 @@ export function AlertRoutingEditor() {
     };
   }, [routingState]);
 
-  const original = draft ? routingState.find((r) => r.eventId === draft.eventId) : null;
-  const dirty = draft != null && original != null && JSON.stringify(draft) !== JSON.stringify(original);
-
-  const saveDraft = () => {
-    if (!draft) return;
-    setRouting(draft);
+  const onSubmit = (values: RoutingForm) => {
+    setRouting(values);
     toast.success(t("routing.savedToast"));
-    setDraft(null);
+    setEditing(null);
   };
 
   const columns = useMemo<ColumnDef<AlertRouting, unknown>[]>(
@@ -165,7 +188,7 @@ export function AlertRoutingEditor() {
               searchPlaceholder={t("routing.search")}
               emptyLabel={t("routing.empty")}
               itemsLabel={t("routing.items")}
-              onRowClick={(r) => setDraft(r)}
+              onRowClick={(r) => openRouting(r)}
               rowAriaLabel={(r) => r.eventName}
               getSearchText={(r) => r.eventName}
               filterLabels={{ filter: t("routing.filter"), clear: t("routing.clear"), clearFilters: tc("clearFilters") }}
@@ -176,11 +199,11 @@ export function AlertRoutingEditor() {
         </CardContent>
       </Card>
 
-      <Sheet open={draft != null} onOpenChange={(o) => !o && setDraft(null)}>
-        {shownDraft && (
+      <Sheet open={editing != null} onOpenChange={(o) => !o && setEditing(null)}>
+        {shown && (
           <SheetContent>
             <SheetHeader>
-              <SheetTitle>{shownDraft.eventName}</SheetTitle>
+              <SheetTitle>{shown.eventName}</SheetTitle>
               <SheetDescription>{t("routing.drawerHint")}</SheetDescription>
             </SheetHeader>
             <SheetBody className="flex flex-col gap-5">
@@ -191,30 +214,47 @@ export function AlertRoutingEditor() {
                 {RECIPIENT_ROLES.map((role) => (
                   <label key={role} className="flex items-center justify-between gap-3">
                     <span className="text-sm">{t(`roles.${role}`)}</span>
-                    <Switch
-                      checked={shownDraft.recipients[role]}
-                      onCheckedChange={(v) =>
-                        setDraft({ ...shownDraft, recipients: { ...shownDraft.recipients, [role]: v } })
-                      }
-                      aria-label={t(`roles.${role}`)}
+                    <Controller
+                      control={control}
+                      name={`recipients.${role}`}
+                      render={({ field }) => (
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          aria-label={t(`roles.${role}`)}
+                        />
+                      )}
                     />
                   </label>
                 ))}
+                {formState.errors.recipients?.message && (
+                  <FieldError>{formState.errors.recipients.message}</FieldError>
+                )}
               </div>
 
               <label className="flex items-center justify-between gap-3 border-t pt-4">
                 <span className="text-sm font-medium">{t("routing.generatesTicket")}</span>
-                <Switch
-                  checked={shownDraft.generatesTicket}
-                  onCheckedChange={(v) => setDraft({ ...shownDraft, generatesTicket: v })}
-                  aria-label={t("routing.generatesTicket")}
+                <Controller
+                  control={control}
+                  name="generatesTicket"
+                  render={({ field }) => (
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      aria-label={t("routing.generatesTicket")}
+                    />
+                  )}
                 />
               </label>
 
               <Field label={t("routing.colUrgency")} reserveMessage={false}>
+                <Controller
+                  control={control}
+                  name="urgency"
+                  render={({ field }) => (
                 <Select
-                  value={shownDraft.urgency}
-                  onValueChange={(v) => setDraft({ ...shownDraft, urgency: (v ?? "low") as Urgency })}
+                  value={field.value}
+                  onValueChange={(v) => field.onChange((v ?? "low") as Urgency)}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue>
@@ -241,13 +281,15 @@ export function AlertRoutingEditor() {
                     ))}
                   </SelectContent>
                 </Select>
+                  )}
+                />
               </Field>
             </SheetBody>
             <SheetFooter layout="split">
-              <Button variant="outline" size="lg" onClick={() => setDraft(null)}>
+              <Button variant="outline" size="lg" onClick={() => setEditing(null)}>
                 {tc("cancel")}
               </Button>
-              <Button size="lg" onClick={saveDraft} disabled={!dirty}>
+              <Button size="lg" onClick={handleSubmit(onSubmit)} disabled={!formState.isDirty}>
                 {tc("save")}
               </Button>
             </SheetFooter>

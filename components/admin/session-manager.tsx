@@ -257,7 +257,7 @@ export function SessionManager() {
                   {t("confirmBody", { count: otherCount })}
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter>
+              <AlertDialogFooter layout="split">
                 <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
                 <AlertDialogAction variant="destructive" onClick={onRevokeAll}>
                   {t("confirmAction")}

@@ -5,7 +5,7 @@ import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { ButtonRow } from "@/components/ui/button-row"
+import { ButtonRow, type ButtonRowLayout } from "@/components/ui/button-row"
 
 function AlertDialog({ ...props }: AlertDialogPrimitive.Root.Props) {
   return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />
@@ -80,16 +80,19 @@ function AlertDialogHeader({
 
 function AlertDialogFooter({
   className,
+  layout,
   children,
   ...props
-}: React.ComponentProps<"div">) {
+}: React.ComponentProps<"div"> & { layout?: ButtonRowLayout }) {
   return (
     <div
       data-slot="alert-dialog-footer"
       className={cn("-mx-4 -mb-4 rounded-b-xl border-t bg-muted/50 p-4", className)}
       {...props}
     >
-      <ButtonRow className="sm:ms-auto">{children}</ButtonRow>
+      <ButtonRow layout={layout} className="sm:ms-auto">
+        {children}
+      </ButtonRow>
     </div>
   )
 }

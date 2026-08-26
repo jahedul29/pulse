@@ -47,6 +47,10 @@ import { fmtDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useDragScroll } from "@/lib/use-drag-scroll";
 
+function autoFocusSearch(): boolean {
+  return typeof window !== "undefined" && !window.matchMedia("(pointer: coarse)").matches;
+}
+
 declare module "@tanstack/react-table" {
   interface ColumnMeta<TData extends RowData, TValue> {
     headClassName?: string;
@@ -182,7 +186,7 @@ function SelectFilter<TData>({
         <Search className="pointer-events-none absolute start-2.5 size-4 text-muted-foreground" />
         <Input
           size="sm"
-          autoFocus
+          autoFocus={autoFocusSearch()}
           placeholder={searchLabel}
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -332,7 +336,7 @@ function ColumnFilter<TData>({
         )}
         {kind === "text" && (
           <input
-            autoFocus
+            autoFocus={autoFocusSearch()}
             value={(value as string) ?? ""}
             onChange={(e) => column.setFilterValue(e.target.value || undefined)}
             className="h-8 w-full rounded-md border bg-card px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"

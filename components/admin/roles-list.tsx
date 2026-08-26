@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -39,6 +41,7 @@ import { fmtDateTimeParts } from "@/lib/format";
 import { useRbacStore } from "@/lib/rbac/store";
 import { useAuthStore } from "@/lib/auth/store";
 import { fetchRoles } from "@/lib/rbac/api";
+import { roleSchema, type RoleForm } from "@/lib/rbac/schemas";
 import { countGranted } from "@/lib/rbac/modules";
 import type { Role } from "@/lib/rbac/types";
 
@@ -61,10 +64,22 @@ export function RolesList() {
 
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
   const [editing, setEditing] = useState<Role | null>(null);
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [nameError, setNameError] = useState("");
   const [deleting, setDeleting] = useState<Role | null>(null);
+
+  const schema = useMemo(
+    () =>
+      roleSchema(
+        { nameRequired: t("nameRequired"), nameExists: t("nameExists") },
+        { existingNames: rolesState.filter((r) => r.id !== editing?.id).map((r) => r.name) },
+      ),
+    [t, rolesState, editing],
+  );
+  const form = useForm<RoleForm>({
+    resolver: zodResolver(schema),
+    mode: "onSubmit",
+    defaultValues: { name: "", description: "" },
+  });
+  const { register, handleSubmit, reset, formState } = form;
 
   useEffect(() => {
     let active = true;
@@ -85,37 +100,31 @@ export function RolesList() {
   }, [rolesState]);
 
   const openCreate = () => {
-    setDialogMode("create");
+    reset({ name: "", description: "" });
     setEditing(null);
-    setName("");
-    setDescription("");
-    setNameError("");
+    setDialogMode("create");
   };
 
-  const openEdit = (role: Role) => {
-    setDialogMode("edit");
-    setEditing(role);
-    setName(role.name);
-    setDescription(role.description);
-    setNameError("");
-  };
+  const openEdit = useCallback(
+    (role: Role) => {
+      reset({ name: role.name, description: role.description });
+      setEditing(role);
+      setDialogMode("edit");
+    },
+    [reset],
+  );
 
   const closeDialog = () => setDialogMode(null);
 
-  const submitDialog = () => {
-    const trimmed = name.trim();
-    if (!trimmed) {
-      setNameError(t("nameRequired"));
-      return;
-    }
+  const onSubmit = (values: RoleForm) => {
     if (dialogMode === "edit" && editing) {
-      updateRole(editing.id, { name: trimmed, description: description.trim() });
+      updateRole(editing.id, { name: values.name, description: values.description });
       toast.success(t("renamedToast"));
       closeDialog();
       return;
     }
-    const id = createRole({ name: trimmed, description: description.trim(), by: actorName });
-    toast.success(t("createdToast", { name: trimmed }));
+    const id = createRole({ name: values.name, description: values.description, by: actorName });
+    toast.success(t("createdToast", { name: values.name }));
     closeDialog();
     router.push(`/admin/roles/${id}`);
   };
@@ -254,7 +263,7 @@ export function RolesList() {
         },
       },
     ],
-    [t, locale, permissions],
+    [t, locale, permissions, openEdit],
   );
 
   return (
@@ -325,14 +334,15 @@ export function RolesList() {
             {dialogMode === "create" && <DialogDescription>{t("createDesc")}</DialogDescription>}
           </DialogHeader>
           <DialogBody className="flex flex-col gap-4">
-            <Field label={t("nameLabel")} htmlFor="role-name" error={nameError} reserveMessage={false}>
+            <Field
+              label={t("nameLabel")}
+              htmlFor="role-name"
+              error={formState.errors.name?.message}
+              reserveMessage={false}
+            >
               <Input
                 id="role-name"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  if (nameError) setNameError("");
-                }}
+                {...register("name")}
                 placeholder={t("namePlaceholder")}
                 autoFocus
               />
@@ -341,25 +351,19 @@ export function RolesList() {
               <Textarea
                 id="role-desc"
                 rows={3}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                {...register("description")}
                 placeholder={t("descPlaceholder")}
               />
             </Field>
           </DialogBody>
-          <DialogFooter>
+          <DialogFooter layout="split">
             <Button variant="outline" size="lg" onClick={closeDialog}>
               {tc("cancel")}
             </Button>
             <Button
               size="lg"
-              onClick={submitDialog}
-              disabled={
-                dialogMode === "edit" &&
-                editing != null &&
-                name.trim() === editing.name &&
-                description.trim() === editing.description
-              }
+              onClick={handleSubmit(onSubmit)}
+              disabled={dialogMode === "edit" && !formState.isDirty}
             >
               {dialogMode === "edit" ? tc("save") : t("create")}
             </Button>
@@ -375,7 +379,7 @@ export function RolesList() {
               {deleting ? t("deleteBody", { name: deleting.name }) : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter layout="split">
             <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}

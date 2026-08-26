@@ -52,4 +52,15 @@ function Field({
   )
 }
 
-export { Field }
+function FieldError({ children }: { children: React.ReactNode }) {
+  return (
+    <p
+      role="alert"
+      className="flex items-center gap-1 text-xs leading-4 font-medium text-danger"
+    >
+      <AlertCircle className="size-3.5 shrink-0" /> {children}
+    </p>
+  )
+}
+
+export { Field, FieldError }

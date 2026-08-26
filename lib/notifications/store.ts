@@ -6,7 +6,7 @@ interface NotificationState {
   templates: MessageTemplate[];
   mappings: EventMapping[];
   routing: AlertRouting[];
-  upsertTemplate: (template: MessageTemplate) => void;
+  upsertTemplate: (template: Omit<MessageTemplate, "updatedAt">) => void;
   deleteTemplate: (code: string) => void;
   setMapping: (mapping: EventMapping) => void;
   setRouting: (routing: AlertRouting) => void;
@@ -19,11 +19,12 @@ export const useNotificationStore = create<NotificationState>((set) => ({
 
   upsertTemplate: (template) =>
     set((s) => {
-      const exists = s.templates.some((t) => t.code === template.code);
+      const record = { ...template, updatedAt: Date.now() };
+      const exists = s.templates.some((t) => t.code === record.code);
       return {
         templates: exists
-          ? s.templates.map((t) => (t.code === template.code ? template : t))
-          : [...s.templates, template],
+          ? s.templates.map((t) => (t.code === record.code ? record : t))
+          : [...s.templates, record],
       };
     }),
 

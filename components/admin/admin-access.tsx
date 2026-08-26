@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
 import { CalendarDays, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -45,6 +47,12 @@ import { useRbacStore } from "@/lib/rbac/store";
 import { useAdminStore } from "@/lib/auth/admins";
 import { useAuthStore } from "@/lib/auth/store";
 import { fetchAdminAccess, effectivePermissions, roleExpiryStatus } from "@/lib/rbac/api";
+import {
+  grantSchema,
+  overlaySchema,
+  type GrantForm,
+  type OverlayForm,
+} from "@/lib/rbac/schemas";
 import { MODULE_IDS, countGranted } from "@/lib/rbac/modules";
 import type { RoleGrant, PermissionOverlay, ModuleId, PermissionAction } from "@/lib/rbac/types";
 
@@ -79,13 +87,40 @@ export function AdminAccess() {
   const [error, setError] = useState(false);
 
   const [addRoleOpen, setAddRoleOpen] = useState(false);
-  const [newRoleId, setNewRoleId] = useState("");
-  const [newExpiry, setNewExpiry] = useState<Date | undefined>();
   const [expiryOpen, setExpiryOpen] = useState(false);
-
   const [addOverlayOpen, setAddOverlayOpen] = useState(false);
-  const [newModuleId, setNewModuleId] = useState<ModuleId>(MODULE_IDS[0]);
-  const [newAction, setNewAction] = useState<PermissionAction>("view");
+
+  const grantSchemaMemo = useMemo(
+    () =>
+      grantSchema(
+        { roleRequired: t("roleRequired"), duplicateRole: t("duplicateRole") },
+        { existingRoleIds: grantsState.filter((g) => g.adminId === adminId).map((g) => g.roleId) },
+      ),
+    [t, grantsState, adminId],
+  );
+  const grantForm = useForm<GrantForm>({
+    resolver: zodResolver(grantSchemaMemo),
+    mode: "onSubmit",
+    defaultValues: { roleId: "", expiresAt: null },
+  });
+
+  const overlaySchemaMemo = useMemo(
+    () =>
+      overlaySchema(
+        { duplicateOverlay: t("duplicateOverlay") },
+        {
+          existingKeys: overlaysState
+            .filter((o) => o.adminId === adminId)
+            .map((o) => `${o.moduleId}:${o.action}`),
+        },
+      ),
+    [t, overlaysState, adminId],
+  );
+  const overlayForm = useForm<OverlayForm>({
+    resolver: zodResolver(overlaySchemaMemo),
+    mode: "onSubmit",
+    defaultValues: { moduleId: MODULE_IDS[0], action: "view" },
+  });
 
   const [revoking, setRevoking] = useState<RoleGrant | null>(null);
   const [removingOverlay, setRemovingOverlay] = useState<PermissionOverlay | null>(null);
@@ -145,38 +180,26 @@ export function AdminAccess() {
     );
   };
 
-  const onGrant = () => {
-    if (!newRoleId) return;
-    const dup = grantsState.some((g) => g.adminId === adminId && g.roleId === newRoleId);
-    if (dup) {
-      toast.error(t("duplicateRole"));
-      return;
-    }
-    addGrant({
-      adminId,
-      roleId: newRoleId,
-      expiresAt: newExpiry ? newExpiry.getTime() : null,
-      by: actorName,
-    });
-    toast.success(t("grantedToast", { role: roleName(newRoleId) }));
-    setAddRoleOpen(false);
-    setNewRoleId("");
-    setNewExpiry(undefined);
+  const openAddRole = () => {
+    grantForm.reset({ roleId: "", expiresAt: null });
+    setAddRoleOpen(true);
   };
 
-  const onAddOverlay = () => {
-    const dup = overlaysState.some(
-      (o) => o.adminId === adminId && o.moduleId === newModuleId && o.action === newAction,
-    );
-    if (dup) {
-      toast.error(t("duplicateOverlay"));
-      return;
-    }
-    addOverlay({ adminId, moduleId: newModuleId, action: newAction, by: actorName });
+  const onGrant = (values: GrantForm) => {
+    addGrant({ adminId, roleId: values.roleId, expiresAt: values.expiresAt, by: actorName });
+    toast.success(t("grantedToast", { role: roleName(values.roleId) }));
+    setAddRoleOpen(false);
+  };
+
+  const openAddOverlay = () => {
+    overlayForm.reset({ moduleId: MODULE_IDS[0], action: "view" });
+    setAddOverlayOpen(true);
+  };
+
+  const onAddOverlay = (values: OverlayForm) => {
+    addOverlay({ adminId, moduleId: values.moduleId, action: values.action, by: actorName });
     toast.success(t("overlayAddedToast"));
     setAddOverlayOpen(false);
-    setNewModuleId(MODULE_IDS[0]);
-    setNewAction("view");
   };
 
   const confirmRevoke = () => {
@@ -279,7 +302,7 @@ export function AdminAccess() {
             <CardHeader>
               <CardTitle className="text-base">{t("rolesGranted")}</CardTitle>
               <CardAction>
-                <Button variant="outline" size="sm" onClick={() => setAddRoleOpen(true)}>
+                <Button variant="outline" size="sm" onClick={openAddRole}>
                   <Plus className="size-4" />
                   {t("addRole")}
                 </Button>
@@ -324,7 +347,7 @@ export function AdminAccess() {
               <CardTitle className="text-base">{t("overlaysTitle")}</CardTitle>
               <CardDescription>{t("overlaysHint")}</CardDescription>
               <CardAction>
-                <Button variant="outline" size="sm" onClick={() => setAddOverlayOpen(true)}>
+                <Button variant="outline" size="sm" onClick={openAddOverlay}>
                   <Plus className="size-4" />
                   {t("addOverlay")}
                 </Button>
@@ -375,72 +398,88 @@ export function AdminAccess() {
             <DialogDescription>{t("grantRoleDesc")}</DialogDescription>
           </DialogHeader>
           <DialogBody className="flex flex-col gap-4">
-            <Field label={t("role")} reserveMessage={false}>
-              <Select value={newRoleId} onValueChange={(v) => setNewRoleId(v ?? "")}>
-                <SelectTrigger className="w-full">
-                  <SelectValue>
-                    {(v) => (v ? roleName(v) : t("selectAdminPlaceholder"))}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {roles.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {r.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <Field
+              label={t("role")}
+              error={grantForm.formState.errors.roleId?.message}
+              reserveMessage={false}
+            >
+              <Controller
+                control={grantForm.control}
+                name="roleId"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={(v) => field.onChange(v ?? "")}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue>
+                        {(v) => (v ? roleName(v) : t("selectAdminPlaceholder"))}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roles.map((r) => (
+                        <SelectItem key={r.id} value={r.id}>
+                          {r.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </Field>
             <Field label={t("expiryOptional")} hint={t("temporaryHint")} reserveMessage={false}>
-              <Popover open={expiryOpen} onOpenChange={setExpiryOpen}>
-                <PopoverTrigger
-                  render={
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="lg"
-                      className={cn(TRIGGER, !newExpiry && "text-muted-foreground")}
-                    />
-                  }
-                >
-                  {newExpiry ? fmtDateTimeParts(newExpiry.getTime(), locale).date : t("noExpiry")}
-                  <CalendarDays className="size-4 opacity-70" />
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={newExpiry}
-                    onSelect={(d) => {
-                      setNewExpiry(d);
-                      setExpiryOpen(false);
-                    }}
-                    disabled={{ before: startOfTomorrow() }}
-                    autoFocus
-                  />
-                  {newExpiry && (
-                    <div className="border-t p-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => {
-                          setNewExpiry(undefined);
+              <Controller
+                control={grantForm.control}
+                name="expiresAt"
+                render={({ field }) => (
+                  <Popover open={expiryOpen} onOpenChange={setExpiryOpen}>
+                    <PopoverTrigger
+                      render={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="lg"
+                          className={cn(TRIGGER, field.value == null && "text-muted-foreground")}
+                        />
+                      }
+                    >
+                      {field.value != null ? fmtDateTimeParts(field.value, locale).date : t("noExpiry")}
+                      <CalendarDays className="size-4 opacity-70" />
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={field.value != null ? new Date(field.value) : undefined}
+                        onSelect={(d) => {
+                          field.onChange(d ? d.getTime() : null);
                           setExpiryOpen(false);
                         }}
-                      >
-                        {t("noExpiry")}
-                      </Button>
-                    </div>
-                  )}
-                </PopoverContent>
-              </Popover>
+                        disabled={{ before: startOfTomorrow() }}
+                        autoFocus
+                      />
+                      {field.value != null && (
+                        <div className="border-t p-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => {
+                              field.onChange(null);
+                              setExpiryOpen(false);
+                            }}
+                          >
+                            {t("noExpiry")}
+                          </Button>
+                        </div>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                )}
+              />
             </Field>
           </DialogBody>
-          <DialogFooter>
+          <DialogFooter layout="split">
             <Button variant="outline" size="lg" onClick={() => setAddRoleOpen(false)}>
               {tc("cancel")}
             </Button>
-            <Button size="lg" onClick={onGrant} disabled={!newRoleId}>
+            <Button size="lg" onClick={grantForm.handleSubmit(onGrant)}>
               {t("grant")}
             </Button>
           </DialogFooter>
@@ -455,38 +494,57 @@ export function AdminAccess() {
           </DialogHeader>
           <DialogBody className="flex flex-col gap-4">
             <Field label={t("module")} reserveMessage={false}>
-              <Select value={newModuleId} onValueChange={(v) => setNewModuleId(v as ModuleId)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue>{(v) => (v ? t(`mod_${v}`) : "")}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {MODULE_IDS.map((id) => (
-                    <SelectItem key={id} value={id}>
-                      {t(`mod_${id}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Controller
+                control={overlayForm.control}
+                name="moduleId"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={(v) => field.onChange(v as ModuleId)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue>{(v) => (v ? t(`mod_${v}`) : "")}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MODULE_IDS.map((id) => (
+                        <SelectItem key={id} value={id}>
+                          {t(`mod_${id}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </Field>
-            <Field label={t("action")} reserveMessage={false}>
-              <Select value={newAction} onValueChange={(v) => setNewAction(v as PermissionAction)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue>
-                    {(v) => (v === "edit" ? t("actionEdit") : t("actionView"))}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="view">{t("actionView")}</SelectItem>
-                  <SelectItem value="edit">{t("actionEdit")}</SelectItem>
-                </SelectContent>
-              </Select>
+            <Field
+              label={t("action")}
+              error={overlayForm.formState.errors.action?.message}
+              reserveMessage={false}
+            >
+              <Controller
+                control={overlayForm.control}
+                name="action"
+                render={({ field }) => (
+                  <Select
+                    value={field.value}
+                    onValueChange={(v) => field.onChange(v as PermissionAction)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue>
+                        {(v) => (v === "edit" ? t("actionEdit") : t("actionView"))}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="view">{t("actionView")}</SelectItem>
+                      <SelectItem value="edit">{t("actionEdit")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </Field>
           </DialogBody>
-          <DialogFooter>
+          <DialogFooter layout="split">
             <Button variant="outline" size="lg" onClick={() => setAddOverlayOpen(false)}>
               {tc("cancel")}
             </Button>
-            <Button size="lg" onClick={onAddOverlay}>
+            <Button size="lg" onClick={overlayForm.handleSubmit(onAddOverlay)}>
               {t("add")}
             </Button>
           </DialogFooter>
@@ -503,7 +561,7 @@ export function AdminAccess() {
                 : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter layout="split">
             <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmRevoke}
@@ -533,7 +591,7 @@ export function AdminAccess() {
                 : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter layout="split">
             <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmRemoveOverlay}
