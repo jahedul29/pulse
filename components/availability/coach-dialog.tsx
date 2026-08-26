@@ -170,10 +170,8 @@ export function CoachDialog({
   useEffect(() => {
     if (!open) {
       clearTimers();
-      setPlaying(false);
       return;
     }
-    setPlaying(true);
     const id = window.setTimeout(run, 300);
     return () => {
       clearTimeout(id);
