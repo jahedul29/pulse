@@ -40,7 +40,8 @@ type NumKey =
   | "tokenLifetimeMins"
   | "passwordMinLength"
   | "passwordHistoryCount"
-  | "reauthWindowMins";
+  | "reauthWindowMins"
+  | "inviteExpiryDays";
 
 type BoolKey =
   | "passwordRequireUpper"
@@ -240,6 +241,7 @@ export function SecurityPolicyEditor() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   {numField("sessionLifetimeMins", t("sessionLifetime"), t("unitMinutes"))}
                   {numField("tokenLifetimeMins", t("tokenLifetime"), t("unitMinutes"))}
+                  {numField("inviteExpiryDays", t("inviteExpiry"), t("unitDays"), t("inviteExpiryHint"))}
                 </div>,
               )}
               {section(

@@ -15,7 +15,7 @@ type Crumb = { label: string; href?: string };
 
 const ADMIN_TITLE_KEYS: Record<string, string> = {
   "/admin/audit/logins": "nav.loginAudit",
-  "/admin/accounts": "adminAccounts.title",
+  "/admin/user-management": "userManagement.title",
   "/admin/settings/sessions": "sessions.title",
   "/admin/roles": "rbac.rolesTitle",
   "/admin/access": "rbac.accessTitle",

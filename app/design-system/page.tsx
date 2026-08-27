@@ -98,6 +98,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { StatusBadge } from "@/components/common/status-badge";
+import { Chip } from "@/components/common/chip";
+import { MultiSelect, type MultiSelectOption } from "@/components/common/multi-select";
+import { IconInput } from "@/components/ui/icon-input";
 import { ProfileCell } from "@/components/common/profile-cell";
 import { exportCsv } from "@/lib/export/csv";
 import { GuidelinesDialog } from "@/components/availability/guidelines-dialog";
@@ -291,6 +294,19 @@ const CLIENTS: Client[] = [
   { name: "Nora Bauer", email: "nora.bauer@pulse.health", role: "Analyst", status: "Suspended", packages: 1, mrr: "$150", sessions: 29, region: "EU-Central", phone: "+43 1 234 56", plan: "Quarterly", owner: "R. Diaz", joined: "2026-01-09", lastActive: "2026-06-28" },
 ];
 
+const DEMO_CLIENTS: Client[] = Array.from({ length: 120 }, (_, i) => {
+  const base = CLIENTS[i % CLIENTS.length];
+  if (i < CLIENTS.length) return base;
+  const n = Math.floor(i / CLIENTS.length) + 1;
+  const [first, ...rest] = base.name.split(" ");
+  return {
+    ...base,
+    name: `${first} ${rest.join(" ")} ${n}`,
+    email: base.email.replace("@", `.${n}@`),
+    sessions: base.sessions + i * 3,
+  };
+});
+
 function DemoActions({ name }: { name: string }) {
   const actions = [
     { label: "View", icon: Eye },
@@ -437,7 +453,7 @@ function DataTableDemo() {
 
   const onExport = () => {
     const headers = ["Client", "Email", "Role", "Status", "Sessions", "MRR", "Region", "Joined"];
-    const rows = CLIENTS.map((c) => [
+    const rows = DEMO_CLIENTS.map((c) => [
       c.name,
       c.email,
       c.role,
@@ -453,7 +469,7 @@ function DataTableDemo() {
   return (
     <DataTable
       columns={columns}
-      data={CLIENTS}
+      data={DEMO_CLIENTS}
       searchPlaceholder="Search by name, email, role or region"
       emptyLabel="No clients found"
       itemsLabel="clients"
@@ -530,6 +546,56 @@ function Sub({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
+const DEMO_ROLES: MultiSelectOption[] = [
+  { value: "superadmin", label: "Superadmin" },
+  { value: "admin", label: "Admin" },
+  { value: "supervisor", label: "Supervisor" },
+  { value: "cco", label: "Call center operator" },
+  { value: "content", label: "Content editor" },
+];
+
+function PaginationDemo({ initial, total }: { initial: number; total: number }) {
+  const [page, setPage] = useState(initial);
+  const [pageSize, setPageSize] = useState(25);
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const p = Math.min(page, pageCount);
+  const start = total === 0 ? 0 : (p - 1) * pageSize + 1;
+  const end = Math.min(p * pageSize, total);
+  return (
+    <Pagination
+      page={p}
+      pageCount={pageCount}
+      total={total}
+      start={start}
+      end={end}
+      pageSize={pageSize}
+      onPage={setPage}
+      onPageSize={(n) => {
+        setPageSize(n);
+        setPage(1);
+      }}
+      pageSizeOptions={[10, 25, 50, 100]}
+      label="rows"
+    />
+  );
+}
+
+function MultiSelectDemo() {
+  const [value, setValue] = useState<string[]>(["admin", "supervisor", "cco"]);
+  return (
+    <div className="w-full max-w-sm">
+      <MultiSelect
+        options={DEMO_ROLES}
+        value={value}
+        onChange={setValue}
+        placeholder="Select roles"
+        searchPlaceholder="Search roles"
+        emptyLabel="No matching roles."
+      />
+    </div>
+  );
+}
+
 function fmtHM(mins: number) {
   return `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
 }
@@ -544,31 +610,6 @@ function Tile({ kind }: { kind: "available" | "unavailable" | "online" | "offend
       )}
     >
       {kind === "online" && <span className="size-2 rounded-full bg-chart-3" />}
-    </div>
-  );
-}
-
-
-function IconInput({
-  leading,
-  trailing,
-  className,
-  dir,
-  ...props
-}: React.ComponentProps<typeof Input> & { leading?: React.ReactNode; trailing?: React.ReactNode }) {
-  return (
-    <div dir={dir} className="relative flex items-center">
-      {leading && (
-        <span className="pointer-events-none absolute start-2.5 top-1/2 flex -translate-y-1/2 text-muted-foreground">
-          {leading}
-        </span>
-      )}
-      <Input className={cn(leading && "ps-8", trailing && "pe-8", className)} {...props} />
-      {trailing && (
-        <span className="pointer-events-none absolute end-2.5 top-1/2 flex -translate-y-1/2 text-muted-foreground">
-          {trailing}
-        </span>
-      )}
     </div>
   );
 }
@@ -1184,6 +1225,15 @@ export default function DesignSystemPage() {
                   <StatusBadge tone="danger">Deleted</StatusBadge>
                   <StatusBadge tone="neutral">Draft</StatusBadge>
                 </Sub>
+                <Sub label="Chips — outline (default)">
+                  <Chip>Admin</Chip>
+                  <Chip>Supervisor</Chip>
+                  <Chip>Call center operator</Chip>
+                </Sub>
+                <Sub label="Chips — soft">
+                  <Chip variant="soft">Content editor</Chip>
+                  <Chip variant="soft">+2 more</Chip>
+                </Sub>
                 <Sub label="Business hours state">
                   <span className="inline-flex items-center gap-1.5 text-xs text-foreground">
                     <span className="size-1.5 rounded-full bg-success" /> Defined
@@ -1425,6 +1475,9 @@ export default function DesignSystemPage() {
                     <input type="file" className="hidden" />
                   </label>
                 </Sub>
+                <Sub label="Multi-select">
+                  <MultiSelectDemo />
+                </Sub>
               </CardContent>
             </Card>
           </Section>
@@ -1662,8 +1715,7 @@ export default function DesignSystemPage() {
                   total={total}
                   start={pageStart}
                   end={pageEnd}
-                  onPrev={() => setPage((p) => Math.max(1, p - 1))}
-                  onNext={() => setPage((p) => Math.min(pageCount, p + 1))}
+                  onPage={(p) => setPage(Math.min(pageCount, Math.max(1, p)))}
                   label="clients"
                 />
               </CardContent>
@@ -1685,6 +1737,33 @@ export default function DesignSystemPage() {
               </CardHeader>
               <CardContent>
                 <DataTableDemo />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Pagination</CardTitle>
+                <CardDescription>
+                  Shared across every table. Rows-per-page, windowed page numbers with ellipses, a
+                  Go-to input past 7 pages, and prev/next. Shown here at 20 pages.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-6">
+                <Sub label="Many pages (mid-range)">
+                  <div className="w-full rounded-lg border p-3">
+                    <PaginationDemo initial={9} total={500} />
+                  </div>
+                </Sub>
+                <Sub label="First page">
+                  <div className="w-full rounded-lg border p-3">
+                    <PaginationDemo initial={1} total={500} />
+                  </div>
+                </Sub>
+                <Sub label="Few pages (no ellipsis / no Go-to)">
+                  <div className="w-full rounded-lg border p-3">
+                    <PaginationDemo initial={2} total={90} />
+                  </div>
+                </Sub>
               </CardContent>
             </Card>
           </Section>

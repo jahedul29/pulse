@@ -46,10 +46,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { fmtDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useDragScroll } from "@/lib/use-drag-scroll";
+import { autoFocusSearch } from "@/lib/pointer";
 
-function autoFocusSearch(): boolean {
-  return typeof window !== "undefined" && !window.matchMedia("(pointer: coarse)").matches;
-}
+const MAX_FILL_ROWS = 12;
 
 declare module "@tanstack/react-table" {
   interface ColumnMeta<TData extends RowData, TValue> {
@@ -122,6 +121,7 @@ type DataTableProps<TData> = {
   };
   enableFreeze?: boolean;
   maxFreeze?: number;
+  pageSizeOptions?: number[];
 };
 
 function RangeFilter<TData>({
@@ -374,7 +374,12 @@ export function DataTable<TData>({
   filterLabels = {},
   enableFreeze = false,
   maxFreeze = 3,
+  pageSizeOptions,
 }: DataTableProps<TData>) {
+  const sizeOptions = useMemo(
+    () => Array.from(new Set([pageSize, ...(pageSizeOptions ?? [10, 25, 50, 100])])).sort((a, b) => a - b),
+    [pageSize, pageSizeOptions],
+  );
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -707,11 +712,17 @@ export function DataTable<TData>({
                 })}
               </TableRow>
             ))}
-            {rowH > 0 && pageRows.length > 0 && pageRows.length < size && (
-              <TableRow aria-hidden className="pointer-events-none border-transparent hover:bg-transparent">
-                <TableCell colSpan={colCount} style={{ height: (size - pageRows.length) * rowH }} />
-              </TableRow>
-            )}
+            {rowH > 0 &&
+              table.getPageCount() <= 1 &&
+              pageRows.length > 0 &&
+              pageRows.length < Math.min(size, MAX_FILL_ROWS) && (
+                <TableRow aria-hidden className="pointer-events-none border-transparent hover:bg-transparent">
+                  <TableCell
+                    colSpan={colCount}
+                    style={{ height: (Math.min(size, MAX_FILL_ROWS) - pageRows.length) * rowH }}
+                  />
+                </TableRow>
+              )}
             {total === 0 && (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={colCount} className="py-10 text-center text-sm text-muted-foreground">
@@ -746,8 +757,13 @@ export function DataTable<TData>({
         total={total}
         start={start}
         end={end}
-        onPrev={() => table.previousPage()}
-        onNext={() => table.nextPage()}
+        pageSize={size}
+        onPage={(p) => table.setPageIndex(p - 1)}
+        onPageSize={(n) => {
+          table.setPageSize(n);
+          table.setPageIndex(0);
+        }}
+        pageSizeOptions={sizeOptions}
         label={itemsLabel}
       />
     </div>

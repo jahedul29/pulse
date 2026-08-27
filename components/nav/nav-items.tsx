@@ -16,6 +16,8 @@ import {
   Siren,
   SlidersHorizontal,
   UserCog,
+  UserRound,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -26,6 +28,10 @@ import { SECTIONS } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
 type NavGroupItem = { href: string; key: string; icon: LucideIcon };
+
+const USER_MGMT_ITEMS: NavGroupItem[] = [
+  { href: "/admin/user-management", key: "adminAccounts", icon: UserRound },
+];
 
 const RBAC_ITEMS: NavGroupItem[] = [
   { href: "/admin/roles", key: "roles", icon: ShieldCheck },
@@ -191,11 +197,13 @@ export function NavItems({
   const t = useTranslations("nav");
   const pathname = usePathname();
 
-  const activeGroup = RBAC_ITEMS.some((i) => isActive(pathname, i.href))
-    ? "rbacGroup"
-    : NOTIFICATION_ITEMS.some((i) => isActive(pathname, i.href))
-      ? "notificationsGroup"
-      : null;
+  const activeGroup = USER_MGMT_ITEMS.some((i) => isActive(pathname, i.href))
+    ? "userMgmtGroup"
+    : RBAC_ITEMS.some((i) => isActive(pathname, i.href))
+      ? "rbacGroup"
+      : NOTIFICATION_ITEMS.some((i) => isActive(pathname, i.href))
+        ? "notificationsGroup"
+        : null;
   const [openGroup, setOpenGroup] = useState<string | null>(activeGroup);
   const toggleGroup = (key: string) => setOpenGroup((g) => (g === key ? null : key));
 
@@ -226,6 +234,15 @@ export function NavItems({
         );
       })}
 
+      <NavGroup
+        labelKey="userManagement"
+        icon={Users}
+        items={USER_MGMT_ITEMS}
+        collapsed={collapsed}
+        open={openGroup === "userMgmtGroup"}
+        onToggle={() => toggleGroup("userMgmtGroup")}
+        onNavigate={onNavigate}
+      />
       <NavGroup
         labelKey="rbacGroup"
         icon={Shield}

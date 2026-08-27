@@ -13,6 +13,7 @@ const valid: SecurityPolicy = {
   passwordHistoryCount: 3,
   mfaRequired: true,
   reauthWindowMins: 10,
+  inviteExpiryDays: 7,
 };
 
 describe("policySchema", () => {
@@ -41,6 +42,10 @@ describe("policySchema", () => {
 
   it("rejects a too-short password minimum", () => {
     expect(schema.safeParse({ ...valid, passwordMinLength: 4 }).success).toBe(false);
+  });
+
+  it("rejects an invitation expiry below 1 day", () => {
+    expect(schema.safeParse({ ...valid, inviteExpiryDays: 0 }).success).toBe(false);
   });
 
   it("reports a translated message for a non-integer value", () => {

@@ -44,7 +44,7 @@ import { ProfileCell } from "@/components/common/profile-cell";
 import { cn } from "@/lib/utils";
 import { fmtDateTimeParts, startOfTomorrow } from "@/lib/format";
 import { useRbacStore } from "@/lib/rbac/store";
-import { useAdminStore } from "@/lib/auth/admins";
+import { useUserStore } from "@/lib/user-management/store";
 import { useAuthStore } from "@/lib/auth/store";
 import { fetchAdminAccess, effectivePermissions, roleExpiryStatus } from "@/lib/rbac/api";
 import {
@@ -63,7 +63,7 @@ export function AdminAccess() {
   const tc = useTranslations("common");
   const locale = useLocale();
 
-  const admins = useAdminStore((s) => s.admins);
+  const admins = useUserStore((s) => s.users);
   const roles = useRbacStore((s) => s.roles);
   const grantsState = useRbacStore((s) => s.grants);
   const overlaysState = useRbacStore((s) => s.overlays);
