@@ -15,14 +15,13 @@ test("invites an admin and the pending row appears without a refresh", async ({ 
   await expect(dialog.getByRole("textbox", { name: "Email" })).toHaveValue("bruno.costa@abapro.health");
 
   await dialog.getByRole("button", { name: "Select one or more roles" }).click();
-  const rolesPopover = page.locator('[data-slot="popover-content"]');
-  await rolesPopover.getByText("Admin", { exact: true }).click();
-  await dialog.getByRole("heading", { name: "Invite admin" }).click();
+  await page.locator('[data-slot="popover-content"]').getByText("Admin", { exact: true }).click();
+  await page.keyboard.press("Escape");
 
   await dialog.getByRole("button", { name: "Send invite" }).click();
 
   await expect(dialog).toBeHidden();
-  const row = page.getByRole("row", { name: /Bruno Costa/ });
+  const row = page.getByRole("link", { name: "Bruno Costa" });
   await expect(row).toBeVisible();
   await expect(row.getByText("Pending")).toBeVisible();
 });
@@ -37,7 +36,7 @@ test("opens the read-only detail drawer from a row click", async ({ page }) => {
 
 test("suspends an active account with an optimistic status change", async ({ page }) => {
   await page.goto("/admin/user-management");
-  const row = page.getByRole("row", { name: /Nadia Kaur/ });
+  const row = page.getByRole("link", { name: "Nadia Kaur" });
   await expect(row).toBeVisible();
 
   await row.getByRole("button", { name: "Account actions" }).click();
@@ -49,7 +48,7 @@ test("suspends an active account with an optimistic status change", async ({ pag
 test("rolls back an optimistic status change when the API fails", async ({ page }) => {
   await page.goto("/admin/user-management");
   await page.getByPlaceholder("Search by name or email").fill("Noah");
-  const row = page.getByRole("row", { name: /Noah Weiss/ });
+  const row = page.getByRole("link", { name: "Noah Weiss" });
   await expect(row).toBeVisible();
 
   await row.getByRole("button", { name: "Account actions" }).click();
