@@ -1,8 +1,5 @@
-import type { Metadata } from "next";
-import { AdminAccounts } from "@/components/admin/admin-accounts";
-
-export const metadata: Metadata = { title: "Admin accounts" };
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <AdminAccounts />;
+  redirect("/admin/user-management");
 }

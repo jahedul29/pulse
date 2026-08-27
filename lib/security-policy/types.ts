@@ -10,6 +10,7 @@ export interface SecurityPolicy {
   passwordHistoryCount: number;
   mfaRequired: boolean;
   reauthWindowMins: number;
+  inviteExpiryDays: number;
 }
 
 export interface PolicyVersion {

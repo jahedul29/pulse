@@ -18,6 +18,7 @@ export function policySchema(msgs: PolicyMessages) {
     passwordMinLength: num().int(msgs.mustBeInteger).min(6, msgs.passwordFloor).max(128, msgs.passwordFloor),
     passwordHistoryCount: min(0),
     reauthWindowMins: min(0),
+    inviteExpiryDays: min(1),
     passwordRequireUpper: z.boolean(),
     passwordRequireNumber: z.boolean(),
     passwordRequireSymbol: z.boolean(),

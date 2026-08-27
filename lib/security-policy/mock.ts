@@ -26,6 +26,7 @@ export function seedVersions(): PolicyVersion[] {
         passwordHistoryCount: 0,
         mfaRequired: false,
         reauthWindowMins: 30,
+        inviteExpiryDays: 7,
       },
     },
     {
@@ -46,6 +47,7 @@ export function seedVersions(): PolicyVersion[] {
         passwordHistoryCount: 3,
         mfaRequired: true,
         reauthWindowMins: 15,
+        inviteExpiryDays: 7,
       },
     },
     {
@@ -66,6 +68,7 @@ export function seedVersions(): PolicyVersion[] {
         passwordHistoryCount: 5,
         mfaRequired: true,
         reauthWindowMins: 15,
+        inviteExpiryDays: 3,
       },
     },
   ];

@@ -1,5 +1,5 @@
 import { useAuthStore } from "@/lib/auth/store";
-import { useAdminStore } from "@/lib/auth/admins";
+import { useUserStore } from "@/lib/user-management/store";
 import { SEED_LOGIN_AUDIT } from "./mock";
 import type { LoginAuditEntry, LoginAuditQuery, LoginMethod } from "./types";
 
@@ -7,7 +7,7 @@ export const UNMATCHED_ADMIN = "__unmatched__";
 
 function liveEntries(): LoginAuditEntry[] {
   const audit = useAuthStore.getState().audit;
-  const admins = useAdminStore.getState().admins;
+  const admins = useUserStore.getState().users;
   return audit
     .filter((a) => a.stage !== "admin")
     .map((a) => {
@@ -43,5 +43,5 @@ export async function fetchLoginAudit(query: LoginAuditQuery = {}): Promise<Logi
 }
 
 export function auditAdminOptions(): { id: string; name: string }[] {
-  return useAdminStore.getState().admins.map((a) => ({ id: a.id, name: a.name }));
+  return useUserStore.getState().users.map((a) => ({ id: a.id, name: a.name }));
 }
