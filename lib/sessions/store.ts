@@ -5,12 +5,12 @@ import type { DeviceSession } from "./types";
 
 function seedOthers(): DeviceSession[] {
   const now = Date.now();
-  return SEED_OTHER_SESSIONS.map((s) => ({
-    id: s.id,
-    deviceName: s.deviceName ?? deviceLabelFromUA(s.userAgent),
-    userAgent: s.userAgent,
-    issuedAt: now - s.issuedOffsetMs,
-    expiresAt: now - s.issuedOffsetMs + s.ttlMs,
+  return SEED_OTHER_SESSIONS.map((seed) => ({
+    id: seed.id,
+    deviceName: seed.deviceName ?? deviceLabelFromUA(seed.userAgent),
+    userAgent: seed.userAgent,
+    issuedAt: now - seed.issuedOffsetMs,
+    expiresAt: now - seed.issuedOffsetMs + seed.ttlMs,
     current: false,
   }));
 }
@@ -23,6 +23,6 @@ interface SessionState {
 
 export const useSessionStore = create<SessionState>((set) => ({
   others: seedOthers(),
-  revoke: (id) => set((s) => ({ others: s.others.filter((d) => d.id !== id) })),
+  revoke: (id) => set((state) => ({ others: state.others.filter((device) => device.id !== id) })),
   revokeAllOthers: () => set({ others: [] }),
 }));

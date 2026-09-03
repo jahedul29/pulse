@@ -205,18 +205,18 @@ export function NavItems({
         ? "notificationsGroup"
         : null;
   const [openGroup, setOpenGroup] = useState<string | null>(activeGroup);
-  const toggleGroup = (key: string) => setOpenGroup((g) => (g === key ? null : key));
+  const toggleGroup = (key: string) => setOpenGroup((previous) => (previous === key ? null : key));
 
   return (
     <nav className="flex flex-1 flex-col gap-0.5 px-3 py-2">
-      {SECTIONS.filter((s) => s.slug === "personnel").map((s) => {
-        const href = `/${s.slug}`;
+      {SECTIONS.filter((section) => section.slug === "personnel").map((section) => {
+        const href = `/${section.slug}`;
         const active = isActive(pathname, href);
-        const label = t(`sections.${s.slug}`);
-        const Icon = s.icon;
+        const label = t(`sections.${section.slug}`);
+        const Icon = section.icon;
         return (
           <Link
-            key={s.slug}
+            key={section.slug}
             href={href}
             onClick={onNavigate}
             title={collapsed ? label : undefined}
@@ -225,7 +225,7 @@ export function NavItems({
           >
             <Icon className="size-4 shrink-0" />
             {!collapsed && <span className="truncate">{label}</span>}
-            {!collapsed && !s.live && (
+            {!collapsed && !section.live && (
               <span className="ms-auto rounded-full bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
                 {t("soon")}
               </span>

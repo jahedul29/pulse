@@ -14,8 +14,8 @@ export const useClientStore = create<ClientStore>((set) => ({
   addClient: (client) => set((state) => ({ clients: [client, ...state.clients] })),
   updateClient: (id, patch) =>
     set((state) => ({
-      clients: state.clients.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+      clients: state.clients.map((client) => (client.id === id ? { ...client, ...patch } : client)),
     })),
   deleteClient: (id) =>
-    set((state) => ({ clients: state.clients.filter((c) => c.id !== id) })),
+    set((state) => ({ clients: state.clients.filter((client) => client.id !== id) })),
 }));

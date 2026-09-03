@@ -13,11 +13,11 @@ export function roundedCurve(radius: number) {
     let line: number;
 
     const render = () => {
-      const n = pts.length;
-      if (n === 0) return;
+      const count = pts.length;
+      if (count === 0) return;
       if (line) context.lineTo(pts[0][0], pts[0][1]);
       else context.moveTo(pts[0][0], pts[0][1]);
-      for (let i = 1; i < n - 1; i++) {
+      for (let i = 1; i < count - 1; i++) {
         const [ax, ay] = pts[i - 1];
         const [bx, by] = pts[i];
         const [cx, cy] = pts[i + 1];
@@ -27,11 +27,16 @@ export function roundedCurve(radius: number) {
         const outy = cy - by;
         const inLen = Math.hypot(inx, iny) || 1;
         const outLen = Math.hypot(outx, outy) || 1;
-        const r = Math.min(radius, inLen / 2, outLen / 2);
-        context.lineTo(bx - (inx / inLen) * r, by - (iny / inLen) * r);
-        context.quadraticCurveTo(bx, by, bx + (outx / outLen) * r, by + (outy / outLen) * r);
+        const cornerRadius = Math.min(radius, inLen / 2, outLen / 2);
+        context.lineTo(bx - (inx / inLen) * cornerRadius, by - (iny / inLen) * cornerRadius);
+        context.quadraticCurveTo(
+          bx,
+          by,
+          bx + (outx / outLen) * cornerRadius,
+          by + (outy / outLen) * cornerRadius,
+        );
       }
-      if (n > 1) context.lineTo(pts[n - 1][0], pts[n - 1][1]);
+      if (count > 1) context.lineTo(pts[count - 1][0], pts[count - 1][1]);
     };
 
     return {

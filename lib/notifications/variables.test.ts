@@ -20,9 +20,9 @@ describe("renderTemplate", () => {
   });
 
   it("every variable has both locale samples", () => {
-    for (const v of MERGE_VARIABLES) {
-      expect(v.sampleEn.length).toBeGreaterThan(0);
-      expect(v.sampleAr.length).toBeGreaterThan(0);
+    for (const variable of MERGE_VARIABLES) {
+      expect(variable.sampleEn.length).toBeGreaterThan(0);
+      expect(variable.sampleAr.length).toBeGreaterThan(0);
     }
   });
 });

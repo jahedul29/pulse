@@ -11,11 +11,11 @@ import type {
 import { PERIODS } from "@/lib/period";
 
 function mulberry32(seed: number) {
-  let a = seed;
+  let state = seed;
   return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    state |= 0;
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
@@ -46,7 +46,7 @@ const REGIONS = [
   { region: "Astoria", lat: 40.7644, lng: -73.9235 },
 ];
 
-export const REGION_NAMES = REGIONS.map((r) => r.region);
+export const REGION_NAMES = REGIONS.map((regionInfo) => regionInfo.region);
 
 const FEMALE = [
   "Emma", "Olivia", "Sophia", "Mia", "Isabella", "Ava", "Camila", "Aaliyah", "Mei", "Priya",
@@ -107,7 +107,7 @@ function initials(name: string): string {
     .split(" ")
     .filter(Boolean)
     .slice(0, 2)
-    .map((w) => w[0])
+    .map((word) => word[0])
     .join("")
     .toUpperCase();
 }
@@ -153,9 +153,10 @@ function buildProfile(index: number, surname: string): Profile {
   const region = pick(REGIONS);
   const name = `${first} ${surname}`;
   const balances = buildBalances();
-  const sum = (fn: (b: ServiceBalance) => number) => balances.reduce((a, b) => a + fn(b), 0);
-  const usedTotal = sum((b) => b.used);
-  const canceledTotal = sum((b) => b.canceled);
+  const sum = (fn: (b: ServiceBalance) => number) =>
+    balances.reduce((total, balance) => total + fn(balance), 0);
+  const usedTotal = sum((balance) => balance.used);
+  const canceledTotal = sum((balance) => balance.canceled);
   const activeCompleted = Math.round(usedTotal * 0.7);
   return {
     id: `p${index}`,
@@ -276,23 +277,23 @@ function buildClient(index: number): Client {
 export const clients: Client[] = Array.from({ length: 42 }, (_, i) => buildClient(i));
 
 export function getClient(id: string): Client | undefined {
-  return clients.find((c) => c.id === id);
+  return clients.find((client) => client.id === id);
 }
 
 export const territories: Territory[] = (() => {
   const counts = new Map<string, number>();
-  for (const c of clients) counts.set(c.region, (counts.get(c.region) ?? 0) + 1);
+  for (const client of clients) counts.set(client.region, (counts.get(client.region) ?? 0) + 1);
   const total = clients.length;
-  return REGIONS.map((r) => {
-    const n = counts.get(r.region) ?? 0;
+  return REGIONS.map((regionInfo) => {
+    const count = counts.get(regionInfo.region) ?? 0;
     return {
-      region: r.region,
-      clients: n,
-      pct: Math.round((n / total) * 1000) / 10,
-      lat: r.lat,
-      lng: r.lng,
+      region: regionInfo.region,
+      clients: count,
+      pct: Math.round((count / total) * 1000) / 10,
+      lat: regionInfo.lat,
+      lng: regionInfo.lng,
     };
-  }).sort((a, b) => b.clients - a.clients);
+  }).sort((territoryA, territoryB) => territoryB.clients - territoryA.clients);
 })();
 
 function trend(base: number, len: number, drift: number) {
@@ -326,18 +327,18 @@ function buildKpi(
   const values = {} as Kpi["values"];
   const deltas = {} as Kpi["deltas"];
   const trends = {} as Kpi["trends"];
-  for (const p of PERIODS) {
-    const series = trend(Math.round(base[p] * 0.7), PERIOD_STEPS[p], drift);
-    trends[p] = series;
-    values[p] = base[p];
+  for (const period of PERIODS) {
+    const series = trend(Math.round(base[period] * 0.7), PERIOD_STEPS[period], drift);
+    trends[period] = series;
+    values[period] = base[period];
     const first = series[0].value || 1;
     const last = series[series.length - 1].value;
-    deltas[p] = Math.round(((last - first) / first) * 100);
+    deltas[period] = Math.round(((last - first) / first) * 100);
   }
   return { key, label, hint, values, deltas, trends };
 }
 
-const withProfile = clients.filter((c) => c.hasProfile).length;
+const withProfile = clients.filter((client) => client.hasProfile).length;
 
 export const kpis: Kpi[] = [
   buildKpi(

@@ -81,18 +81,18 @@ export function UserManagement() {
   const tc = useTranslations("common");
   const locale = useLocale();
 
-  const usersState = useUserStore((s) => s.users);
-  const resend = useUserStore((s) => s.resend);
-  const revoke = useUserStore((s) => s.revoke);
-  const suspend = useUserStore((s) => s.suspend);
-  const reactivate = useUserStore((s) => s.reactivate);
-  const deactivate = useUserStore((s) => s.deactivate);
-  const unlock = useUserStore((s) => s.unlock);
-  const replaceUser = useUserStore((s) => s.replaceUser);
-  const rolesState = useRbacStore((s) => s.roles);
-  const staff = useStaffStore((s) => s.staff);
-  const actorName = useAuthStore((s) => s.session?.name ?? "You");
-  const selfEmail = useAuthStore((s) => s.session?.email?.toLowerCase() ?? "");
+  const usersState = useUserStore((state) => state.users);
+  const resend = useUserStore((state) => state.resend);
+  const revoke = useUserStore((state) => state.revoke);
+  const suspend = useUserStore((state) => state.suspend);
+  const reactivate = useUserStore((state) => state.reactivate);
+  const deactivate = useUserStore((state) => state.deactivate);
+  const unlock = useUserStore((state) => state.unlock);
+  const replaceUser = useUserStore((state) => state.replaceUser);
+  const rolesState = useRbacStore((state) => state.roles);
+  const staff = useStaffStore((state) => state.staff);
+  const actorName = useAuthStore((state) => state.session?.name ?? "You");
+  const selfEmail = useAuthStore((state) => state.session?.email?.toLowerCase() ?? "");
   const canManage = useHasPermission(PERMISSIONS.USER_MANAGEMENT_EDIT);
 
   const [rows, setRows] = useState<AdminUserRow[]>([]);
@@ -116,9 +116,9 @@ export function UserManagement() {
   useEffect(() => {
     let alive = true;
     fetchAdminUsers()
-      .then((r) => {
+      .then((fetchedRows) => {
         if (!alive) return;
-        setRows(r);
+        setRows(fetchedRows);
         setError(false);
         setLoading(false);
       })
@@ -146,20 +146,20 @@ export function UserManagement() {
   };
 
   const roleName = useMemo(() => {
-    const map = new Map(rolesState.map((r) => [r.id, r.name]));
+    const map = new Map(rolesState.map((role) => [role.id, role.name]));
     return (id: string) => map.get(id) ?? id;
   }, [rolesState]);
 
-  const staffById = useMemo(() => new Map(staff.map((s) => [s.id, s])), [staff]);
+  const staffById = useMemo(() => new Map(staff.map((staffMember) => [staffMember.id, staffMember])), [staff]);
 
   const roleOptions = useMemo(
-    () => rolesState.map((r) => ({ value: r.id, label: r.name })),
+    () => rolesState.map((role) => ({ value: role.id, label: role.name })),
     [rolesState],
   );
 
   const runStatus = useCallback(
     async (id: string, apply: () => void, successMsg: string) => {
-      const snapshot = useUserStore.getState().users.find((u) => u.id === id);
+      const snapshot = useUserStore.getState().users.find((user) => user.id === id);
       if (!snapshot) return;
       const restore: AdminUser = { ...snapshot };
       apply();
@@ -198,13 +198,13 @@ export function UserManagement() {
   };
 
   const actionsFor = useCallback(
-    (u: AdminUserRow): RowAction[] => {
+    (user: AdminUserRow): RowAction[] => {
       if (!canManage) return [];
-      const selfBlock = u.email.toLowerCase() === selfEmail ? t("selfBlock") : undefined;
+      const selfBlock = user.email.toLowerCase() === selfEmail ? t("selfBlock") : undefined;
       const suspendItem: RowAction = {
         key: "suspend",
         label: t("actionSuspend"),
-        onSelect: () => runStatus(u.id, () => suspend(u.id, actorName), t("suspendedToast", { name: u.name })),
+        onSelect: () => runStatus(user.id, () => suspend(user.id, actorName), t("suspendedToast", { name: user.name })),
         disabled: Boolean(selfBlock),
         title: selfBlock,
       };
@@ -214,7 +214,7 @@ export function UserManagement() {
         variant: "destructive",
         onSelect: () => {
           setConfirmText("");
-          setDeactivating(u);
+          setDeactivating(user);
         },
         disabled: Boolean(selfBlock),
         title: selfBlock,
@@ -223,24 +223,24 @@ export function UserManagement() {
         key: "reactivate",
         label: t("actionReactivate"),
         onSelect: () =>
-          runStatus(u.id, () => reactivate(u.id, actorName), t("reactivatedToast", { name: u.name })),
+          runStatus(user.id, () => reactivate(user.id, actorName), t("reactivatedToast", { name: user.name })),
         disabled: Boolean(selfBlock),
         title: selfBlock,
       };
-      switch (u.effectiveStatus) {
+      switch (user.effectiveStatus) {
         case "pending":
           return [
             {
               key: "resend",
               label: t("actionResend"),
               onSelect: () => {
-                resend(u.id);
-                toast.success(t("resentToast", { email: u.email }));
+                resend(user.id);
+                toast.success(t("resentToast", { email: user.email }));
               },
-              disabled: !u.resendReady,
-              title: u.resendReady ? undefined : t("resendWait"),
+              disabled: !user.resendReady,
+              title: user.resendReady ? undefined : t("resendWait"),
             },
-            { key: "revoke", label: t("actionRevoke"), variant: "destructive", onSelect: () => setRevoking(u) },
+            { key: "revoke", label: t("actionRevoke"), variant: "destructive", onSelect: () => setRevoking(user) },
           ];
         case "active":
           return [suspendItem, deactivateItem];
@@ -251,7 +251,7 @@ export function UserManagement() {
             {
               key: "unlock",
               label: t("actionUnlock"),
-              onSelect: () => runStatus(u.id, () => unlock(u.id), t("unlockedToast", { name: u.name })),
+              onSelect: () => runStatus(user.id, () => unlock(user.id), t("unlockedToast", { name: user.name })),
             },
             deactivateItem,
           ];
@@ -266,26 +266,26 @@ export function UserManagement() {
     () => [
       {
         id: "name",
-        accessorFn: (r) => r.name,
+        accessorFn: (user) => user.name,
         size: 220,
         header: t("colName"),
         cell: ({ row }) => <ProfileCell name={row.original.name} initials={row.original.initials} />,
       },
       {
         id: "email",
-        accessorFn: (r) => r.email,
+        accessorFn: (user) => user.email,
         size: 230,
         header: t("colEmail"),
         cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.original.email}</span>,
       },
       {
         id: "roles",
-        accessorFn: (r) => r.roleIds.map(roleName).join(" "),
+        accessorFn: (user) => user.roleIds.map(roleName).join(" "),
         size: 230,
         header: t("colRoles"),
         enableSorting: false,
         filterFn: (row, _id, value) =>
-          !Array.isArray(value) || value.length === 0 || row.original.roleIds.some((r) => value.includes(r)),
+          !Array.isArray(value) || value.length === 0 || row.original.roleIds.some((roleId) => value.includes(roleId)),
         meta: { filter: "select", filterOptions: roleOptions, filterLabel: t("colRoles") },
         cell: ({ row }) => {
           const ids = row.original.roleIds;
@@ -304,12 +304,12 @@ export function UserManagement() {
       },
       {
         id: "status",
-        accessorFn: (r) => r.effectiveStatus,
+        accessorFn: (user) => user.effectiveStatus,
         size: 140,
         header: t("colStatus"),
         meta: {
           filter: "select",
-          filterOptions: STATUS_ORDER.map((s) => ({ value: s, label: t(`status_${s}`) })),
+          filterOptions: STATUS_ORDER.map((status) => ({ value: status, label: t(`status_${status}`) })),
           filterLabel: t("colStatus"),
         },
         cell: ({ row }) => (
@@ -324,7 +324,7 @@ export function UserManagement() {
       },
       {
         id: "mfa",
-        accessorFn: (r) => (r.mfaEnabled ? 1 : 0),
+        accessorFn: (user) => (user.mfaEnabled ? 1 : 0),
         size: 90,
         header: t("colMfa"),
         meta: { headClassName: "text-center", cellClassName: "text-center" },
@@ -347,7 +347,7 @@ export function UserManagement() {
       },
       {
         id: "lastLogin",
-        accessorFn: (r) => r.lastLogin ?? 0,
+        accessorFn: (user) => user.lastLogin ?? 0,
         size: 150,
         header: t("colLastLogin"),
         cell: ({ row }) => (
@@ -364,7 +364,7 @@ export function UserManagement() {
         meta: { headClassName: "text-end", cellClassName: "text-end" },
         cell: ({ row }) => {
           const items = actionsFor(row.original);
-          const stop = (e: SyntheticEvent) => e.stopPropagation();
+          const stop = (event: SyntheticEvent) => event.stopPropagation();
           if (items.length === 0) {
             return (
               <div className="flex justify-end" onClick={stop} onKeyDown={stop}>
@@ -451,10 +451,10 @@ export function UserManagement() {
               searchPlaceholder={t("search")}
               emptyLabel={t("empty")}
               itemsLabel={t("items")}
-              onRowClick={(r) => openAt(rows.indexOf(r))}
-              rowAriaLabel={(r) => r.name}
-              rowClassName={(r) => (active && r.id === active.id ? "bg-accent" : undefined)}
-              getSearchText={(r) => `${r.name} ${r.email}`}
+              onRowClick={(user) => openAt(rows.indexOf(user))}
+              rowAriaLabel={(user) => user.name}
+              rowClassName={(user) => (active && user.id === active.id ? "bg-accent" : undefined)}
+              getSearchText={(user) => `${user.name} ${user.email}`}
               filterLabels={{
                 filter: tc("filter"),
                 clear: tc("clear"),
@@ -489,7 +489,7 @@ export function UserManagement() {
 
       <InviteAdminDialog open={inviteOpen} onOpenChange={setInviteOpen} />
 
-      <AlertDialog open={revoking != null} onOpenChange={(o) => !o && setRevoking(null)}>
+      <AlertDialog open={revoking != null} onOpenChange={(open) => !open && setRevoking(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("revokeTitle")}</AlertDialogTitle>
@@ -511,8 +511,8 @@ export function UserManagement() {
 
       <AlertDialog
         open={deactivating != null}
-        onOpenChange={(o) => {
-          if (!o) {
+        onOpenChange={(open) => {
+          if (!open) {
             setDeactivating(null);
             setConfirmText("");
           }
@@ -529,7 +529,7 @@ export function UserManagement() {
             <Input
               id="deactivate-confirm"
               value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
+              onChange={(event) => setConfirmText(event.target.value)}
               placeholder={CONFIRM_WORD}
               autoComplete="off"
             />
@@ -547,7 +547,7 @@ export function UserManagement() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Sheet open={selectedIndex != null} onOpenChange={(o) => !o && setSelectedIndex(null)}>
+      <Sheet open={selectedIndex != null} onOpenChange={(open) => !open && setSelectedIndex(null)}>
         {selected && (
           <SheetContent onSwipeNext={() => page(1)} onSwipePrev={() => page(-1)}>
             <SheetHeader>

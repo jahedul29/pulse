@@ -16,9 +16,11 @@ interface PolicyState {
 export const usePolicyStore = create<PolicyState>((set) => ({
   versions: seedVersions(),
   savePolicy: (policy, reason, by) =>
-    set((s) => {
+    set((state) => {
       const now = Date.now();
-      const closed = s.versions.map((v) => (v.effectiveTo == null ? { ...v, effectiveTo: now } : v));
+      const closed = state.versions.map((version) =>
+        version.effectiveTo == null ? { ...version, effectiveTo: now } : version,
+      );
       return {
         versions: [
           ...closed,

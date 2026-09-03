@@ -33,7 +33,7 @@ import { fmtNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/common/toggle-switch";
 
-const METRIC_KEYS = kpis.map((k) => k.key);
+const METRIC_KEYS = kpis.map((kpi) => kpi.key);
 const C1 = "var(--color-chart-1)";
 const C2 = "var(--color-chart-2)";
 type ChartType = "line" | "bar" | "pie";
@@ -48,15 +48,15 @@ export function MetricChartPanel() {
   const [m2, setM2] = useState("total");
   const [showData, setShowData] = useState(true);
 
-  const k1 = kpis.find((k) => k.key === m1) ?? kpis[0];
-  const k2 = m2 === "none" ? null : (kpis.find((k) => k.key === m2) ?? null);
+  const k1 = kpis.find((kpi) => kpi.key === m1) ?? kpis[0];
+  const k2 = m2 === "none" ? null : (kpis.find((kpi) => kpi.key === m2) ?? null);
   const name1 = t(`metric.${m1}`);
   const name2 = k2 ? t(`metric.${m2}`) : "";
 
   const data = useMemo(() => {
-    const a = k1.trends[period];
-    const b = k2?.trends[period];
-    return a.map((p, i) => ({ label: p.label, m1: p.value, m2: b ? b[i]?.value : undefined }));
+    const series1 = k1.trends[period];
+    const series2 = k2?.trends[period];
+    return series1.map((point, i) => ({ label: point.label, m1: point.value, m2: series2 ? series2[i]?.value : undefined }));
   }, [k1, k2, period]);
 
   const pieData = [
@@ -65,15 +65,15 @@ export function MetricChartPanel() {
   ];
 
   const metricSelect = (value: string, onChange: (v: string) => void, withNone?: boolean) => (
-    <Select value={value} onValueChange={(v) => onChange(v ?? value)}>
+    <Select value={value} onValueChange={(nextValue) => onChange(nextValue ?? value)}>
       <SelectTrigger className="w-[190px]">
-        <SelectValue>{(v) => (v === "none" ? t("chartPanel.none") : t(`metric.${v}`))}</SelectValue>
+        <SelectValue>{(selected) => (selected === "none" ? t("chartPanel.none") : t(`metric.${selected}`))}</SelectValue>
       </SelectTrigger>
       <SelectContent>
         {withNone && <SelectItem value="none">{t("chartPanel.none")}</SelectItem>}
-        {METRIC_KEYS.map((k) => (
-          <SelectItem key={k} value={k}>
-            {t(`metric.${k}`)}
+        {METRIC_KEYS.map((key) => (
+          <SelectItem key={key} value={key}>
+            {t(`metric.${key}`)}
           </SelectItem>
         ))}
       </SelectContent>
@@ -88,9 +88,9 @@ export function MetricChartPanel() {
           <Ctl label={t("chartPanel.metric1")}>{metricSelect(m1, setM1)}</Ctl>
           <Ctl label={t("chartPanel.metric2")}>{metricSelect(m2, setM2, true)}</Ctl>
           <Ctl label={t("chartPanel.type")}>
-            <Select value={type} onValueChange={(v) => setType((v as ChartType) ?? "line")}>
+            <Select value={type} onValueChange={(value) => setType((value as ChartType) ?? "line")}>
               <SelectTrigger className="w-[130px]">
-                <SelectValue>{(v) => t(`chartPanel.${v}`)}</SelectValue>
+                <SelectValue>{(value) => t(`chartPanel.${value}`)}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="line">{t("chartPanel.line")}</SelectItem>
@@ -100,14 +100,14 @@ export function MetricChartPanel() {
             </Select>
           </Ctl>
           <Ctl label={t("chartPanel.period")}>
-            <Select value={period} onValueChange={(v) => setPeriod((v as Period) ?? DEFAULT_PERIOD)}>
+            <Select value={period} onValueChange={(value) => setPeriod((value as Period) ?? DEFAULT_PERIOD)}>
               <SelectTrigger className="w-[110px]">
-                <SelectValue>{(v) => v}</SelectValue>
+                <SelectValue>{(value) => value}</SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {PERIODS.map((p) => (
-                  <SelectItem key={p} value={p}>
-                    {p}
+                {PERIODS.map((periodOption) => (
+                  <SelectItem key={periodOption} value={periodOption}>
+                    {periodOption}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -134,7 +134,7 @@ export function MetricChartPanel() {
             <ResponsiveContainer width="100%" height={280}>
               {type === "pie" ? (
                 <PieChart>
-                  <Tooltip formatter={(v) => fmtNumber(Number(v))} />
+                  <Tooltip formatter={(value) => fmtNumber(Number(value))} />
                   <Legend />
                   <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={95} paddingAngle={2}>
                     <Cell fill={C1} />
@@ -147,7 +147,7 @@ export function MetricChartPanel() {
                   <XAxis dataKey="label" tickLine={false} axisLine={false} tick={axis} tickMargin={8} />
                   <YAxis yAxisId="l" width={44} tickLine={false} axisLine={false} tick={axis} />
                   {k2 && <YAxis yAxisId="r" orientation="right" width={44} tickLine={false} axisLine={false} tick={axis} />}
-                  <Tooltip formatter={(v) => fmtNumber(Number(v))} cursor={{ fill: "var(--muted)", fillOpacity: 0.5 }} />
+                  <Tooltip formatter={(value) => fmtNumber(Number(value))} cursor={{ fill: "var(--muted)", fillOpacity: 0.5 }} />
                   <Legend />
                   <Bar yAxisId="l" dataKey="m1" name={name1} fill={C1} radius={[4, 4, 0, 0]} />
                   {k2 && <Bar yAxisId="r" dataKey="m2" name={name2} fill={C2} radius={[4, 4, 0, 0]} />}
@@ -158,7 +158,7 @@ export function MetricChartPanel() {
                   <XAxis dataKey="label" tickLine={false} axisLine={false} tick={axis} tickMargin={8} />
                   <YAxis yAxisId="l" width={44} tickLine={false} axisLine={false} tick={axis} />
                   {k2 && <YAxis yAxisId="r" orientation="right" width={44} tickLine={false} axisLine={false} tick={axis} />}
-                  <Tooltip formatter={(v) => fmtNumber(Number(v))} />
+                  <Tooltip formatter={(value) => fmtNumber(Number(value))} />
                   <Legend />
                   <Line yAxisId="l" dataKey="m1" name={name1} stroke={C1} strokeWidth={2.5} type={roundedCurve(10)} dot={false} />
                   {k2 && <Line yAxisId="r" dataKey="m2" name={name2} stroke={C2} strokeWidth={2.5} type={roundedCurve(10)} dot={false} />}

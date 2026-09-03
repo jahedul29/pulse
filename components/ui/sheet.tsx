@@ -48,16 +48,16 @@ function SheetContent({
   ...props
 }: SheetContentProps) {
   const start = useRef<{ x: number; y: number } | null>(null);
-  const onPointerDown = (e: ReactPointerEvent) => {
-    if (e.pointerType !== "touch") return;
-    start.current = { x: e.clientX, y: e.clientY };
+  const onPointerDown = (event: ReactPointerEvent) => {
+    if (event.pointerType !== "touch") return;
+    start.current = { x: event.clientX, y: event.clientY };
   };
-  const onPointerUp = (e: ReactPointerEvent) => {
-    const s = start.current;
+  const onPointerUp = (event: ReactPointerEvent) => {
+    const startPoint = start.current;
     start.current = null;
-    if (!s || e.pointerType !== "touch") return;
-    const dx = e.clientX - s.x;
-    const dy = e.clientY - s.y;
+    if (!startPoint || event.pointerType !== "touch") return;
+    const dx = event.clientX - startPoint.x;
+    const dy = event.clientY - startPoint.y;
     if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy)) return;
     const rtl = typeof document !== "undefined" && document.documentElement.dir === "rtl";
     const goNext = rtl ? dx > 0 : dx < 0;

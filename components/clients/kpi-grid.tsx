@@ -10,16 +10,16 @@ export function KpiGrid({ kpis, period }: { kpis: Kpi[]; period: Period }) {
   return (
     <HidableGrid
       items={kpis}
-      getKey={(k) => k.key}
+      getKey={(kpi) => kpi.key}
       className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-      restoreLabel={(n) => `${t("showHidden")} (${n})`}
+      restoreLabel={(count) => `${t("showHidden")} (${count})`}
       allHiddenLabel={t("allHidden")}
-      renderItem={(k, api) => (
+      renderItem={(kpi, api) => (
         <KpiCard
-          kpi={k}
+          kpi={kpi}
           period={period}
           onHide={api.hide}
-          hideLabel={`${t("hide")} ${k.label}`}
+          hideLabel={`${t("hide")} ${kpi.label}`}
         />
       )}
     />

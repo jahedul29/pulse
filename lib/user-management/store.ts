@@ -21,8 +21,8 @@ interface UserState {
   replaceUser: (id: string, snapshot: AdminUser) => void;
 }
 
-function patch(id: string, fn: (u: AdminUser) => AdminUser) {
-  return (s: UserState) => ({ users: s.users.map((u) => (u.id === id ? fn(u) : u)) });
+function patch(id: string, fn: (user: AdminUser) => AdminUser) {
+  return (state: UserState) => ({ users: state.users.map((user) => (user.id === id ? fn(user) : user)) });
 }
 
 export const useUserStore = create<UserState>((set, get) => ({
@@ -50,16 +50,16 @@ export const useUserStore = create<UserState>((set, get) => ({
       registeredDevices: 0,
       lastInviteSentAt: now,
     };
-    set((s) => ({ users: [user, ...s.users] }));
+    set((state) => ({ users: [user, ...state.users] }));
     return id;
   },
 
-  resend: (id) => set(patch(id, (u) => ({ ...u, lastInviteSentAt: Date.now() }))),
+  resend: (id) => set(patch(id, (user) => ({ ...user, lastInviteSentAt: Date.now() }))),
 
   revoke: (id, by) =>
     set(
-      patch(id, (u) => ({
-        ...u,
+      patch(id, (user) => ({
+        ...user,
         status: "revoked",
         lastStatusChangeAt: Date.now(),
         lastStatusChangeBy: by,
@@ -68,8 +68,8 @@ export const useUserStore = create<UserState>((set, get) => ({
 
   suspend: (id, by) =>
     set(
-      patch(id, (u) => ({
-        ...u,
+      patch(id, (user) => ({
+        ...user,
         status: "suspended",
         lastStatusChangeAt: Date.now(),
         lastStatusChangeBy: by,
@@ -78,8 +78,8 @@ export const useUserStore = create<UserState>((set, get) => ({
 
   reactivate: (id, by) =>
     set(
-      patch(id, (u) => ({
-        ...u,
+      patch(id, (user) => ({
+        ...user,
         status: "active",
         lastStatusChangeAt: Date.now(),
         lastStatusChangeBy: by,
@@ -88,8 +88,8 @@ export const useUserStore = create<UserState>((set, get) => ({
 
   deactivate: (id, by) =>
     set(
-      patch(id, (u) => ({
-        ...u,
+      patch(id, (user) => ({
+        ...user,
         status: "deactivated",
         lastStatusChangeAt: Date.now(),
         lastStatusChangeBy: by,
@@ -97,10 +97,10 @@ export const useUserStore = create<UserState>((set, get) => ({
     ),
 
   unlock: (id) => {
-    const target = get().users.find((u) => u.id === id);
+    const target = get().users.find((user) => user.id === id);
     if (!target) return;
     useAuthStore.getState().recordUnlock(target.email);
-    set(patch(id, (u) => ({ ...u, lockedUntil: null })));
+    set(patch(id, (user) => ({ ...user, lockedUntil: null })));
   },
 
   replaceUser: (id, snapshot) => set(patch(id, () => snapshot)),

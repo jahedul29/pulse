@@ -12,17 +12,17 @@ const S_UNAVAIL = 2;
 
 function slotStates(day: DayState): Uint8Array {
   const st = new Uint8Array(SLOTS_PER_DAY);
-  for (const b of day.blocks) {
-    const v = b.kind === "unavailable" ? S_UNAVAIL : S_ONLINE;
-    for (let s = b.start; s < b.end && s < SLOTS_PER_DAY; s++) st[s] = v;
+  for (const block of day.blocks) {
+    const stateValue = block.kind === "unavailable" ? S_UNAVAIL : S_ONLINE;
+    for (let slot = block.start; slot < block.end && slot < SLOTS_PER_DAY; slot++) st[slot] = stateValue;
   }
   return st;
 }
 
-const stateToStatus = (v: number): PaintStatus =>
-  v === S_UNAVAIL ? "unavailable" : v === S_ONLINE ? "online" : "available";
-const statusToState = (s: PaintStatus): number =>
-  s === "unavailable" ? S_UNAVAIL : s === "online" ? S_ONLINE : S_AVAILABLE;
+const stateToStatus = (stateValue: number): PaintStatus =>
+  stateValue === S_UNAVAIL ? "unavailable" : stateValue === S_ONLINE ? "online" : "available";
+const statusToState = (status: PaintStatus): number =>
+  status === "unavailable" ? S_UNAVAIL : status === "online" ? S_ONLINE : S_AVAILABLE;
 
 export function DayColumn({
   dayIndex,
@@ -45,37 +45,37 @@ export function DayColumn({
 
   const slotAt = (clientY: number) => {
     const rect = bodyRef.current!.getBoundingClientRect();
-    const h = rect.height / SLOTS_PER_DAY;
-    return Math.max(0, Math.min(SLOTS_PER_DAY - 1, Math.floor((clientY - rect.top) / h)));
+    const slotHeight = rect.height / SLOTS_PER_DAY;
+    return Math.max(0, Math.min(SLOTS_PER_DAY - 1, Math.floor((clientY - rect.top) / slotHeight)));
   };
 
   const states = slotStates(day);
 
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (e.button !== 0) return;
-    const slot = slotAt(e.clientY);
+  const onPointerDown = (event: React.PointerEvent) => {
+    if (event.button !== 0) return;
+    const slot = slotAt(event.clientY);
     const next = cycleStatus(stateToStatus(states[slot]), config.supportsOnline);
     drag.current = { anchor: slot, paint: next, moved: false };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
   };
-  const onPointerMove = (e: React.PointerEvent) => {
-    const d = drag.current;
-    if (!d) return;
-    const slot = slotAt(e.clientY);
-    if (slot !== d.anchor) d.moved = true;
-    if (d.moved) {
-      setDraft({ start: Math.min(d.anchor, slot), end: Math.max(d.anchor, slot) + 1, status: d.paint });
+  const onPointerMove = (event: React.PointerEvent) => {
+    const activeDrag = drag.current;
+    if (!activeDrag) return;
+    const slot = slotAt(event.clientY);
+    if (slot !== activeDrag.anchor) activeDrag.moved = true;
+    if (activeDrag.moved) {
+      setDraft({ start: Math.min(activeDrag.anchor, slot), end: Math.max(activeDrag.anchor, slot) + 1, status: activeDrag.paint });
     }
   };
   const onPointerUp = () => {
-    const d = drag.current;
+    const activeDrag = drag.current;
     drag.current = null;
     setDraft(null);
-    if (!d) return;
-    if (d.moved && draft) {
-      onPaint(dayIndex, draft.start, draft.end, d.paint);
+    if (!activeDrag) return;
+    if (activeDrag.moved && draft) {
+      onPaint(dayIndex, draft.start, draft.end, activeDrag.paint);
     } else {
-      onPaint(dayIndex, d.anchor, d.anchor + 1, d.paint);
+      onPaint(dayIndex, activeDrag.anchor, activeDrag.anchor + 1, activeDrag.paint);
     }
   };
 

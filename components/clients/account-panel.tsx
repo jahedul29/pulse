@@ -21,8 +21,8 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 export function AccountPanel({ client }: { client: Client }) {
   const t = useTranslations("clients");
   const locale = useLocale();
-  const w = client.wallet;
-  const unread = client.notifications.filter((n) => !n.read).length;
+  const wallet = client.wallet;
+  const unread = client.notifications.filter((notification) => !notification.read).length;
   return (
     <div className="flex flex-col gap-4">
     <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
@@ -92,11 +92,11 @@ export function AccountPanel({ client }: { client: Client }) {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-baseline justify-between">
-              <Money value={w.balance} className="font-heading text-3xl font-semibold" />
+              <Money value={wallet.balance} className="font-heading text-3xl font-semibold" />
               <div className="text-end text-xs text-muted-foreground">
-                <div>{t("account.bonus")} <Money value={w.bonus} /></div>
-                <div>{t("account.gift")} <Money value={w.gift} /></div>
-                <div>{t("account.forfeit")} <Money value={w.forfeit} /></div>
+                <div>{t("account.bonus")} <Money value={wallet.bonus} /></div>
+                <div>{t("account.gift")} <Money value={wallet.gift} /></div>
+                <div>{t("account.forfeit")} <Money value={wallet.forfeit} /></div>
               </div>
             </div>
             <div className="border-t pt-2">
@@ -104,7 +104,7 @@ export function AccountPanel({ client }: { client: Client }) {
                 {t("account.recentTransactions")}
               </span>
               <ul className="mt-1.5 flex flex-col gap-1">
-                {w.transactions.slice(0, 4).map((t, i) => (
+                {wallet.transactions.slice(0, 4).map((t, i) => (
                   <li key={i} className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">
                       {t.kind}
@@ -126,16 +126,16 @@ export function AccountPanel({ client }: { client: Client }) {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
-            {client.bankCards.map((c, i) => (
+            {client.bankCards.map((card, i) => (
               <div
                 key={i}
                 className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm"
               >
                 <span className="flex items-center gap-2">
-                  <span className="font-medium">{c.brand}</span>
-                  <span className="font-mono text-muted-foreground">•••• {c.last4}</span>
+                  <span className="font-medium">{card.brand}</span>
+                  <span className="font-mono text-muted-foreground">•••• {card.last4}</span>
                 </span>
-                {c.isDefault && <StatusBadge tone="success">{t("account.default")}</StatusBadge>}
+                {card.isDefault && <StatusBadge tone="success">{t("account.default")}</StatusBadge>}
               </div>
             ))}
           </CardContent>
@@ -155,12 +155,12 @@ export function AccountPanel({ client }: { client: Client }) {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
-            {client.notifications.map((n, i) => (
+            {client.notifications.map((notification, i) => (
               <div key={i} className="flex items-start gap-2.5 text-sm">
-                <StatusDot tone={n.read ? "neutral" : "warning"} />
+                <StatusDot tone={notification.read ? "neutral" : "warning"} />
                 <div className="min-w-0 flex-1">
-                  <p className={n.read ? "text-muted-foreground" : "text-foreground"}>{n.text}</p>
-                  <span className="font-mono text-xs text-muted-foreground">{fmtDate(n.date, locale)}</span>
+                  <p className={notification.read ? "text-muted-foreground" : "text-foreground"}>{notification.text}</p>
+                  <span className="font-mono text-xs text-muted-foreground">{fmtDate(notification.date, locale)}</span>
                 </div>
               </div>
             ))}

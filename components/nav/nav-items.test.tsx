@@ -8,7 +8,7 @@ jest.mock("next/navigation", () => ({ usePathname: () => "/admin/roles" }));
 jest.mock("next-intl", () => {
   const messages = mockMessages as Record<string, Record<string, unknown>>;
   const resolve = (ns: string, key: string): unknown =>
-    key.split(".").reduce<unknown>((o, k) => (o as Record<string, unknown>)?.[k], messages[ns]);
+    key.split(".").reduce<unknown>((accumulator, part) => (accumulator as Record<string, unknown>)?.[part], messages[ns]);
   return {
     useTranslations: (ns: string) => (key: string) => {
       const value = resolve(ns, key);

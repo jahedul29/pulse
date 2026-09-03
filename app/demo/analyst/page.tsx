@@ -4,7 +4,7 @@ import { AvailabilityEditor } from "@/components/availability/availability-edito
 import { useSpecialistStore } from "@/lib/specialists";
 
 export default function AnalystDemoPage() {
-  const specialist = useSpecialistStore((s) => s.specialists.find((x) => x.role === "analyst"));
+  const specialist = useSpecialistStore((state) => state.specialists.find((x) => x.role === "analyst"));
 
   if (!specialist) {
     return (

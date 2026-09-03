@@ -11,8 +11,8 @@ import { cn } from "@/lib/utils";
 
 function toDate(value?: string): Date | undefined {
   if (!value) return undefined;
-  const d = new Date(`${value}T00:00:00`);
-  return Number.isNaN(d.getTime()) ? undefined : d;
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 }
 
 function toIso(date: Date): string {

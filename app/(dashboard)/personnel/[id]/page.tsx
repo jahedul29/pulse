@@ -10,7 +10,7 @@ export default function SpecialistAvailabilityPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const specialist = useSpecialistStore((s) => s.specialists.find((x) => x.id === id));
+  const specialist = useSpecialistStore((state) => state.specialists.find((x) => x.id === id));
 
   return (
     <div className="flex flex-col gap-5">

@@ -21,7 +21,7 @@ import { useSpecialistStore, type Specialist } from "@/lib/specialists";
 
 export function SpecialistsTable() {
   const t = useTranslations();
-  const specialists = useSpecialistStore((s) => s.specialists);
+  const specialists = useSpecialistStore((state) => state.specialists);
 
   const columns = useMemo<ColumnDef<Specialist, unknown>[]>(
     () => [
@@ -46,9 +46,9 @@ export function SpecialistsTable() {
         meta: {
           filter: "select",
           filterLabel: t("personnel.colRole"),
-          filterOptions: ["therapist", "analyst"].map((r) => ({
-            value: r,
-            label: t(`common.role.${r}`),
+          filterOptions: ["therapist", "analyst"].map((role) => ({
+            value: role,
+            label: t(`common.role.${role}`),
           })),
         },
         cell: ({ row }) => (
@@ -57,7 +57,7 @@ export function SpecialistsTable() {
       },
       {
         id: "businessHours",
-        accessorFn: (s) => (s.defined ? "defined" : "notDefined"),
+        accessorFn: (specialist) => (specialist.defined ? "defined" : "notDefined"),
         header: t("personnel.colBusinessHours"),
         size: 180,
         meta: {
@@ -107,7 +107,9 @@ export function SpecialistsTable() {
           searchPlaceholder={t("personnel.searchPlaceholder")}
           emptyLabel={t("personnel.tableEmpty")}
           itemsLabel={t("personnel.itemsLabel")}
-          getSearchText={(s) => `${s.name} ${s.email} ${t(`common.role.${s.role}`)}`}
+          getSearchText={(specialist) =>
+            `${specialist.name} ${specialist.email} ${t(`common.role.${specialist.role}`)}`
+          }
           filterLabels={{
             filter: t("common.filter"),
             clear: t("common.clear"),

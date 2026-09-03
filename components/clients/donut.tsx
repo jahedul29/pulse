@@ -5,17 +5,17 @@ import type { SplitDatum } from "@/lib/types";
 
 function DonutTooltip({ active, payload }: { active?: boolean; payload?: { payload: SplitDatum }[] }) {
   if (!active || !payload?.length) return null;
-  const d = payload[0].payload;
+  const datum = payload[0].payload;
   return (
     <div className="rounded-md border bg-popover px-2.5 py-1.5 text-xs shadow-sm">
-      <span className="font-medium">{d.name}</span>
-      <span className="ms-2 font-mono text-muted-foreground">{d.value}%</span>
+      <span className="font-medium">{datum.name}</span>
+      <span className="ms-2 font-mono text-muted-foreground">{datum.value}%</span>
     </div>
   );
 }
 
 export function Donut({ data, unit = "%" }: { data: SplitDatum[]; unit?: string }) {
-  const top = data.reduce((a, b) => (b.value > a.value ? b : a), data[0]);
+  const top = data.reduce((highest, entry) => (entry.value > highest.value ? entry : highest), data[0]);
   return (
     <div className="flex items-center gap-4">
       <div className="relative size-[132px] shrink-0">
@@ -41,8 +41,8 @@ export function Donut({ data, unit = "%" }: { data: SplitDatum[]; unit?: string 
               strokeWidth={0}
               isAnimationActive={false}
             >
-              {data.map((d) => (
-                <Cell key={d.name} fill={d.fill} />
+              {data.map((datum) => (
+                <Cell key={datum.name} fill={datum.fill} />
               ))}
             </Pie>
             <Tooltip content={<DonutTooltip />} wrapperStyle={{ zIndex: 20, outline: "none" }} />
@@ -50,12 +50,12 @@ export function Donut({ data, unit = "%" }: { data: SplitDatum[]; unit?: string 
         </ResponsiveContainer>
       </div>
       <ul className="flex min-w-0 flex-1 flex-col gap-1.5">
-        {data.map((d) => (
-          <li key={d.name} className="flex items-center gap-2 text-sm">
-            <span className="size-2.5 shrink-0 rounded-sm" style={{ background: d.fill }} />
-            <span className="min-w-0 flex-1 truncate text-muted-foreground">{d.name}</span>
+        {data.map((datum) => (
+          <li key={datum.name} className="flex items-center gap-2 text-sm">
+            <span className="size-2.5 shrink-0 rounded-sm" style={{ background: datum.fill }} />
+            <span className="min-w-0 flex-1 truncate text-muted-foreground">{datum.name}</span>
             <span className="font-mono text-xs tabular text-foreground">
-              {d.value}
+              {datum.value}
               {unit}
             </span>
           </li>

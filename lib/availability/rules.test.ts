@@ -3,7 +3,7 @@ import { THERAPIST_DEFAULTS, ANALYST_DEFAULTS, SLOTS_PER_DAY } from "./constants
 import type { DayState, RuleConfig, RuleResult } from "./types";
 
 const empty: DayState = { blocks: [] };
-const byId = (results: RuleResult[], id: string) => results.find((r) => r.id === id);
+const byId = (results: RuleResult[], id: string) => results.find((result) => result.id === id);
 
 describe("configFor", () => {
   it("returns therapist defaults", () => {
@@ -33,14 +33,14 @@ describe("validateDay", () => {
 
   it("passes every rule for an all-available workday", () => {
     const results = validateDay(empty, therapist, { isWorkday: true });
-    expect(results.every((r) => r.pass)).toBe(true);
+    expect(results.every((result) => result.pass)).toBe(true);
   });
 
   it("fails min-block when the in-person run is shorter than the minimum", () => {
     const day: DayState = { blocks: [{ start: 2, end: SLOTS_PER_DAY, kind: "unavailable" }] };
-    const r = byId(validateDay(day, therapist, { isWorkday: true }), "min-block");
-    expect(r?.pass).toBe(false);
-    expect(r?.offending).toEqual([0, 1]);
+    const result = byId(validateDay(day, therapist, { isWorkday: true }), "min-block");
+    expect(result?.pass).toBe(false);
+    expect(result?.offending).toEqual([0, 1]);
   });
 
   it("fails an interior break below the minimum but allows a short edge", () => {

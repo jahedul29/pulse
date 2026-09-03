@@ -32,7 +32,7 @@ export function useRecordDetail<T>(
   const data = ready && !res.error ? res.data : null;
   const reload = () => {
     setRes(null);
-    setAttempt((a) => a + 1);
+    setAttempt((previous) => previous + 1);
   };
 
   return { data, loading, error, reload };

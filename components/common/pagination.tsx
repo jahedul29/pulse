@@ -15,12 +15,13 @@ import { cn } from "@/lib/utils";
 function pageItems(current: number, count: number): (number | string)[] {
   if (count <= 7) return Array.from({ length: count }, (_, i) => i + 1);
   const pages = new Set<number>([1, count, current]);
-  for (let p = current - 1; p <= current + 1; p++) if (p >= 1 && p <= count) pages.add(p);
-  const sorted = [...pages].sort((a, b) => a - b);
+  for (let page = current - 1; page <= current + 1; page++)
+    if (page >= 1 && page <= count) pages.add(page);
+  const sorted = [...pages].sort((first, second) => first - second);
   const out: (number | string)[] = [];
-  sorted.forEach((p, i) => {
-    if (i > 0 && p - sorted[i - 1] > 1) out.push(`gap-${p}`);
-    out.push(p);
+  sorted.forEach((page, i) => {
+    if (i > 0 && page - sorted[i - 1] > 1) out.push(`gap-${page}`);
+    out.push(page);
   });
   return out;
 }
@@ -52,8 +53,8 @@ export function Pagination({
   const current = Math.min(page, pageCount);
   const [jump, setJump] = useState("");
   const submitJump = () => {
-    const n = Number(jump);
-    if (Number.isInteger(n) && n >= 1 && n <= pageCount) onPage(n);
+    const parsed = Number(jump);
+    if (Number.isInteger(parsed) && parsed >= 1 && parsed <= pageCount) onPage(parsed);
     setJump("");
   };
   const btn =
@@ -68,14 +69,17 @@ export function Pagination({
         {onPageSize && pageSize != null && pageSizeOptions && pageSizeOptions.length > 1 && (
           <label className="flex items-center gap-2">
             <span className="hidden text-xs text-muted-foreground sm:inline">{t("rowsPerPage")}</span>
-            <Select value={String(pageSize)} onValueChange={(v) => v && onPageSize(Number(v))}>
+            <Select
+              value={String(pageSize)}
+              onValueChange={(value) => value && onPageSize(Number(value))}
+            >
               <SelectTrigger size="sm" className="w-[4.75rem]">
-                <SelectValue>{(v) => String(v)}</SelectValue>
+                <SelectValue>{(value) => String(value)}</SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {pageSizeOptions.map((n) => (
-                  <SelectItem key={n} value={String(n)}>
-                    {n}
+                {pageSizeOptions.map((size) => (
+                  <SelectItem key={size} value={String(size)}>
+                    {size}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -94,8 +98,8 @@ export function Pagination({
               max={pageCount}
               inputMode="numeric"
               value={jump}
-              onChange={(e) => setJump(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && submitJump()}
+              onChange={(event) => setJump(event.target.value)}
+              onKeyDown={(event) => event.key === "Enter" && submitJump()}
               onBlur={submitJump}
               aria-label={t("goToLabel")}
               placeholder="#"

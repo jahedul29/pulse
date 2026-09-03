@@ -72,8 +72,8 @@ export function ClientFormDialog({
 }) {
   const t = useTranslations("clients.form");
   const tc = useTranslations("common");
-  const addClient = useClientStore((s) => s.addClient);
-  const updateClient = useClientStore((s) => s.updateClient);
+  const addClient = useClientStore((state) => state.addClient);
+  const updateClient = useClientStore((state) => state.updateClient);
 
   const schema = useMemo(
     () =>
@@ -86,7 +86,7 @@ export function ClientFormDialog({
           .string()
           .min(1, t("vDobRequired"))
           .refine(
-            (v) => !Number.isNaN(Date.parse(v)) && new Date(v) <= new Date(),
+            (value) => !Number.isNaN(Date.parse(value)) && new Date(value) <= new Date(),
             t("vDobFuture"),
           ),
         nationality: z.string().min(1, t("vNationality")),
@@ -217,9 +217,9 @@ export function ClientFormDialog({
               control={control}
               name="gender"
               render={({ field }) => (
-                <Select value={field.value} onValueChange={(v) => field.onChange(v ?? "")}>
+                <Select value={field.value} onValueChange={(value) => field.onChange(value ?? "")}>
                   <SelectTrigger className="w-full">
-                    <SelectValue>{(v) => (v === "Male" ? t("genderMale") : t("genderFemale"))}</SelectValue>
+                    <SelectValue>{(value) => (value === "Male" ? t("genderMale") : t("genderFemale"))}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Female">{t("genderFemale")}</SelectItem>
@@ -295,14 +295,14 @@ function SelectField({
   options: string[];
 }) {
   return (
-    <Select value={value} onValueChange={(v) => onChange(v ?? "")}>
+    <Select value={value} onValueChange={(nextValue) => onChange(nextValue ?? "")}>
       <SelectTrigger className="w-full">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {options.map((o) => (
-          <SelectItem key={o} value={o}>
-            {o}
+        {options.map((option) => (
+          <SelectItem key={option} value={option}>
+            {option}
           </SelectItem>
         ))}
       </SelectContent>

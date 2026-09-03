@@ -27,8 +27,8 @@ export function LiveAlerts() {
 
   const load = useCallback(() => {
     fetchLiveAlerts()
-      .then((r) => {
-        setAlerts(r);
+      .then((result) => {
+        setAlerts(result);
         setError(false);
       })
       .catch(() => setError(true))
@@ -77,7 +77,7 @@ export function LiveAlerts() {
             <TooltipProvider>
               <div className="flex flex-col gap-6">
                 {SEVERITY_ORDER.map((severity) => {
-                  const group = alerts.filter((a) => a.severity === severity);
+                  const group = alerts.filter((alert) => alert.severity === severity);
                   if (group.length === 0) return null;
                   return (
                     <section key={severity} className="flex flex-col gap-2">

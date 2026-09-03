@@ -4,52 +4,55 @@ import type { AdminAction, ChangeLogEntry, ActionQuery, ChangeQuery } from "./ty
 
 const ACTIONS = seedActions();
 const CHANGES = seedChanges();
-const ACTION_NAME = new Map(ACTIONS.map((a) => [a.id, a.actionName]));
-const SERVICE_OPTIONS = [...new Set(ACTIONS.map((a) => a.service))].sort();
-const TABLE_OPTIONS = [...new Set(CHANGES.map((c) => c.table))].sort();
+const ACTION_NAME = new Map(ACTIONS.map((action) => [action.id, action.actionName]));
+const SERVICE_OPTIONS = [...new Set(ACTIONS.map((action) => action.service))].sort();
+const TABLE_OPTIONS = [...new Set(CHANGES.map((change) => change.table))].sort();
 
-function maskAction(a: AdminAction): AdminAction {
-  return { ...a, inputs: a.inputs.map((i) => ({ ...i, value: maskInputValue(i.label, i.value) })) };
+function maskAction(action: AdminAction): AdminAction {
+  return {
+    ...action,
+    inputs: action.inputs.map((input) => ({ ...input, value: maskInputValue(input.label, input.value) })),
+  };
 }
 
-function maskChange(c: ChangeLogEntry): ChangeLogEntry {
+function maskChange(change: ChangeLogEntry): ChangeLogEntry {
   return {
-    ...c,
-    changes: c.changes.map((ch) => ({
-      ...ch,
-      before: maskColumnValue(ch.column, ch.before),
-      after: maskColumnValue(ch.column, ch.after),
+    ...change,
+    changes: change.changes.map((columnChange) => ({
+      ...columnChange,
+      before: maskColumnValue(columnChange.column, columnChange.before),
+      after: maskColumnValue(columnChange.column, columnChange.after),
     })),
   };
 }
 
 export async function fetchAdminActions(query: ActionQuery = {}): Promise<AdminAction[]> {
   const { dateFrom, dateTo, results, severities } = query;
-  return ACTIONS.filter((a) => dateFrom == null || a.createdAt >= dateFrom)
-    .filter((a) => dateTo == null || a.createdAt <= dateTo)
-    .filter((a) => !results || results.length === 0 || results.includes(a.result))
-    .filter((a) => !severities || severities.length === 0 || severities.includes(a.severity))
-    .sort((a, b) => b.createdAt - a.createdAt)
+  return ACTIONS.filter((action) => dateFrom == null || action.createdAt >= dateFrom)
+    .filter((action) => dateTo == null || action.createdAt <= dateTo)
+    .filter((action) => !results || results.length === 0 || results.includes(action.result))
+    .filter((action) => !severities || severities.length === 0 || severities.includes(action.severity))
+    .sort((first, second) => second.createdAt - first.createdAt)
     .map(maskAction);
 }
 
 export async function fetchChangeLog(query: ChangeQuery = {}): Promise<ChangeLogEntry[]> {
   const { actionId, operations, tables } = query;
-  return CHANGES.filter((c) => !actionId || c.actionId === actionId)
-    .filter((c) => !operations || operations.length === 0 || operations.includes(c.operation))
-    .filter((c) => !tables || tables.length === 0 || tables.includes(c.table))
-    .sort((a, b) => b.createdAt - a.createdAt)
+  return CHANGES.filter((change) => !actionId || change.actionId === actionId)
+    .filter((change) => !operations || operations.length === 0 || operations.includes(change.operation))
+    .filter((change) => !tables || tables.length === 0 || tables.includes(change.table))
+    .sort((first, second) => second.createdAt - first.createdAt)
     .map(maskChange);
 }
 
 export async function fetchActionDetail(id: string): Promise<AdminAction | null> {
-  const a = ACTIONS.find((x) => x.id === id);
-  return a ? maskAction(a) : null;
+  const action = ACTIONS.find((candidate) => candidate.id === id);
+  return action ? maskAction(action) : null;
 }
 
 export async function fetchChangeDetail(id: string): Promise<ChangeLogEntry | null> {
-  const c = CHANGES.find((x) => x.id === id);
-  return c ? maskChange(c) : null;
+  const change = CHANGES.find((candidate) => candidate.id === id);
+  return change ? maskChange(change) : null;
 }
 
 export function actionServiceOptions(): string[] {

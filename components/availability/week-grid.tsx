@@ -33,11 +33,11 @@ export function WeekGrid({
 }) {
   const locale = useLocale();
   const weekdays = weekdayShortLabels(locale);
-  const offendingFor = (d: number): Set<number> => {
+  const offendingFor = (dayIndex: number): Set<number> => {
     if (!showViolations) return EMPTY;
-    const results = validateDay(days[d], config, { isWorkday: !daysOff.includes(d) });
+    const results = validateDay(days[dayIndex], config, { isWorkday: !daysOff.includes(dayIndex) });
     const set = new Set<number>();
-    for (const r of results) r.offending?.forEach((s) => set.add(s));
+    for (const result of results) result.offending?.forEach((slot) => set.add(slot));
     return set;
   };
 
@@ -52,15 +52,15 @@ export function WeekGrid({
           )}
         >
           <div />
-          {weekdays.map((label, d) => {
-            const isOff = daysOff.includes(d);
+          {weekdays.map((label, dayIndex) => {
+            const isOff = daysOff.includes(dayIndex);
             const base =
               "py-1.5 text-center text-[10px] font-semibold uppercase tracking-wide transition-colors md:text-base";
             return (
               <button
-                key={d}
+                key={dayIndex}
                 type="button"
-                onClick={() => onToggleDayOff(d)}
+                onClick={() => onToggleDayOff(dayIndex)}
                 className={cn(
                   base,
                   "cursor-pointer",
@@ -87,14 +87,14 @@ export function WeekGrid({
             ))}
           </div>
 
-          {WEEKDAY_LABELS.map((_, d) => (
+          {WEEKDAY_LABELS.map((_, dayIndex) => (
             <DayColumn
-              key={d}
-              dayIndex={d}
-              day={days[d]}
+              key={dayIndex}
+              dayIndex={dayIndex}
+              day={days[dayIndex]}
               config={config}
-              offending={offendingFor(d)}
-              shakeKey={shakeCols.includes(d) ? shakeNonce : 0}
+              offending={offendingFor(dayIndex)}
+              shakeKey={shakeCols.includes(dayIndex) ? shakeNonce : 0}
               onPaint={onPaint}
             />
           ))}

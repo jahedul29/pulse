@@ -21,8 +21,8 @@ function currentSession(): DeviceSession | null {
 export async function fetchSessions(): Promise<DeviceSession[]> {
   const current = currentSession();
   const others = useSessionStore.getState().others;
-  return [...(current ? [current] : []), ...others].sort((a, b) => {
-    if (a.current !== b.current) return a.current ? -1 : 1;
-    return b.issuedAt - a.issuedAt;
+  return [...(current ? [current] : []), ...others].sort((sessionA, sessionB) => {
+    if (sessionA.current !== sessionB.current) return sessionA.current ? -1 : 1;
+    return sessionB.issuedAt - sessionA.issuedAt;
   });
 }

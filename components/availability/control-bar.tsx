@@ -86,8 +86,8 @@ export function PaintControls({
           statuses.length === 3 ? "grid-cols-3" : "grid-cols-2",
         )}
       >
-        {statuses.map((s) => (
-          <LegendItem key={s.status} meta={s} showDesc={expanded} />
+        {statuses.map((statusMeta) => (
+          <LegendItem key={statusMeta.status} meta={statusMeta} showDesc={expanded} />
         ))}
       </div>
 

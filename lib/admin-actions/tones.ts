@@ -3,15 +3,15 @@ import type { ActionResult, ActionSeverity, ChangeOp } from "./types";
 
 export type { Tone };
 
-export function resultTone(r: ActionResult): Tone {
-  if (r === "success") return "success";
-  if (r === "partial") return "warning";
+export function resultTone(result: ActionResult): Tone {
+  if (result === "success") return "success";
+  if (result === "partial") return "warning";
   return "danger";
 }
 
-export function severityTone(s: ActionSeverity): Tone {
-  if (s === "critical") return "danger";
-  if (s === "warning") return "warning";
+export function severityTone(severity: ActionSeverity): Tone {
+  if (severity === "critical") return "danger";
+  if (severity === "warning") return "warning";
   return "neutral";
 }
 

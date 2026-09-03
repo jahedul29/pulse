@@ -9,7 +9,7 @@ export type PolicyMessages = {
 
 export function policySchema(msgs: PolicyMessages) {
   const num = () => z.number({ error: msgs.mustBeNumber });
-  const min = (n: number) => num().int(msgs.mustBeInteger).min(n, msgs.atLeast(n));
+  const min = (minimum: number) => num().int(msgs.mustBeInteger).min(minimum, msgs.atLeast(minimum));
   return z.object({
     lockoutThreshold: min(1),
     lockoutDurationMins: min(1),

@@ -24,7 +24,7 @@ describe("useNotificationStore", () => {
     useNotificationStore.getState().upsertTemplate(draft);
     const after = useNotificationStore.getState().templates;
     expect(after.length).toBe(before + 1);
-    expect(after.find((t) => t.code === "SYS_NEW")?.en).toBe("hello");
+    expect(after.find((template) => template.code === "SYS_NEW")?.en).toBe("hello");
   });
 
   it("upsertTemplate updates an existing template in place", () => {
@@ -32,24 +32,27 @@ describe("useNotificationStore", () => {
     useNotificationStore.getState().upsertTemplate({ ...draft, code: "AUTH_OTP", en: "changed" });
     const after = useNotificationStore.getState().templates;
     expect(after.length).toBe(before);
-    expect(after.find((t) => t.code === "AUTH_OTP")?.en).toBe("changed");
+    expect(after.find((template) => template.code === "AUTH_OTP")?.en).toBe("changed");
   });
 
   it("deleteTemplate removes by code", () => {
     useNotificationStore.getState().deleteTemplate("AUTH_OTP");
-    expect(useNotificationStore.getState().templates.some((t) => t.code === "AUTH_OTP")).toBe(false);
+    expect(useNotificationStore.getState().templates.some((template) => template.code === "AUTH_OTP")).toBe(false);
   });
 
   it("setMapping and setRouting replace the row for an event", () => {
-    const m = useNotificationStore.getState().mappings[0];
-    useNotificationStore.getState().setMapping({ ...m, recipients: { ...m.recipients, bcba: false } });
+    const mapping = useNotificationStore.getState().mappings[0];
+    useNotificationStore
+      .getState()
+      .setMapping({ ...mapping, recipients: { ...mapping.recipients, bcba: false } });
     expect(
-      useNotificationStore.getState().mappings.find((x) => x.eventId === m.eventId)?.recipients.bcba,
+      useNotificationStore.getState().mappings.find((x) => x.eventId === mapping.eventId)?.recipients
+        .bcba,
     ).toBe(false);
 
-    const r = useNotificationStore.getState().routing[0];
-    useNotificationStore.getState().setRouting({ ...r, urgency: "low" });
-    const updated = useNotificationStore.getState().routing.find((x) => x.eventId === r.eventId);
+    const routing = useNotificationStore.getState().routing[0];
+    useNotificationStore.getState().setRouting({ ...routing, urgency: "low" });
+    const updated = useNotificationStore.getState().routing.find((x) => x.eventId === routing.eventId);
     expect(updated?.urgency).toBe("low");
   });
 });

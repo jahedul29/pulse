@@ -77,7 +77,7 @@ export function RulesConfigDialog({
               label={t("rulesConfig.minAvailBlock")}
               value={draft.minBlockInPersonMins}
               options={THERAPIST_BLOCK_OPTIONS}
-              onChange={(v) => setDraft({ ...draft, minBlockInPersonMins: v })}
+              onChange={(value) => setDraft({ ...draft, minBlockInPersonMins: value })}
             />
           ) : (
             <>
@@ -85,19 +85,19 @@ export function RulesConfigDialog({
                 label={t("rulesConfig.minInpersonBlock")}
                 value={draft.minBlockInPersonMins}
                 options={INPERSON_OPTIONS}
-                onChange={(v) => setDraft({ ...draft, minBlockInPersonMins: v })}
+                onChange={(value) => setDraft({ ...draft, minBlockInPersonMins: value })}
               />
               <MinutesField
                 label={t("rulesConfig.minOnlineBlock")}
                 value={draft.minBlockOnlineMins}
                 options={ONLINE_OPTIONS}
-                onChange={(v) => setDraft({ ...draft, minBlockOnlineMins: v })}
+                onChange={(value) => setDraft({ ...draft, minBlockOnlineMins: value })}
               />
               <MinutesField
                 label={t("rulesConfig.minBreak")}
                 value={draft.minBreakMins}
                 options={BREAK_OPTIONS}
-                onChange={(v) => setDraft({ ...draft, minBreakMins: v })}
+                onChange={(value) => setDraft({ ...draft, minBreakMins: value })}
               />
             </>
           )}
@@ -106,24 +106,24 @@ export function RulesConfigDialog({
             label={t("rulesConfig.continuousWindow")}
             value={draft.continuousWindowMins}
             options={WINDOW_OPTIONS}
-            onChange={(v) => setDraft({ ...draft, continuousWindowMins: v })}
+            onChange={(value) => setDraft({ ...draft, continuousWindowMins: value })}
           />
 
           <div className="flex flex-col gap-1.5">
             <Label>{t("rulesConfig.maxDaysOffWeek")}</Label>
             <Select
               value={String(draft.maxDaysOff)}
-              onValueChange={(v) => setDraft({ ...draft, maxDaysOff: Number(v) })}
+              onValueChange={(value) => setDraft({ ...draft, maxDaysOff: Number(value) })}
             >
               <SelectTrigger className="w-full">
                 <SelectValue>
-                  {(v) => t("rulesConfig.days", { count: Number(v) })}
+                  {(value) => t("rulesConfig.days", { count: Number(value) })}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {DAYS_OFF_OPTIONS.map((n) => (
-                  <SelectItem key={n} value={String(n)}>
-                    {t("rulesConfig.days", { count: n })}
+                {DAYS_OFF_OPTIONS.map((option) => (
+                  <SelectItem key={option} value={String(option)}>
+                    {t("rulesConfig.days", { count: option })}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -163,14 +163,14 @@ function MinutesField({
   return (
     <div className="flex flex-col gap-1.5">
       <Label>{label}</Label>
-      <Select value={String(value)} onValueChange={(v) => onChange(Number(v))}>
+      <Select value={String(value)} onValueChange={(next) => onChange(Number(next))}>
         <SelectTrigger className="w-full">
-          <SelectValue>{(v) => (v ? fmtDuration(Number(v)) : "")}</SelectValue>
+          <SelectValue>{(current) => (current ? fmtDuration(Number(current)) : "")}</SelectValue>
         </SelectTrigger>
         <SelectContent>
-          {options.map((n) => (
-            <SelectItem key={n} value={String(n)}>
-              {fmtDuration(n)}
+          {options.map((option) => (
+            <SelectItem key={option} value={String(option)}>
+              {fmtDuration(option)}
             </SelectItem>
           ))}
         </SelectContent>

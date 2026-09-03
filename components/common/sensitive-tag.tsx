@@ -40,10 +40,10 @@ export function SensitiveTag({
   if (kinds.length === 0) return null;
   return (
     <span className={cn("inline-flex items-center gap-2", className)}>
-      {kinds.map((k) => (
-        <span key={k} className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-          <SensitivityDot kind={k} label={labels?.[k]} />
-          {showLabel && <span>{labels?.[k] ?? DEFAULT_LABEL[k]}</span>}
+      {kinds.map((kind) => (
+        <span key={kind} className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+          <SensitivityDot kind={kind} label={labels?.[kind]} />
+          {showLabel && <span>{labels?.[kind] ?? DEFAULT_LABEL[kind]}</span>}
         </span>
       ))}
     </span>

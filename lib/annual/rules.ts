@@ -5,17 +5,17 @@ export function sortIso(dates: string[]): string[] {
   return [...dates].sort();
 }
 
-function diffDays(a: string, b: string): number {
-  return differenceInCalendarDays(parseISO(b), parseISO(a));
+function diffDays(startIso: string, endIso: string): number {
+  return differenceInCalendarDays(parseISO(endIso), parseISO(startIso));
 }
 
 export function groupConsecutive(dates: string[]): string[][] {
   const sorted = sortIso(dates);
   const groups: string[][] = [];
-  for (const d of sorted) {
+  for (const date of sorted) {
     const last = groups[groups.length - 1];
-    if (last && diffDays(last[last.length - 1], d) === 1) last.push(d);
-    else groups.push([d]);
+    if (last && diffDays(last[last.length - 1], date) === 1) last.push(date);
+    else groups.push([date]);
   }
   return groups;
 }
@@ -37,10 +37,10 @@ export function validateAnnual(offDates: string[], config: AnnualConfig): Annual
   const results: AnnualRuleResult[] = [];
 
   const byYear = new Map<string, string[]>();
-  for (const d of offDates) {
-    const y = d.slice(0, 4);
+  for (const date of offDates) {
+    const y = date.slice(0, 4);
     const list = byYear.get(y) ?? [];
-    list.push(d);
+    list.push(date);
     byYear.set(y, list);
   }
   const capFail: string[] = [];
@@ -60,7 +60,7 @@ export function validateAnnual(offDates: string[], config: AnnualConfig): Annual
   const groups = groupConsecutive(offDates);
 
   if (config.maxConsecutive > 0) {
-    const bad = groups.filter((g) => g.length > config.maxConsecutive).flat();
+    const bad = groups.filter((group) => group.length > config.maxConsecutive).flat();
     results.push({
       id: "max-consecutive",
       label: "Maximum consecutive days off",
@@ -78,8 +78,8 @@ export function validateAnnual(offDates: string[], config: AnnualConfig): Annual
       const prev = groups[i - 1];
       const cur = groups[i];
       if (fullWeeksBetween(prev[prev.length - 1], cur[0]) < config.minGapWeeks) {
-        for (const d of prev) bad.add(d);
-        for (const d of cur) bad.add(d);
+        for (const date of prev) bad.add(date);
+        for (const date of cur) bad.add(date);
       }
     }
     results.push({
@@ -100,7 +100,7 @@ export function firstFailure(
   offDates: string[],
   config: AnnualConfig,
 ): AnnualRuleResult | undefined {
-  return validateAnnual(offDates, config).find((r) => !r.pass);
+  return validateAnnual(offDates, config).find((result) => !result.pass);
 }
 
 export function isPast(iso: string, todayIso: string): boolean {

@@ -19,6 +19,14 @@ const eslintConfig = defineConfig([
     // Vendored agent/skill scaffold (not app source):
     ".claude/**",
   ]),
+  {
+    rules: {
+      "id-length": [
+        "error",
+        { min: 2, exceptions: ["i", "j", "x", "y", "t", "_"], properties: "never" },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

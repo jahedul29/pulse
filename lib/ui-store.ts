@@ -12,13 +12,13 @@ export const useUiStore = create<UiState>()(
   persist(
     (set) => ({
       collapsed: false,
-      toggleCollapsed: () => set((s) => ({ collapsed: !s.collapsed })),
+      toggleCollapsed: () => set((state) => ({ collapsed: !state.collapsed })),
       mobileOpen: false,
       setMobileOpen: (open) => set({ mobileOpen: open }),
     }),
     {
       name: "abapro-ui",
-      partialize: (s) => ({ collapsed: s.collapsed }),
+      partialize: (state) => ({ collapsed: state.collapsed }),
     },
   ),
 );

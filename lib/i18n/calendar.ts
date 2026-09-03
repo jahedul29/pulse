@@ -3,7 +3,7 @@
 
 export function monthShortLabels(locale: string): string[] {
   const fmt = new Intl.DateTimeFormat(locale, { month: "short", timeZone: "UTC" });
-  return Array.from({ length: 12 }, (_, m) => fmt.format(new Date(Date.UTC(2021, m, 15))));
+  return Array.from({ length: 12 }, (_, month) => fmt.format(new Date(Date.UTC(2021, month, 15))));
 }
 
 // 2021-03-01 is a Monday, so this yields Monday-first weekday labels.
@@ -13,7 +13,7 @@ export function weekdayShortLabels(locale: string): string[] {
 }
 
 export function weekdayTwoCharLabels(locale: string): string[] {
-  return weekdayShortLabels(locale).map((w) => w.slice(0, 2).toUpperCase());
+  return weekdayShortLabels(locale).map((weekday) => weekday.slice(0, 2).toUpperCase());
 }
 
 export function weekdayNarrowLabels(locale: string): string[] {

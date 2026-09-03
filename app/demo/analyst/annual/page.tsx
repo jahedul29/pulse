@@ -4,7 +4,7 @@ import { AnnualEditor } from "@/components/annual/annual-editor";
 import { useSpecialistStore } from "@/lib/specialists";
 
 export default function AnalystAnnualDemoPage() {
-  const specialist = useSpecialistStore((s) => s.specialists.find((x) => x.role === "analyst"));
+  const specialist = useSpecialistStore((state) => state.specialists.find((x) => x.role === "analyst"));
 
   if (!specialist) {
     return (

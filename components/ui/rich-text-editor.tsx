@@ -43,7 +43,7 @@ function ToolButton({
       type="button"
       variant="ghost"
       size="icon-sm"
-      onMouseDown={(e) => e.preventDefault()}
+      onMouseDown={(event) => event.preventDefault()}
       onClick={onClick}
       aria-label={label}
       aria-pressed={active}

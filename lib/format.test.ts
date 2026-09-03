@@ -47,10 +47,10 @@ describe("format helpers", () => {
 
 describe("startOfTomorrow", () => {
   it("returns local midnight tomorrow, in the future", () => {
-    const d = startOfTomorrow();
-    expect(d.getHours()).toBe(0);
-    expect(d.getMinutes()).toBe(0);
-    expect(d.getSeconds()).toBe(0);
-    expect(d.getTime()).toBeGreaterThan(Date.now());
+    const tomorrow = startOfTomorrow();
+    expect(tomorrow.getHours()).toBe(0);
+    expect(tomorrow.getMinutes()).toBe(0);
+    expect(tomorrow.getSeconds()).toBe(0);
+    expect(tomorrow.getTime()).toBeGreaterThan(Date.now());
   });
 });

@@ -81,8 +81,8 @@ function RevokeButton({
             size="icon"
             aria-label={label}
             disabled={disabled}
-            onClick={(e) => {
-              e.stopPropagation();
+            onClick={(event) => {
+              event.stopPropagation();
               if (!disabled) onClick();
             }}
             className={cn(
@@ -103,10 +103,10 @@ export function SessionManager() {
   const t = useTranslations("sessions");
   const locale = useLocale();
   const mounted = useIsClient();
-  const revoke = useSessionStore((s) => s.revoke);
-  const revokeAllOthers = useSessionStore((s) => s.revokeAllOthers);
-  const others = useSessionStore((s) => s.others);
-  const session = useAuthStore((s) => s.session);
+  const revoke = useSessionStore((state) => state.revoke);
+  const revokeAllOthers = useSessionStore((state) => state.revokeAllOthers);
+  const others = useSessionStore((state) => state.others);
+  const session = useAuthStore((state) => state.session);
   const [rows, setRows] = useState<DeviceSession[]>([]);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -116,8 +116,8 @@ export function SessionManager() {
 
   useEffect(() => {
     let active = true;
-    fetchSessions().then((r) => {
-      if (active) setRows(r);
+    fetchSessions().then((fetchedRows) => {
+      if (active) setRows(fetchedRows);
     });
     return () => {
       active = false;
@@ -136,7 +136,7 @@ export function SessionManager() {
     };
   }, [reload]);
 
-  const otherCount = rows.filter((r) => !r.current).length;
+  const otherCount = rows.filter((deviceSession) => !deviceSession.current).length;
 
   const onRevoke = useCallback(
     (session: DeviceSession) => {
@@ -157,28 +157,28 @@ export function SessionManager() {
     () => [
       {
         id: "device",
-        accessorFn: (s) => s.deviceName,
+        accessorFn: (deviceSession) => deviceSession.deviceName,
         size: 260,
         header: t("colDevice"),
         cell: ({ row }) => <DeviceCell session={row.original} />,
       },
       {
         id: "issued",
-        accessorFn: (s) => s.issuedAt,
+        accessorFn: (deviceSession) => deviceSession.issuedAt,
         size: 160,
         header: t("colIssued"),
         cell: ({ row }) => <RelTime ms={row.original.issuedAt} mounted={mounted} locale={locale} />,
       },
       {
         id: "expires",
-        accessorFn: (s) => s.expiresAt,
+        accessorFn: (deviceSession) => deviceSession.expiresAt,
         size: 160,
         header: t("colExpires"),
         cell: ({ row }) => <RelTime ms={row.original.expiresAt} mounted={mounted} locale={locale} />,
       },
       {
         id: "current",
-        accessorFn: (s) => (s.current ? 1 : 0),
+        accessorFn: (deviceSession) => (deviceSession.current ? 1 : 0),
         size: 140,
         enableSorting: false,
         header: t("colCurrent"),
@@ -222,10 +222,10 @@ export function SessionManager() {
             searchPlaceholder={t("search")}
             emptyLabel={t("empty")}
             itemsLabel={t("items")}
-            getSearchText={(s) => `${s.deviceName} ${s.userAgent ?? ""}`}
+            getSearchText={(deviceSession) => `${deviceSession.deviceName} ${deviceSession.userAgent ?? ""}`}
             enableFreeze
             maxFreeze={3}
-            rowClassName={(s) => (s.current ? "bg-primary/5" : undefined)}
+            rowClassName={(deviceSession) => (deviceSession.current ? "bg-primary/5" : undefined)}
             toolbar={
               otherCount > 0 ? (
                 <Tooltip>
