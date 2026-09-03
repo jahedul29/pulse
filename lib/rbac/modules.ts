@@ -18,7 +18,7 @@ export const MODULES: ModuleMeta[] = [
   { id: "userManagement", labelKey: "mod_userManagement", sensitivity: ["pii", "destructive"] },
 ];
 
-export const MODULE_IDS: ModuleId[] = MODULES.map((m) => m.id);
+export const MODULE_IDS: ModuleId[] = MODULES.map((module) => module.id);
 
 export function emptyPermissions(): RolePermissions {
   return MODULE_IDS.reduce((acc, id) => {
@@ -47,12 +47,12 @@ export function permissionsFrom(
   return base;
 }
 
-export function countGranted(p: RolePermissions): { view: number; edit: number } {
+export function countGranted(permissions: RolePermissions): { view: number; edit: number } {
   let view = 0;
   let edit = 0;
   MODULE_IDS.forEach((id) => {
-    if (p[id].view) view++;
-    if (p[id].edit) edit++;
+    if (permissions[id].view) view++;
+    if (permissions[id].edit) edit++;
   });
   return { view, edit };
 }

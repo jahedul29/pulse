@@ -2,20 +2,14 @@ import { roleSchema, grantSchema, overlaySchema } from "./schemas";
 import { MODULE_IDS } from "./modules";
 
 describe("roleSchema", () => {
-  const schema = roleSchema(
-    { nameRequired: "req", nameExists: "dup" },
-    { existingNames: ["Admin", "Supervisor"] },
-  );
+  const schema = roleSchema({ nameRequired: "req" });
 
   it("rejects an empty name", () => {
     expect(schema.safeParse({ name: "  ", description: "" }).success).toBe(false);
   });
 
-  it("rejects a duplicate name (case-insensitive)", () => {
-    expect(schema.safeParse({ name: "admin", description: "" }).success).toBe(false);
-  });
-
-  it("accepts a unique name", () => {
+  it("accepts any non-empty name (duplication is a backend check)", () => {
+    expect(schema.safeParse({ name: "admin", description: "" }).success).toBe(true);
     expect(schema.safeParse({ name: "Auditor", description: "x" }).success).toBe(true);
   });
 });

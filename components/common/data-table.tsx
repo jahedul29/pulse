@@ -68,21 +68,21 @@ export const selectFilterFn: FilterFn<unknown> = (row, columnId, value) =>
 export const dateRangeFilterFn: FilterFn<unknown> = (row, columnId, value) => {
   if (!Array.isArray(value)) return true;
   const [min, max] = value as [number?, number?];
-  const v = Number(row.getValue(columnId));
-  if (min != null && v < min) return false;
-  if (max != null && v > max) return false;
+  const cellValue = Number(row.getValue(columnId));
+  if (min != null && cellValue < min) return false;
+  if (max != null && cellValue > max) return false;
   return true;
 };
 
 function startOfDay(ms: number): number {
-  const d = new Date(ms);
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
+  const date = new Date(ms);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
 }
 function endOfDay(ms: number): number {
-  const d = new Date(ms);
-  d.setHours(23, 59, 59, 999);
-  return d.getTime();
+  const date = new Date(ms);
+  date.setHours(23, 59, 59, 999);
+  return date.getTime();
 }
 function toIso(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -91,8 +91,8 @@ function toIso(date: Date): string {
 function cellSizeStyle<TData>(column: Column<TData, unknown>, pinned: boolean): CSSProperties | undefined {
   const explicit = column.columnDef.size != null;
   if (!pinned && !explicit) return undefined;
-  const w = column.getSize();
-  const style: CSSProperties = { width: w, minWidth: w, maxWidth: w };
+  const width = column.getSize();
+  const style: CSSProperties = { width, minWidth: width, maxWidth: width };
   if (pinned) style.insetInlineStart = column.getStart("left");
   return style;
 }
@@ -122,6 +122,18 @@ type DataTableProps<TData> = {
   enableFreeze?: boolean;
   maxFreeze?: number;
   pageSizeOptions?: number[];
+  manualServer?: boolean;
+  rowCount?: number;
+  onServerStateChange?: (state: ServerTableState) => void;
+  searchDebounceMs?: number;
+};
+
+export type ServerTableState = {
+  pageIndex: number;
+  pageSize: number;
+  search: string;
+  sorting: SortingState;
+  columnFilters: ColumnFiltersState;
 };
 
 function RangeFilter<TData>({
@@ -145,7 +157,7 @@ function RangeFilter<TData>({
         type="number"
         placeholder={labels.min ?? "Min"}
         value={min ?? ""}
-        onChange={(e) => set(0, e.target.value)}
+        onChange={(event) => set(0, event.target.value)}
         className={inputCls}
       />
       <span className="text-muted-foreground">–</span>
@@ -153,7 +165,7 @@ function RangeFilter<TData>({
         type="number"
         placeholder={labels.max ?? "Max"}
         value={max ?? ""}
-        onChange={(e) => set(1, e.target.value)}
+        onChange={(event) => set(1, event.target.value)}
         className={inputCls}
       />
     </div>
@@ -167,17 +179,21 @@ function SelectFilter<TData>({
   column: Column<TData, unknown>;
   searchLabel?: string;
 }) {
-  const [q, setQ] = useState("");
+  const [query, setQuery] = useState("");
   const value = (column.getFilterValue() as string[] | undefined) ?? [];
   const options =
     column.columnDef.meta?.filterOptions ??
     [...column.getFacetedUniqueValues().keys()]
-      .filter((v) => v != null && v !== "")
-      .map((v) => ({ value: String(v), label: String(v) }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  const shown = options.filter((o) => o.label.toLowerCase().includes(q.trim().toLowerCase()));
-  const toggle = (v: string) => {
-    const next = value.includes(v) ? value.filter((x) => x !== v) : [...value, v];
+      .filter((facetValue) => facetValue != null && facetValue !== "")
+      .map((facetValue) => ({ value: String(facetValue), label: String(facetValue) }))
+      .sort((first, second) => first.label.localeCompare(second.label));
+  const shown = options.filter((option) =>
+    option.label.toLowerCase().includes(query.trim().toLowerCase()),
+  );
+  const toggle = (optionValue: string) => {
+    const next = value.includes(optionValue)
+      ? value.filter((x) => x !== optionValue)
+      : [...value, optionValue];
     column.setFilterValue(next.length ? next : undefined);
   };
   return (
@@ -188,23 +204,23 @@ function SelectFilter<TData>({
           size="sm"
           autoFocus={autoFocusSearch()}
           placeholder={searchLabel}
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
           className="ps-8"
         />
       </div>
       <div className="max-h-52 overflow-y-auto">
         <div className="flex flex-col gap-0.5">
-        {shown.map((o) => (
+        {shown.map((option) => (
           <label
-            key={o.value}
+            key={option.value}
             className="flex cursor-pointer items-center gap-2.5 rounded-md px-1.5 py-1.5 text-start text-sm transition-colors hover:bg-muted"
           >
             <Checkbox
-              checked={value.includes(o.value)}
-              onCheckedChange={() => toggle(o.value)}
+              checked={value.includes(option.value)}
+              onCheckedChange={() => toggle(option.value)}
             />
-            <span className="truncate">{o.label}</span>
+            <span className="truncate">{option.label}</span>
           </label>
         ))}
         {shown.length === 0 && (
@@ -311,7 +327,7 @@ function ColumnFilter<TData>({
               aria-label={[labels.filter ?? "Filter", column.columnDef.meta?.filterLabel]
                 .filter(Boolean)
                 .join(" — ")}
-              onClick={(e) => e.stopPropagation()}
+              onClick={(event) => event.stopPropagation()}
               className={cn(
                 "relative inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md transition-all focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none",
                 active
@@ -338,7 +354,7 @@ function ColumnFilter<TData>({
           <input
             autoFocus={autoFocusSearch()}
             value={(value as string) ?? ""}
-            onChange={(e) => column.setFilterValue(e.target.value || undefined)}
+            onChange={(event) => column.setFilterValue(event.target.value || undefined)}
             className="h-8 w-full rounded-md border bg-card px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           />
         )}
@@ -375,43 +391,88 @@ export function DataTable<TData>({
   enableFreeze = false,
   maxFreeze = 3,
   pageSizeOptions,
+  manualServer = false,
+  rowCount,
+  onServerStateChange,
+  searchDebounceMs = 350,
 }: DataTableProps<TData>) {
   const sizeOptions = useMemo(
-    () => Array.from(new Set([pageSize, ...(pageSizeOptions ?? [10, 25, 50, 100])])).sort((a, b) => a - b),
+    () =>
+      Array.from(new Set([pageSize, ...(pageSizeOptions ?? [10, 25, 50, 100])])).sort(
+        (first, second) => first - second,
+      ),
     [pageSize, pageSizeOptions],
   );
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize });
   const [freezeCount, setFreezeCount] = useState(0);
   const [rowH, setRowH] = useState(0);
   const tf = useTranslations("common");
 
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    if (!manualServer) return;
+    const id = setTimeout(() => {
+      setDebouncedSearch(globalFilter);
+      setPagination((prev) => (prev.pageIndex === 0 ? prev : { ...prev, pageIndex: 0 }));
+    }, searchDebounceMs);
+    return () => clearTimeout(id);
+  }, [manualServer, globalFilter, searchDebounceMs]);
+
+  const onServerStateChangeRef = useRef(onServerStateChange);
+  useEffect(() => {
+    onServerStateChangeRef.current = onServerStateChange;
+  }, [onServerStateChange]);
+
   const resolvedColumns = useMemo(
     () =>
-      columns.map((c) => {
-        if (c.filterFn) return c;
-        if (c.meta?.filter === "select") return { ...c, filterFn: selectFilterFn as FilterFn<TData> };
-        if (c.meta?.filter === "dateRange")
-          return { ...c, filterFn: dateRangeFilterFn as FilterFn<TData> };
-        return c;
+      columns.map((column) => {
+        if (column.filterFn) return column;
+        if (column.meta?.filter === "select")
+          return { ...column, filterFn: selectFilterFn as FilterFn<TData> };
+        if (column.meta?.filter === "dateRange")
+          return { ...column, filterFn: dateRangeFilterFn as FilterFn<TData> };
+        return column;
       }),
     [columns],
   );
 
   const columnIds = resolvedColumns.map(
-    (c) => c.id ?? ("accessorKey" in c ? String((c as { accessorKey: unknown }).accessorKey) : ""),
+    (column) =>
+      column.id ??
+      ("accessorKey" in column
+        ? String((column as { accessorKey: unknown }).accessorKey)
+        : ""),
   );
   const effectiveMax = Math.min(maxFreeze, columnIds.length - 1);
   const pinnedLeft = freezeCount > 0 ? columnIds.slice(0, Math.min(freezeCount, effectiveMax)) : [];
 
+  const resetToFirstPage = useCallback(
+    () => setPagination((prev) => (prev.pageIndex === 0 ? prev : { ...prev, pageIndex: 0 })),
+    [],
+  );
+
   const table = useReactTable({
     data,
     columns: resolvedColumns,
-    state: { globalFilter, sorting, columnFilters, columnPinning: { left: pinnedLeft, right: [] } },
+    state: { globalFilter, sorting, columnFilters, pagination, columnPinning: { left: pinnedLeft, right: [] } },
     onGlobalFilterChange: setGlobalFilter,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
+    onSortingChange: (updater) => {
+      setSorting(updater);
+      if (manualServer) resetToFirstPage();
+    },
+    onColumnFiltersChange: (updater) => {
+      setColumnFilters(updater);
+      if (manualServer) resetToFirstPage();
+    },
+    onPaginationChange: setPagination,
+    manualPagination: manualServer,
+    manualSorting: manualServer,
+    manualFiltering: manualServer,
+    autoResetPageIndex: !manualServer,
+    rowCount: manualServer ? rowCount : undefined,
     enableColumnPinning: true,
     sortDescFirst: false,
     globalFilterFn: getSearchText
@@ -424,15 +485,19 @@ export function DataTable<TData>({
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize } },
   });
 
   const { pageIndex, pageSize: size } = table.getState().pagination;
-  const total = table.getFilteredRowModel().rows.length;
+  const total = manualServer ? (rowCount ?? 0) : table.getFilteredRowModel().rows.length;
+
+  useEffect(() => {
+    if (!manualServer) return;
+    onServerStateChangeRef.current?.({ pageIndex, pageSize: size, search: debouncedSearch, sorting, columnFilters });
+  }, [manualServer, pageIndex, size, debouncedSearch, sorting, columnFilters]);
   const pageRows = table.getRowModel().rows;
   const toolbarNode =
     typeof toolbar === "function"
-      ? toolbar(table.getSortedRowModel().rows.map((r) => r.original))
+      ? toolbar(table.getSortedRowModel().rows.map((row) => row.original))
       : toolbar;
   const start = total === 0 ? 0 : pageIndex * size + 1;
   const end = Math.min(pageIndex * size + size, total);
@@ -462,17 +527,17 @@ export function DataTable<TData>({
       leftPct: (x / el.scrollWidth) * 100,
     });
   }, []);
-  const onThumbDown = (e: ReactPointerEvent) => {
-    e.preventDefault();
+  const onThumbDown = (event: ReactPointerEvent) => {
+    event.preventDefault();
     const el = scrollRef.current;
     const track = trackRef.current;
     if (!el || !track) return;
     setDragging(true);
-    const startX = e.clientX;
+    const startX = event.clientX;
     const startLeft = el.scrollLeft;
     const ratio = el.scrollWidth / track.clientWidth;
-    const onMove = (ev: PointerEvent) => {
-      el.scrollLeft = startLeft + (ev.clientX - startX) * ratio;
+    const onMove = (moveEvent: PointerEvent) => {
+      el.scrollLeft = startLeft + (moveEvent.clientX - startX) * ratio;
     };
     const onUp = () => {
       setDragging(false);
@@ -488,8 +553,8 @@ export function DataTable<TData>({
     syncEdge();
     const dataRow = el.querySelector("tbody tr[data-row]");
     if (dataRow) {
-      const h = dataRow.getBoundingClientRect().height;
-      setRowH((prev) => (Math.abs(prev - h) > 0.5 ? h : prev));
+      const height = dataRow.getBoundingClientRect().height;
+      setRowH((prev) => (Math.abs(prev - height) > 0.5 ? height : prev));
     }
     const ro = new ResizeObserver(syncEdge);
     ro.observe(el);
@@ -506,7 +571,7 @@ export function DataTable<TData>({
           <Search className="pointer-events-none absolute start-2.5 size-4 text-muted-foreground" />
           <input
             value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
+            onChange={(event) => setGlobalFilter(event.target.value)}
             placeholder={searchPlaceholder}
             className="h-9 w-full rounded-lg border bg-card ps-8 pe-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           />
@@ -675,9 +740,9 @@ export function DataTable<TData>({
                 onClick={onRowClick ? () => onRowClick(row.original) : undefined}
                 onKeyDown={
                   onRowClick
-                    ? (e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
+                    ? (event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
                           onRowClick(row.original);
                         }
                       }
@@ -758,9 +823,9 @@ export function DataTable<TData>({
         start={start}
         end={end}
         pageSize={size}
-        onPage={(p) => table.setPageIndex(p - 1)}
-        onPageSize={(n) => {
-          table.setPageSize(n);
+        onPage={(page) => table.setPageIndex(page - 1)}
+        onPageSize={(size) => {
+          table.setPageSize(size);
           table.setPageIndex(0);
         }}
         pageSizeOptions={sizeOptions}
