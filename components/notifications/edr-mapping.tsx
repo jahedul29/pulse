@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
+import { Form } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -47,9 +48,9 @@ export function EdrMapping() {
   const t = useTranslations("notifications");
   const tc = useTranslations("common");
 
-  const mappingsState = useNotificationStore((s) => s.mappings);
-  const templatesState = useNotificationStore((s) => s.templates);
-  const setMapping = useNotificationStore((s) => s.setMapping);
+  const mappingsState = useNotificationStore((state) => state.mappings);
+  const templatesState = useNotificationStore((state) => state.templates);
+  const setMapping = useNotificationStore((state) => state.setMapping);
 
   const [rows, setRows] = useState<EventMapping[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,22 +70,22 @@ export function EdrMapping() {
   const { control, handleSubmit, reset, setValue, formState } = form;
   const recipientsVal = useWatch({ control, name: "recipients" });
 
-  const openMapping = (m: EventMapping) => {
+  const openMapping = (mapping: EventMapping) => {
     reset({
-      eventId: m.eventId,
-      eventName: m.eventName,
-      recipients: m.recipients,
-      templateByRole: { ...m.templateByRole },
+      eventId: mapping.eventId,
+      eventName: mapping.eventName,
+      recipients: mapping.recipients,
+      templateByRole: { ...mapping.templateByRole },
     });
-    setEditing(m);
+    setEditing(mapping);
   };
 
   useEffect(() => {
     let active = true;
     fetchEventMappings()
-      .then((r) => {
+      .then((result) => {
         if (!active) return;
-        setRows(r);
+        setRows(result);
         setLoading(false);
       })
       .catch(() => {
@@ -98,7 +99,7 @@ export function EdrMapping() {
   }, [mappingsState]);
 
   const templateOptions = useMemo(
-    () => [...templatesState].map((tpl) => tpl.code).sort((a, b) => a.localeCompare(b)),
+    () => [...templatesState].map((tpl) => tpl.code).sort((codeA, codeB) => codeA.localeCompare(codeB)),
     [templatesState],
   );
 
@@ -122,15 +123,15 @@ export function EdrMapping() {
     const roleColumns: ColumnDef<EventMapping, unknown>[] = RECIPIENT_ROLES.map((role) => ({
       id: role,
       enableSorting: false,
-      accessorFn: (r) => r.recipients[role],
+      accessorFn: (mapping) => mapping.recipients[role],
       size: 130,
       header: t(`roles.${role}`),
       meta: { headClassName: "text-center", cellClassName: "px-2!" },
       cell: ({ row }) => (
         <div
           className="flex h-8 items-center justify-center"
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
         >
           <Switch
             checked={row.original.recipients[role]}
@@ -148,7 +149,7 @@ export function EdrMapping() {
     return [
       {
         id: "event",
-        accessorFn: (r) => r.eventName,
+        accessorFn: (mapping) => mapping.eventName,
         size: 240,
         header: t("mapping.colEvent"),
         cell: ({ row }) => <span className="font-medium">{row.original.eventName}</span>,
@@ -157,7 +158,7 @@ export function EdrMapping() {
       {
         id: "templates",
         enableSorting: false,
-        accessorFn: (r) => Object.keys(r.templateByRole).length,
+        accessorFn: (mapping) => Object.keys(mapping.templateByRole).length,
         size: 150,
         header: t("mapping.colTemplates"),
         cell: ({ row }) => (
@@ -193,9 +194,9 @@ export function EdrMapping() {
               searchPlaceholder={t("mapping.search")}
               emptyLabel={t("mapping.empty")}
               itemsLabel={t("mapping.items")}
-              onRowClick={(r) => openMapping(r)}
-              rowAriaLabel={(r) => r.eventName}
-              getSearchText={(r) => r.eventName}
+              onRowClick={(mapping) => openMapping(mapping)}
+              rowAriaLabel={(mapping) => mapping.eventName}
+              getSearchText={(mapping) => mapping.eventName}
               filterLabels={{ filter: t("mapping.filter"), clear: t("mapping.clear"), clearFilters: tc("clearFilters") }}
               enableFreeze
               maxFreeze={1}
@@ -204,13 +205,14 @@ export function EdrMapping() {
         </CardContent>
       </Card>
 
-      <Sheet open={editing != null} onOpenChange={(o) => !o && setEditing(null)}>
+      <Sheet open={editing != null} onOpenChange={(open) => !open && setEditing(null)}>
         {shown && (
           <SheetContent>
             <SheetHeader>
               <SheetTitle>{shown.eventName}</SheetTitle>
               <SheetDescription>{t("mapping.drawerHint")}</SheetDescription>
             </SheetHeader>
+            <Form onSubmit={handleSubmit(onSubmit)}>
             <SheetBody className="flex flex-col gap-5">
               {RECIPIENT_ROLES.map((role) => {
                 const notifies = recipientsVal?.[role] ?? false;
@@ -224,9 +226,9 @@ export function EdrMapping() {
                         render={({ field }) => (
                           <Switch
                             checked={field.value}
-                            onCheckedChange={(v) => {
-                              field.onChange(v);
-                              if (!v) setValue(`templateByRole.${role}`, undefined, { shouldDirty: true });
+                            onCheckedChange={(checked) => {
+                              field.onChange(checked);
+                              if (!checked) setValue(`templateByRole.${role}`, undefined, { shouldDirty: true });
                             }}
                             aria-label={t(`roles.${role}`)}
                           />
@@ -244,11 +246,11 @@ export function EdrMapping() {
                         render={({ field }) => (
                           <Select
                             value={field.value ?? ""}
-                            onValueChange={(v) => field.onChange(v ?? undefined)}
+                            onValueChange={(value) => field.onChange(value ?? undefined)}
                             disabled={!notifies}
                           >
                             <SelectTrigger className="w-full">
-                              <SelectValue>{(v) => (v ? String(v) : t("mapping.noTemplate"))}</SelectValue>
+                              <SelectValue>{(value) => (value ? String(value) : t("mapping.noTemplate"))}</SelectValue>
                             </SelectTrigger>
                             <SelectContent>
                               {templateOptions.map((code) => (
@@ -265,6 +267,7 @@ export function EdrMapping() {
                 );
               })}
             </SheetBody>
+            </Form>
             <SheetFooter layout="split">
               <Button variant="outline" size="lg" onClick={() => setEditing(null)}>
                 {tc("cancel")}

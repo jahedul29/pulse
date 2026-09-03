@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldError } from "@/components/ui/field";
+import { Form } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -50,8 +51,8 @@ export function AlertRoutingEditor() {
   const t = useTranslations("notifications");
   const tc = useTranslations("common");
 
-  const routingState = useNotificationStore((s) => s.routing);
-  const setRouting = useNotificationStore((s) => s.setRouting);
+  const routingState = useNotificationStore((state) => state.routing);
+  const setRouting = useNotificationStore((state) => state.setRouting);
 
   const [rows, setRows] = useState<AlertRouting[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,17 +71,17 @@ export function AlertRoutingEditor() {
   });
   const { control, handleSubmit, reset, formState } = form;
 
-  const openRouting = (r: AlertRouting) => {
-    reset(r);
-    setEditing(r);
+  const openRouting = (routing: AlertRouting) => {
+    reset(routing);
+    setEditing(routing);
   };
 
   useEffect(() => {
     let active = true;
     fetchAlertRouting()
-      .then((r) => {
+      .then((result) => {
         if (!active) return;
-        setRows(r);
+        setRows(result);
         setLoading(false);
       })
       .catch(() => {
@@ -103,7 +104,7 @@ export function AlertRoutingEditor() {
     () => [
       {
         id: "event",
-        accessorFn: (r) => r.eventName,
+        accessorFn: (routing) => routing.eventName,
         size: 220,
         header: t("routing.colEvent"),
         cell: ({ row }) => <span className="font-medium">{row.original.eventName}</span>,
@@ -111,7 +112,7 @@ export function AlertRoutingEditor() {
       {
         id: "recipients",
         enableSorting: false,
-        accessorFn: (r) => Object.values(r.recipients).filter(Boolean).length,
+        accessorFn: (routing) => Object.values(routing.recipients).filter(Boolean).length,
         size: 140,
         header: t("routing.colRecipients"),
         cell: ({ row }) => (
@@ -126,19 +127,19 @@ export function AlertRoutingEditor() {
       {
         id: "ticket",
         enableSorting: false,
-        accessorFn: (r) => r.generatesTicket,
+        accessorFn: (routing) => routing.generatesTicket,
         size: 130,
         header: t("routing.colTicket"),
         meta: { headClassName: "text-center", cellClassName: "px-2!" },
         cell: ({ row }) => (
           <div
             className="flex h-8 items-center justify-center"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
           >
             <Switch
               checked={row.original.generatesTicket}
-              onCheckedChange={(v) => setRouting({ ...row.original, generatesTicket: v })}
+              onCheckedChange={(checked) => setRouting({ ...row.original, generatesTicket: checked })}
               aria-label={t("routing.colTicket")}
             />
           </div>
@@ -146,12 +147,12 @@ export function AlertRoutingEditor() {
       },
       {
         id: "urgency",
-        accessorFn: (r) => r.urgency,
+        accessorFn: (routing) => routing.urgency,
         size: 130,
         header: t("routing.colUrgency"),
         meta: {
           filter: "select",
-          filterOptions: URGENCIES.map((u) => ({ value: u, label: t(`urgency.${u}`) })),
+          filterOptions: URGENCIES.map((urgency) => ({ value: urgency, label: t(`urgency.${urgency}`) })),
           filterLabel: t("routing.colUrgency"),
         },
         cell: ({ row }) => (
@@ -188,9 +189,9 @@ export function AlertRoutingEditor() {
               searchPlaceholder={t("routing.search")}
               emptyLabel={t("routing.empty")}
               itemsLabel={t("routing.items")}
-              onRowClick={(r) => openRouting(r)}
-              rowAriaLabel={(r) => r.eventName}
-              getSearchText={(r) => r.eventName}
+              onRowClick={(routing) => openRouting(routing)}
+              rowAriaLabel={(routing) => routing.eventName}
+              getSearchText={(routing) => routing.eventName}
               filterLabels={{ filter: t("routing.filter"), clear: t("routing.clear"), clearFilters: tc("clearFilters") }}
               enableFreeze
               maxFreeze={1}
@@ -199,13 +200,14 @@ export function AlertRoutingEditor() {
         </CardContent>
       </Card>
 
-      <Sheet open={editing != null} onOpenChange={(o) => !o && setEditing(null)}>
+      <Sheet open={editing != null} onOpenChange={(open) => !open && setEditing(null)}>
         {shown && (
           <SheetContent>
             <SheetHeader>
               <SheetTitle>{shown.eventName}</SheetTitle>
               <SheetDescription>{t("routing.drawerHint")}</SheetDescription>
             </SheetHeader>
+            <Form onSubmit={handleSubmit(onSubmit)}>
             <SheetBody className="flex flex-col gap-5">
               <div className="flex flex-col gap-3">
                 <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
@@ -254,15 +256,15 @@ export function AlertRoutingEditor() {
                   render={({ field }) => (
                 <Select
                   value={field.value}
-                  onValueChange={(v) => field.onChange((v ?? "low") as Urgency)}
+                  onValueChange={(value) => field.onChange((value ?? "low") as Urgency)}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue>
-                      {(v) =>
-                        v ? (
+                      {(value) =>
+                        value ? (
                           <span className="flex items-center gap-2">
-                            <StatusDot tone={urgencyTone(v as Urgency)} />
-                            {t(`urgency.${v}`)}
+                            <StatusDot tone={urgencyTone(value as Urgency)} />
+                            {t(`urgency.${value}`)}
                           </span>
                         ) : (
                           ""
@@ -271,11 +273,11 @@ export function AlertRoutingEditor() {
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {URGENCIES.map((u) => (
-                      <SelectItem key={u} value={u}>
+                    {URGENCIES.map((urgency) => (
+                      <SelectItem key={urgency} value={urgency}>
                         <span className="flex items-center gap-2">
-                          <StatusDot tone={urgencyTone(u)} />
-                          {t(`urgency.${u}`)}
+                          <StatusDot tone={urgencyTone(urgency)} />
+                          {t(`urgency.${urgency}`)}
                         </span>
                       </SelectItem>
                     ))}
@@ -285,6 +287,7 @@ export function AlertRoutingEditor() {
                 />
               </Field>
             </SheetBody>
+            </Form>
             <SheetFooter layout="split">
               <Button variant="outline" size="lg" onClick={() => setEditing(null)}>
                 {tc("cancel")}
