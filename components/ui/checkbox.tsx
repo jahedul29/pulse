@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox"
-import { Check } from "lucide-react"
+import { Check, Minus } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -15,13 +15,14 @@ function Checkbox({
     <CheckboxPrimitive.Root
       data-slot="checkbox"
       className={cn(
-        "peer grid size-4 shrink-0 place-items-center rounded-[4px] border border-border-strong bg-transparent outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/60 data-[checked]:border-primary data-[checked]:bg-primary data-[checked]:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50",
+        "group/checkbox peer grid size-4 shrink-0 place-items-center rounded-[4px] border border-border-strong bg-transparent outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/60 data-[checked]:border-primary data-[checked]:bg-primary data-[checked]:text-primary-foreground data-[indeterminate]:border-primary data-[indeterminate]:bg-primary data-[indeterminate]:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       {...props}
     >
       <CheckboxPrimitive.Indicator className="flex items-center justify-center text-current">
-        <Check className="size-3" strokeWidth={3} />
+        <Check className="size-3 group-data-[indeterminate]/checkbox:hidden" strokeWidth={3} />
+        <Minus className="hidden size-3 group-data-[indeterminate]/checkbox:block" strokeWidth={3} />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
   )

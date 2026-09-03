@@ -9,8 +9,8 @@ import { NavItems } from "./nav-items";
 
 export function MobileNav() {
   const t = useTranslations();
-  const open = useUiStore((s) => s.mobileOpen);
-  const setMobileOpen = useUiStore((s) => s.setMobileOpen);
+  const open = useUiStore((state) => state.mobileOpen);
+  const setMobileOpen = useUiStore((state) => state.setMobileOpen);
 
   return (
     <div className="lg:hidden">
@@ -33,9 +33,9 @@ export function MobileNav() {
           <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-xl bg-primary">
             <Logo className="h-7 w-auto" />
           </span>
-          <div className="leading-tight">
-            <div className="font-heading text-base font-semibold">{t("common.appName")}</div>
-            <div className="text-xs text-muted-foreground">{t("common.appTagline")}</div>
+          <div className="flex h-9 min-w-0 flex-col justify-center">
+            <div className="truncate font-heading text-base font-semibold leading-5">{t("common.appName")}</div>
+            <div className="truncate text-xs leading-4 text-muted-foreground">{t("common.appTagline")}</div>
           </div>
           <button
             type="button"
