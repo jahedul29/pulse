@@ -4,9 +4,8 @@ import { useCallback, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { ChevronDown, Clock, LockKeyhole, Loader2, Mail, MailQuestion, PauseCircle, PowerOff } from "lucide-react";
+import { LockKeyhole, Loader2, Mail, MailQuestion, PauseCircle, PowerOff } from "lucide-react";
 
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +13,6 @@ import { Field } from "@/components/ui/field";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuthStore } from "@/lib/auth/store";
-import { MFA_CODE, MOCK_ACCOUNTS } from "@/lib/auth/mock";
 
 import { AccountLockout } from "@/components/common/account-lockout";
 import { AuthShell } from "./auth-shell";
@@ -34,7 +32,7 @@ function safeDest(raw: string | null) {
 export function LoginForm({ returnTo }: { returnTo?: string | null }) {
   const t = useTranslations("auth");
   const router = useRouter();
-  const attempt = useAuthStore((s) => s.attempt);
+  const attempt = useAuthStore((state) => state.attempt);
 
   const [view, setView] = useState<View>("form");
   const [email, setEmail] = useState("");
@@ -55,8 +53,8 @@ export function LoginForm({ returnTo }: { returnTo?: string | null }) {
     router.replace(safeDest(returnTo ?? null));
   }, [router, returnTo, t]);
 
-  const onSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (event: FormEvent) => {
+    event.preventDefault();
     setCredError(false);
     if (!EMAIL_RE.test(email.trim())) {
       setEmailError(true);
@@ -65,7 +63,7 @@ export function LoginForm({ returnTo }: { returnTo?: string | null }) {
     }
     setEmailError(false);
     setBusy(true);
-    const outcome = await attempt(email, password);
+    const outcome = await attempt(email, password, remember);
     setBusy(false);
 
     switch (outcome.result) {
@@ -170,13 +168,10 @@ export function LoginForm({ returnTo }: { returnTo?: string | null }) {
       subtitle={t("subtitle")}
       animationKey={view}
       footer={
-        <div className="flex flex-col gap-4">
-          <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-            <LockKeyhole className="size-3.5" />
-            {t("securedNote")}
-          </p>
-          <DemoHint />
-        </div>
+        <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+          <LockKeyhole className="size-3.5" />
+          {t("securedNote")}
+        </p>
       }
     >
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
@@ -204,8 +199,8 @@ export function LoginForm({ returnTo }: { returnTo?: string | null }) {
               className="ps-8"
               aria-invalid={emailError || undefined}
               aria-describedby={emailError ? "email-error" : undefined}
-              onChange={(e) => {
-                setEmail(e.target.value);
+              onChange={(event) => {
+                setEmail(event.target.value);
                 if (emailError) setEmailError(false);
               }}
               onBlur={() => {
@@ -234,8 +229,8 @@ export function LoginForm({ returnTo }: { returnTo?: string | null }) {
             value={password}
             aria-invalid={credError || undefined}
             aria-describedby={credError ? "password-error" : undefined}
-            onChange={(e) => {
-              setPassword(e.target.value);
+            onChange={(event) => {
+              setPassword(event.target.value);
               if (credError) setCredError(false);
             }}
           />
@@ -245,7 +240,7 @@ export function LoginForm({ returnTo }: { returnTo?: string | null }) {
           <Checkbox
             id="remember"
             checked={remember}
-            onCheckedChange={(v) => setRemember(v)}
+            onCheckedChange={(checked) => setRemember(checked)}
             className="mt-0.5"
           />
           <span className="flex flex-col gap-0.5">
@@ -266,52 +261,5 @@ export function LoginForm({ returnTo }: { returnTo?: string | null }) {
         </Button>
       </form>
     </AuthShell>
-  );
-}
-
-function DemoHint() {
-  const t = useTranslations("auth");
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="rounded-lg border border-border bg-muted/40 text-xs text-muted-foreground">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="flex w-full cursor-pointer items-center gap-1.5 px-3 py-2 font-medium text-foreground/70 outline-none focus-visible:text-foreground"
-      >
-        <Clock className="size-3.5" />
-        {t("demoTitle")}
-        <ChevronDown
-          className={cn(
-            "ms-auto size-3.5 transition-transform duration-300 ease-out motion-reduce:transition-none",
-            open && "rotate-180",
-          )}
-        />
-      </button>
-      <div
-        className={cn(
-          "grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none",
-          open ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-        )}
-      >
-        <div className="overflow-hidden">
-          <div className="flex flex-col gap-1 border-t border-border px-3 pb-2.5 pt-2 font-mono">
-            {MOCK_ACCOUNTS.map((a) => (
-              <div key={a.email} className="flex items-center justify-between gap-3">
-                <span className="truncate">{a.email}</span>
-                <span className="shrink-0 text-muted-foreground/70">{a.status}</span>
-              </div>
-            ))}
-            <div className="mt-1 flex items-center justify-between gap-3 border-t border-border pt-1">
-              <span>{t("demoPassword")}</span>
-              <span>
-                abapro · {t("demoMfa")} {MFA_CODE}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }

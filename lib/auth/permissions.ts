@@ -18,6 +18,6 @@ export function roleHasPermission(role: string | undefined, code: string): boole
 }
 
 export function useHasPermission(code: string): boolean {
-  const role = useAuthStore((s) => s.session?.role);
+  const role = useAuthStore((state) => state.session?.role);
   return roleHasPermission(role, code);
 }

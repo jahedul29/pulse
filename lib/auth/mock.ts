@@ -60,11 +60,11 @@ export const MOCK_ACCOUNTS: MockAccount[] = [
 
 const SERVER_ERROR_EMAIL = "error@abapro.health";
 
-const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function findAccount(email: string) {
   const target = email.trim().toLowerCase();
-  return MOCK_ACCOUNTS.find((a) => a.email === target);
+  return MOCK_ACCOUNTS.find((account) => account.email === target);
 }
 
 export async function authenticate(

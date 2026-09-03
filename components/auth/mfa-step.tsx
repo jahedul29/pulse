@@ -24,7 +24,7 @@ export function MfaStep({
   onBack: () => void;
 }) {
   const t = useTranslations("auth");
-  const verify = useAuthStore((s) => s.verify);
+  const verify = useAuthStore((state) => state.verify);
 
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
