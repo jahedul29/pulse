@@ -297,12 +297,12 @@ const CLIENTS: Client[] = [
 const DEMO_CLIENTS: Client[] = Array.from({ length: 120 }, (_, i) => {
   const base = CLIENTS[i % CLIENTS.length];
   if (i < CLIENTS.length) return base;
-  const n = Math.floor(i / CLIENTS.length) + 1;
+  const suffix = Math.floor(i / CLIENTS.length) + 1;
   const [first, ...rest] = base.name.split(" ");
   return {
     ...base,
-    name: `${first} ${rest.join(" ")} ${n}`,
-    email: base.email.replace("@", `.${n}@`),
+    name: `${first} ${rest.join(" ")} ${suffix}`,
+    email: base.email.replace("@", `.${suffix}@`),
     sessions: base.sessions + i * 3,
   };
 });
@@ -386,14 +386,14 @@ function DataTableDemo() {
         meta: {
           filter: "select",
           filterLabel: "Status",
-          filterOptions: ["Active", "Suspended", "Deleted"].map((s) => ({ value: s, label: s })),
+          filterOptions: ["Active", "Suspended", "Deleted"].map((status) => ({ value: status, label: status })),
         },
         cell: ({ row }) => {
-          const s = row.original.status;
-          const tone = s === "Active" ? "success" : s === "Suspended" ? "warning" : "danger";
+          const status = row.original.status;
+          const tone = status === "Active" ? "success" : status === "Suspended" ? "warning" : "danger";
           return (
             <StatusBadge tone={tone as "success" | "warning" | "danger"} equalWidth={false} className="min-w-[6rem]">
-              {s}
+              {status}
             </StatusBadge>
           );
         },
@@ -408,7 +408,7 @@ function DataTableDemo() {
       },
       {
         id: "mrr",
-        accessorFn: (c) => Number(c.mrr.replace(/[^0-9.]/g, "")),
+        accessorFn: (client) => Number(client.mrr.replace(/[^0-9.]/g, "")),
         header: "MRR",
         size: 100,
         filterFn: "inNumberRange",
@@ -424,7 +424,7 @@ function DataTableDemo() {
       },
       {
         id: "joined",
-        accessorFn: (r) => new Date(`${r.joined}T00:00:00`).getTime(),
+        accessorFn: (client) => new Date(`${client.joined}T00:00:00`).getTime(),
         header: "Joined",
         size: 120,
         cell: ({ row }) => (
@@ -453,15 +453,15 @@ function DataTableDemo() {
 
   const onExport = () => {
     const headers = ["Client", "Email", "Role", "Status", "Sessions", "MRR", "Region", "Joined"];
-    const rows = DEMO_CLIENTS.map((c) => [
-      c.name,
-      c.email,
-      c.role,
-      c.status,
-      String(c.sessions),
-      c.mrr,
-      c.region,
-      c.joined,
+    const rows = DEMO_CLIENTS.map((client) => [
+      client.name,
+      client.email,
+      client.role,
+      client.status,
+      String(client.sessions),
+      client.mrr,
+      client.region,
+      client.joined,
     ]);
     exportCsv("clients-demo.csv", headers, rows);
   };
@@ -474,7 +474,7 @@ function DataTableDemo() {
       emptyLabel="No clients found"
       itemsLabel="clients"
       pageSize={5}
-      getSearchText={(c) => `${c.name} ${c.email} ${c.role} ${c.region}`}
+      getSearchText={(client) => `${client.name} ${client.email} ${client.role} ${client.region}`}
       filterLabels={{ filter: "Filter", clear: "Clear", clearFilters: "Clear filters", min: "Min", max: "Max", search: "Search", from: "From", to: "To" }}
       enableFreeze
       maxFreeze={3}
@@ -558,20 +558,20 @@ function PaginationDemo({ initial, total }: { initial: number; total: number }) 
   const [page, setPage] = useState(initial);
   const [pageSize, setPageSize] = useState(25);
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
-  const p = Math.min(page, pageCount);
-  const start = total === 0 ? 0 : (p - 1) * pageSize + 1;
-  const end = Math.min(p * pageSize, total);
+  const clampedPage = Math.min(page, pageCount);
+  const start = total === 0 ? 0 : (clampedPage - 1) * pageSize + 1;
+  const end = Math.min(clampedPage * pageSize, total);
   return (
     <Pagination
-      page={p}
+      page={clampedPage}
       pageCount={pageCount}
       total={total}
       start={start}
       end={end}
       pageSize={pageSize}
       onPage={setPage}
-      onPageSize={(n) => {
-        setPageSize(n);
+      onPageSize={(size) => {
+        setPageSize(size);
         setPage(1);
       }}
       pageSizeOptions={[10, 25, 50, 100]}
@@ -661,13 +661,13 @@ function SidebarDemo({ collapsed }: { collapsed: boolean }) {
         )}
       </div>
       <nav className="flex flex-1 flex-col gap-0.5 px-3 py-2">
-        {SECTIONS.slice(0, 6).map((s) => {
-          const active = s.slug === "personnel";
-          const Icon = s.icon;
+        {SECTIONS.slice(0, 6).map((section) => {
+          const active = section.slug === "personnel";
+          const Icon = section.icon;
           return (
             <div
-              key={s.slug}
-              title={collapsed ? s.label : undefined}
+              key={section.slug}
+              title={collapsed ? section.label : undefined}
               className={cn(
                 "flex items-center gap-3 rounded-lg py-2 text-sm",
                 collapsed ? "justify-center px-0" : "px-3",
@@ -677,8 +677,8 @@ function SidebarDemo({ collapsed }: { collapsed: boolean }) {
               )}
             >
               <Icon className="size-4 shrink-0" />
-              {!collapsed && <span className="truncate">{s.label}</span>}
-              {!collapsed && !s.live && (
+              {!collapsed && <span className="truncate">{section.label}</span>}
+              {!collapsed && !section.live && (
                 <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
                   soon
                 </span>
@@ -736,10 +736,10 @@ function TopbarDemo() {
   );
 }
 
-function fmtDMY(d: Date | undefined, locale: string): string {
-  if (!d) return "";
-  const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate(),
+function fmtDMY(date: Date | undefined, locale: string): string {
+  if (!date) return "";
+  const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+    date.getDate(),
   ).padStart(2, "0")}`;
   return fmtDate(iso, locale);
 }
@@ -762,8 +762,8 @@ function DatePicker() {
         <Calendar
           mode="single"
           selected={date}
-          onSelect={(d) => {
-            setDate(d);
+          onSelect={(selected) => {
+            setDate(selected);
             setOpen(false);
           }}
           autoFocus
@@ -792,7 +792,7 @@ function DateTimePicker() {
           <input
             type="time"
             value={time}
-            onChange={(e) => setTime(e.target.value)}
+            onChange={(event) => setTime(event.target.value)}
             className="h-9 flex-1 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/40"
           />
           <Button size="sm" onClick={() => setOpen(false)}>
@@ -827,7 +827,7 @@ function DateRangePicker() {
         <Calendar
           mode="range"
           selected={range as never}
-          onSelect={(r) => setRange(r as { from?: Date; to?: Date } | undefined)}
+          onSelect={(selectedRange) => setRange(selectedRange as { from?: Date; to?: Date } | undefined)}
           numberOfMonths={2}
           autoFocus
         />
@@ -878,8 +878,8 @@ export default function DesignSystemPage() {
     const obs = new IntersectionObserver(
       (entries) => {
         const vis = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+          .filter((entry) => entry.isIntersecting)
+          .sort((first, second) => first.boundingClientRect.top - second.boundingClientRect.top);
         if (vis[0]) setActive(vis[0].target.id);
       },
       { rootMargin: "-96px 0px -70% 0px" },
@@ -918,7 +918,7 @@ export default function DesignSystemPage() {
                 </a>
               ))}
             </nav>
-            <Button variant="outline" size="sm" onClick={() => setDark((d) => !d)}>
+            <Button variant="outline" size="sm" onClick={() => setDark((prev) => !prev)}>
               {dark ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
               {dark ? t("light") : t("dark")}
             </Button>
@@ -1051,10 +1051,10 @@ export default function DesignSystemPage() {
               </CardHeader>
               <CardContent className="flex flex-col gap-6">
                 <Sub label="Spacing (× 0.25rem)">
-                  {SPACING.map((s) => (
-                    <div key={s} className="flex flex-col items-center gap-1">
-                      <div className="bg-primary/70" style={{ width: `${s * 4}px`, height: 16 }} />
-                      <span className="font-mono text-xs text-muted-foreground">{s}</span>
+                  {SPACING.map((space) => (
+                    <div key={space} className="flex flex-col items-center gap-1">
+                      <div className="bg-primary/70" style={{ width: `${space * 4}px`, height: 16 }} />
+                      <span className="font-mono text-xs text-muted-foreground">{space}</span>
                     </div>
                   ))}
                 </Sub>
@@ -1300,7 +1300,7 @@ export default function DesignSystemPage() {
                 <Field label="Role">
                   <Select defaultValue="therapist">
                     <SelectTrigger className="w-full">
-                      <SelectValue>{(v) => (v === "therapist" ? "Therapist" : "Analyst")}</SelectValue>
+                      <SelectValue>{(value) => (value === "therapist" ? "Therapist" : "Analyst")}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="therapist">Therapist</SelectItem>
@@ -1343,7 +1343,7 @@ export default function DesignSystemPage() {
                 <Field label="Select · sm">
                   <Select defaultValue="a">
                     <SelectTrigger size="sm" className="w-full">
-                      <SelectValue>{(v) => (v === "a" ? "Small" : "Other")}</SelectValue>
+                      <SelectValue>{(value) => (value === "a" ? "Small" : "Other")}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="a">Small</SelectItem>
@@ -1354,7 +1354,7 @@ export default function DesignSystemPage() {
                 <Field label="Select · md">
                   <Select defaultValue="a">
                     <SelectTrigger size="md" className="w-full">
-                      <SelectValue>{(v) => (v === "a" ? "Medium" : "Other")}</SelectValue>
+                      <SelectValue>{(value) => (value === "a" ? "Medium" : "Other")}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="a">Medium</SelectItem>
@@ -1365,7 +1365,7 @@ export default function DesignSystemPage() {
                 <Field label="Select · lg">
                   <Select defaultValue="a">
                     <SelectTrigger size="lg" className="w-full">
-                      <SelectValue>{(v) => (v === "a" ? "Large" : "Other")}</SelectValue>
+                      <SelectValue>{(value) => (value === "a" ? "Large" : "Other")}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="a">Large</SelectItem>
@@ -1454,12 +1454,12 @@ export default function DesignSystemPage() {
                   <Checkbox checked={marketing} onCheckedChange={setMarketing} label="Product updates" />
                 </Sub>
                 <Sub label="Radio group — billing cycle">
-                  {["monthly", "quarterly", "yearly"].map((p) => (
+                  {["monthly", "quarterly", "yearly"].map((cycle) => (
                     <Radio
-                      key={p}
-                      checked={plan === p}
-                      onChange={() => setPlan(p)}
-                      label={p[0].toUpperCase() + p.slice(1)}
+                      key={cycle}
+                      checked={plan === cycle}
+                      onChange={() => setPlan(cycle)}
+                      label={cycle[0].toUpperCase() + cycle.slice(1)}
                     />
                   ))}
                 </Sub>
@@ -1556,22 +1556,22 @@ export default function DesignSystemPage() {
           <Section id="data" title={t("dataTitle")} desc={t("dataDesc")}>
             <HidableGrid
               items={STATS}
-              getKey={(s) => s.slug}
+              getKey={(stat) => stat.slug}
               className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
-              restoreLabel={(n) => `Show hidden (${n})`}
-              renderItem={(s, api) => (
+              restoreLabel={(count) => `Show hidden (${count})`}
+              renderItem={(stat, api) => (
                 <StatCard
-                  slug={s.slug}
-                  icon={s.icon}
-                  value={s.value}
-                  delta={s.delta}
-                  up={!s.delta.trim().startsWith("-")}
-                  good={s.tone === "success"}
-                  label={s.label}
-                  subtitle={s.hint}
+                  slug={stat.slug}
+                  icon={stat.icon}
+                  value={stat.value}
+                  delta={stat.delta}
+                  up={!stat.delta.trim().startsWith("-")}
+                  good={stat.tone === "success"}
+                  label={stat.label}
+                  subtitle={stat.hint}
                   trend={TREND}
                   onHide={api.hide}
-                  hideLabel={`Hide ${s.label}`}
+                  hideLabel={`Hide ${stat.label}`}
                 />
               )}
             />
@@ -1715,7 +1715,7 @@ export default function DesignSystemPage() {
                   total={total}
                   start={pageStart}
                   end={pageEnd}
-                  onPage={(p) => setPage(Math.min(pageCount, Math.max(1, p)))}
+                  onPage={(nextPage) => setPage(Math.min(pageCount, Math.max(1, nextPage)))}
                   label="clients"
                 />
               </CardContent>
@@ -1859,17 +1859,17 @@ export default function DesignSystemPage() {
                   </div>
                 </Sub>
                 <Sub label="Travel-time pills">
-                  {TRAVEL.map((m) => (
+                  {TRAVEL.map((minutes) => (
                     <span
-                      key={m}
+                      key={minutes}
                       className={cn(
                         "tabular w-16 rounded-full border px-3 py-1.5 text-center text-sm font-medium",
-                        m === 45
+                        minutes === 45
                           ? "border-primary bg-primary text-primary-foreground"
                           : "border-border bg-card text-foreground",
                       )}
                     >
-                      {fmtHM(m)}
+                      {fmtHM(minutes)}
                     </span>
                   ))}
                 </Sub>

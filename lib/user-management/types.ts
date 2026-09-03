@@ -25,13 +25,13 @@ export interface AdminUser {
 
 const RESEND_COOLDOWN_MS = 60_000;
 
-export function effectiveStatus(u: AdminUser, now: number): EffectiveStatus {
-  return u.lockedUntil != null && u.lockedUntil > now ? "locked" : u.status;
+export function effectiveStatus(user: AdminUser, now: number): EffectiveStatus {
+  return user.lockedUntil != null && user.lockedUntil > now ? "locked" : user.status;
 }
 
-export function canResend(u: AdminUser, now: number): boolean {
-  if (u.status !== "pending") return false;
-  return u.lastInviteSentAt == null || now - u.lastInviteSentAt >= RESEND_COOLDOWN_MS;
+export function canResend(user: AdminUser, now: number): boolean {
+  if (user.status !== "pending") return false;
+  return user.lastInviteSentAt == null || now - user.lastInviteSentAt >= RESEND_COOLDOWN_MS;
 }
 
 export type AdminUserRow = AdminUser & {

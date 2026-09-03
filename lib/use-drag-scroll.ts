@@ -15,18 +15,18 @@ export function useDragScroll(ref: RefObject<HTMLElement | null>) {
 
     const canPan = () => el.scrollWidth - el.clientWidth > 1;
 
-    const onDown = (e: PointerEvent) => {
-      if (e.pointerType !== "mouse" || e.button !== 0 || !canPan()) return;
+    const onDown = (event: PointerEvent) => {
+      if (event.pointerType !== "mouse" || event.button !== 0 || !canPan()) return;
       active = true;
       panning = false;
-      startX = e.clientX;
+      startX = event.clientX;
       startLeft = el.scrollLeft;
-      pointerId = e.pointerId;
+      pointerId = event.pointerId;
     };
 
-    const onMove = (e: PointerEvent) => {
+    const onMove = (event: PointerEvent) => {
       if (!active) return;
-      const dx = e.clientX - startX;
+      const dx = event.clientX - startX;
       if (!panning) {
         if (Math.abs(dx) < THRESHOLD) return;
         panning = true;
@@ -40,7 +40,7 @@ export function useDragScroll(ref: RefObject<HTMLElement | null>) {
         }
       }
       el.scrollLeft = startLeft - dx;
-      e.preventDefault();
+      event.preventDefault();
     };
 
     const onUp = () => {
@@ -57,9 +57,9 @@ export function useDragScroll(ref: RefObject<HTMLElement | null>) {
         void 0;
       }
       if (wasPanning) {
-        const swallow = (ev: MouseEvent) => {
-          ev.stopPropagation();
-          ev.preventDefault();
+        const swallow = (event: MouseEvent) => {
+          event.stopPropagation();
+          event.preventDefault();
         };
         el.addEventListener("click", swallow, { capture: true, once: true });
         window.setTimeout(() => el.removeEventListener("click", swallow, true), 0);

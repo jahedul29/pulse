@@ -11,15 +11,15 @@ export type InviteMessages = {
 };
 
 export function inviteSchema(msgs: InviteMessages, opts: { existingEmails: string[] }) {
-  const taken = opts.existingEmails.map((e) => e.trim().toLowerCase());
+  const taken = opts.existingEmails.map((email) => email.trim().toLowerCase());
   return z.object({
     staffId: z.string().min(1, msgs.staffRequired),
     email: z
       .string()
       .trim()
       .min(1, msgs.emailRequired)
-      .refine((e) => EMAIL_RE.test(e), msgs.emailInvalid)
-      .refine((e) => !taken.includes(e.toLowerCase()), msgs.emailExists),
+      .refine((email) => EMAIL_RE.test(email), msgs.emailInvalid)
+      .refine((email) => !taken.includes(email.toLowerCase()), msgs.emailExists),
     roleIds: z.array(z.string()).min(1, msgs.roleRequired),
   });
 }

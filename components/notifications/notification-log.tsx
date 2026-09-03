@@ -39,7 +39,7 @@ export function NotificationLog() {
   const tc = useTranslations("common");
   const locale = useLocale();
 
-  const templatesState = useNotificationStore((s) => s.templates);
+  const templatesState = useNotificationStore((state) => state.templates);
 
   const [rows, setRows] = useState<NotificationLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,9 +50,9 @@ export function NotificationLog() {
   useEffect(() => {
     let active = true;
     fetchNotificationLog()
-      .then((r) => {
+      .then((result) => {
         if (!active) return;
-        setRows(r);
+        setRows(result);
         setLoading(false);
       })
       .catch(() => {
@@ -74,7 +74,7 @@ export function NotificationLog() {
     () => [
       {
         id: "timestamp",
-        accessorFn: (r) => r.createdAt,
+        accessorFn: (entry) => entry.createdAt,
         size: 168,
         header: t("log.colTimestamp"),
         meta: { filter: "dateRange", filterLabel: t("log.colTimestamp") },
@@ -89,12 +89,12 @@ export function NotificationLog() {
       },
       {
         id: "recipient",
-        accessorFn: (r) => r.recipientRole,
+        accessorFn: (entry) => entry.recipientRole,
         size: 220,
         header: t("log.colRecipient"),
         meta: {
           filter: "select",
-          filterOptions: RECIPIENT_ROLES.map((r) => ({ value: r, label: t(`roles.${r}`) })),
+          filterOptions: RECIPIENT_ROLES.map((role) => ({ value: role, label: t(`roles.${role}`) })),
           filterLabel: t("log.colRecipient"),
         },
         cell: ({ row }) => (
@@ -103,12 +103,12 @@ export function NotificationLog() {
       },
       {
         id: "category",
-        accessorFn: (r) => r.category,
+        accessorFn: (entry) => entry.category,
         size: 140,
         header: t("log.colCategory"),
         meta: {
           filter: "select",
-          filterOptions: MESSAGE_CATEGORIES.map((c) => ({ value: c, label: t(`categories.${c}`) })),
+          filterOptions: MESSAGE_CATEGORIES.map((category) => ({ value: category, label: t(`categories.${category}`) })),
           filterLabel: t("log.colCategory"),
         },
         cell: ({ row }) => (
@@ -119,19 +119,19 @@ export function NotificationLog() {
       },
       {
         id: "template",
-        accessorFn: (r) => r.templateCode,
+        accessorFn: (entry) => entry.templateCode,
         size: 200,
         header: t("log.colTemplate"),
         cell: ({ row }) => <span className="text-xs">{row.original.templateCode}</span>,
       },
       {
         id: "status",
-        accessorFn: (r) => r.status,
+        accessorFn: (entry) => entry.status,
         size: 130,
         header: t("log.colStatus"),
         meta: {
           filter: "select",
-          filterOptions: DELIVERY_STATUSES.map((s) => ({ value: s, label: t(`status.${s}`) })),
+          filterOptions: DELIVERY_STATUSES.map((status) => ({ value: status, label: t(`status.${status}`) })),
           filterLabel: t("log.colStatus"),
         },
         cell: ({ row }) => (
@@ -153,15 +153,15 @@ export function NotificationLog() {
       t("log.colTemplate"),
       t("log.colStatus"),
     ];
-    const csvRows = exportRows.map((r) => {
-      const { date, time } = fmtDateTimeParts(r.createdAt, locale);
+    const csvRows = exportRows.map((entry) => {
+      const { date, time } = fmtDateTimeParts(entry.createdAt, locale);
       return [
         `${date} ${time}`,
-        r.recipientName,
-        t(`roles.${r.recipientRole}`),
-        t(`categories.${r.category}`),
-        r.templateCode,
-        t(`status.${r.status}`),
+        entry.recipientName,
+        t(`roles.${entry.recipientRole}`),
+        t(`categories.${entry.category}`),
+        entry.templateCode,
+        t(`status.${entry.status}`),
       ];
     });
     exportCsv("notification-log.csv", headers, csvRows);
@@ -191,9 +191,9 @@ export function NotificationLog() {
               searchPlaceholder={t("log.search")}
               emptyLabel={t("log.empty")}
               itemsLabel={t("log.items")}
-              onRowClick={(r) => setSelected(r)}
-              rowAriaLabel={(r) => `${r.recipientName} ${r.templateCode}`}
-              getSearchText={(r) => `${r.recipientName} ${r.templateCode} ${r.category} ${r.status}`}
+              onRowClick={(entry) => setSelected(entry)}
+              rowAriaLabel={(entry) => `${entry.recipientName} ${entry.templateCode}`}
+              getSearchText={(entry) => `${entry.recipientName} ${entry.templateCode} ${entry.category} ${entry.status}`}
               filterLabels={{
                 filter: t("log.filter"),
                 clear: t("log.clear"),
@@ -228,7 +228,7 @@ export function NotificationLog() {
         </CardContent>
       </Card>
 
-      <Sheet open={selected != null} onOpenChange={(o) => !o && setSelected(null)}>
+      <Sheet open={selected != null} onOpenChange={(open) => !open && setSelected(null)}>
         {shown && (
           <SheetContent>
             <SheetHeader>

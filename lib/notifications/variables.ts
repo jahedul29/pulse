@@ -24,7 +24,7 @@ function escapeHtml(value: string): string {
 
 export function renderTemplate(text: string, locale: string): string {
   return text.replace(/\{(\w+)\}/g, (match, token) => {
-    const variable = MERGE_VARIABLES.find((v) => v.token === token);
+    const variable = MERGE_VARIABLES.find((candidate) => candidate.token === token);
     if (!variable) return match;
     return escapeHtml(locale === "ar" ? variable.sampleAr : variable.sampleEn);
   });

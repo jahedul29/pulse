@@ -32,11 +32,11 @@ export default function MapCanvas({
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
       />
-      {markers.map((m) => (
+      {markers.map((marker) => (
         <CircleMarker
-          key={`${m.label}-${m.lat}-${m.lng}`}
-          center={[m.lat, m.lng]}
-          radius={m.radius ?? 9}
+          key={`${marker.label}-${marker.lat}-${marker.lng}`}
+          center={[marker.lat, marker.lng]}
+          radius={marker.radius ?? 9}
           pathOptions={{
             color: "#0f9384",
             weight: 2,
@@ -45,8 +45,8 @@ export default function MapCanvas({
           }}
         >
           <Tooltip direction="top" offset={[0, -4]}>
-            <span className="font-medium">{m.label}</span>
-            {m.sub ? <span className="ml-1 text-muted-foreground">{m.sub}</span> : null}
+            <span className="font-medium">{marker.label}</span>
+            {marker.sub ? <span className="ml-1 text-muted-foreground">{marker.sub}</span> : null}
           </Tooltip>
         </CircleMarker>
       ))}

@@ -50,4 +50,29 @@ export interface Session {
   role: string;
   token: string;
   issuedAt: number;
+  accessToken?: string;
+  refreshToken?: string;
+  expiresAt?: number;
+  adminId?: string;
 }
+
+export interface AuthenticatedAdmin {
+  id: string;
+  staff_id?: number;
+  email: string;
+  preferred_language?: string;
+  status?: string;
+  roles?: string[];
+  permissions?: string[];
+}
+
+export interface AuthToken {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+  refresh_expires_in: number;
+  user: AuthenticatedAdmin;
+}
+
+export type Platform = "WEB" | "ANDROID" | "IOS";

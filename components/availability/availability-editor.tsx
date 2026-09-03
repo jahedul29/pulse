@@ -28,12 +28,12 @@ function weekIssues(days: DayState[], daysOff: number[], config: RuleConfig): We
   const issues: WeekIssue[] = [];
   const firstWorkday = days.findIndex((_, i) => !daysOff.includes(i));
   if (firstWorkday !== -1) {
-    const fail = validateDay(days[firstWorkday], config, { isWorkday: true }).find((r) => !r.pass);
+    const fail = validateDay(days[firstWorkday], config, { isWorkday: true }).find((result) => !result.pass);
     if (fail) issues.push({ day: "weekdays", labelKey: fail.labelKey });
   }
-  for (const d of daysOff) {
-    const fail = validateDay(days[d], config, { isWorkday: false }).find((r) => !r.pass);
-    if (fail) issues.push({ day: d, labelKey: fail.labelKey });
+  for (const dayIndex of daysOff) {
+    const fail = validateDay(days[dayIndex], config, { isWorkday: false }).find((result) => !result.pass);
+    if (fail) issues.push({ day: dayIndex, labelKey: fail.labelKey });
   }
   return issues;
 }
@@ -42,7 +42,7 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
   const t = useTranslations();
   const locale = useLocale();
   const weekdays = weekdayShortLabels(locale);
-  const saveAvailability = useSpecialistStore((s) => s.saveAvailability);
+  const saveAvailability = useSpecialistStore((state) => state.saveAvailability);
   const [config, setConfig] = useState<RuleConfig>(specialist.config);
   const [days, setDays] = useState<DayState[]>(specialist.days);
   const [daysOff, setDaysOff] = useState<number[]>(specialist.daysOff);
@@ -61,22 +61,22 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
       setNotice("travel");
       return;
     }
-    const apply = (d: DayState): DayState =>
-      status === "available" ? setAvailable(d, start, end) : addBlock(d, { start, end, kind: status });
+    const apply = (day: DayState): DayState =>
+      status === "available" ? setAvailable(day, start, end) : addBlock(day, { start, end, kind: status });
     const isOff = daysOff.includes(dayIndex);
     // Weekday paint mirrors to every working (non-off) day; a week-off day paints on its own.
     const targets = isOff
       ? [dayIndex]
       : days.map((_, i) => i).filter((i) => !daysOff.includes(i));
     const fail = validateDay(apply(days[dayIndex]), config, { isWorkday: !isOff }).find(
-      (r) => !r.pass,
+      (result) => !result.pass,
     );
     if (fail) {
-      setShake((s) => ({ cols: targets, nonce: s.nonce + 1 }));
+      setShake((prev) => ({ cols: targets, nonce: prev.nonce + 1 }));
       toast.error(t(fail.messageKey, fail.values), { style: { whiteSpace: "pre-line" } });
       return;
     }
-    setDays((prev) => prev.map((d, i) => (targets.includes(i) ? apply(d) : d)));
+    setDays((prev) => prev.map((day, i) => (targets.includes(i) ? apply(day) : day)));
     setShowViolations(false);
   };
 
@@ -87,14 +87,14 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
     }
     const off = daysOff.includes(dayIndex);
     if (!off && daysOff.length >= config.maxDaysOff) {
-      setShake((s) => ({ cols: [dayIndex], nonce: s.nonce + 1 }));
+      setShake((prev) => ({ cols: [dayIndex], nonce: prev.nonce + 1 }));
       toast.error(t("availability.toastDaysOffMax", { max: config.maxDaysOff }));
       return;
     }
     const template = days.find((_, i) => !daysOff.includes(i) && i !== dayIndex);
-    const restored: DayState = template ? { blocks: template.blocks.map((b) => ({ ...b })) } : { blocks: [] };
+    const restored: DayState = template ? { blocks: template.blocks.map((block) => ({ ...block })) } : { blocks: [] };
     setDaysOff((prev) => (off ? prev.filter((x) => x !== dayIndex) : [...prev, dayIndex]));
-    setDays((prev) => prev.map((d, i) => (i === dayIndex ? (off ? restored : fullDay()) : d)));
+    setDays((prev) => prev.map((day, i) => (i === dayIndex ? (off ? restored : fullDay()) : day)));
     setShowViolations(false);
   };
 
@@ -119,7 +119,7 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
   };
 
   const isMaxAvailability =
-    daysOff.length === 0 && days.every((d) => d.blocks.length === 0);
+    daysOff.length === 0 && days.every((day) => day.blocks.length === 0);
 
   const handleSave = () => {
     // Therapist: not "defined" until a travel time is picked.
@@ -207,7 +207,7 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
         config={config}
         expanded={controlsExpanded}
         onTravelChange={handleTravel}
-        onToggleExpanded={() => setControlsExpanded((v) => !v)}
+        onToggleExpanded={() => setControlsExpanded((prev) => !prev)}
       />
 
       <WeekGrid
@@ -239,7 +239,7 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
 
       <NoticeDialog
         open={notice === "max-availability"}
-        onOpenChange={(o) => !o && setNotice(null)}
+        onOpenChange={(open) => !open && setNotice(null)}
         title={t("availability.notice.maxAvailTitle")}
       >
         {t.rich("availability.notice.maxAvailBody", {
@@ -249,7 +249,7 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
 
       <NoticeDialog
         open={notice === "travel"}
-        onOpenChange={(o) => !o && setNotice(null)}
+        onOpenChange={(open) => !open && setNotice(null)}
         title={t("availability.notice.travelTitle")}
       >
         <p>{t.rich("availability.notice.travelBody1", { hl: (chunks) => <NoticeHl>{chunks}</NoticeHl> })}</p>

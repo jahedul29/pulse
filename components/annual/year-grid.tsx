@@ -14,10 +14,10 @@ const VARS =
 
 const COLS = "grid-cols-[var(--awc-lead)_repeat(12,var(--awc-col))]";
 
-function rangeIso(a: string, b: string): string[] {
-  const [lo, hi] = a <= b ? [a, b] : [b, a];
-  return eachDayOfInterval({ start: parseISO(lo), end: parseISO(hi) }).map((d) =>
-    format(d, "yyyy-MM-dd"),
+function rangeIso(firstIso: string, secondIso: string): string[] {
+  const [lo, hi] = firstIso <= secondIso ? [firstIso, secondIso] : [secondIso, firstIso];
+  return eachDayOfInterval({ start: parseISO(lo), end: parseISO(hi) }).map((date) =>
+    format(date, "yyyy-MM-dd"),
   );
 }
 
@@ -53,26 +53,26 @@ export function YearGrid({
       const el = document.elementFromPoint(x, y) as HTMLElement | null;
       return el?.closest<HTMLElement>("[data-iso]")?.dataset.iso ?? null;
     };
-    const move = (e: PointerEvent) => {
-      const d = drag.current;
-      if (!d) return;
-      const iso = isoUnder(e.clientX, e.clientY);
-      if (!iso || iso === d.anchor) return;
-      if (d.touch) {
+    const move = (event: PointerEvent) => {
+      const activeDrag = drag.current;
+      if (!activeDrag) return;
+      const iso = isoUnder(event.clientX, event.clientY);
+      if (!iso || iso === activeDrag.anchor) return;
+      if (activeDrag.touch) {
         drag.current = null;
         setDraft(null);
         return;
       }
-      d.range = new Set(rangeIso(d.anchor, iso));
-      setDraft({ set: d.range, makeUnavailable: d.makeUnavailable });
+      activeDrag.range = new Set(rangeIso(activeDrag.anchor, iso));
+      setDraft({ set: activeDrag.range, makeUnavailable: activeDrag.makeUnavailable });
     };
     const up = () => {
-      const d = drag.current;
+      const activeDrag = drag.current;
       drag.current = null;
-      if (!d) return;
+      if (!activeDrag) return;
       setDraft(null);
-      const dates = [...d.range].filter(isEditable);
-      if (dates.length) onCommit(dates, d.makeUnavailable);
+      const dates = [...activeDrag.range].filter(isEditable);
+      if (dates.length) onCommit(dates, activeDrag.makeUnavailable);
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
@@ -94,11 +94,11 @@ export function YearGrid({
   };
 
   const cells: React.ReactNode[] = [];
-  for (let r = 0; r < grid.rows; r++) {
-    const wd = r % 7;
+  for (let row = 0; row < grid.rows; row++) {
+    const wd = row % 7;
     const weekend = wd >= 5;
     cells.push(
-      <div key={`ax-${r}`} className="flex h-[var(--awc-row)] items-center">
+      <div key={`ax-${row}`} className="flex h-[var(--awc-row)] items-center">
         <span
           className={cn(
             "inline-flex h-[calc(var(--awc-row)-2px)] items-center rounded-[6px] px-1 text-[10px] font-semibold tracking-wide text-primary sm:px-1.5 sm:text-[11px] md:text-[13px]",
@@ -109,25 +109,25 @@ export function YearGrid({
         </span>
       </div>,
     );
-    for (let m = 0; m < 12; m++) {
-      const day = dayAt(grid, m, r);
+    for (let month = 0; month < 12; month++) {
+      const day = dayAt(grid, month, row);
       if (day == null) {
-        cells.push(<div key={`c-${r}-${m}`} className="h-[var(--awc-row)]" />);
+        cells.push(<div key={`c-${row}-${month}`} className="h-[var(--awc-row)]" />);
         continue;
       }
-      const iso = isoOf(year, m, day);
+      const iso = isoOf(year, month, day);
       const past = !isEditable(iso);
       const inDraft = !past && draft?.set.has(iso);
       const off = inDraft ? draft!.makeUnavailable : offSet.has(iso);
       cells.push(
-        <div key={`c-${r}-${m}`} className="flex h-[var(--awc-row)] items-center justify-center">
+        <div key={`c-${row}-${month}`} className="flex h-[var(--awc-row)] items-center justify-center">
           <button
             type="button"
             data-iso={past ? undefined : iso}
             disabled={past}
-            onPointerDown={(e) => {
-              if (e.pointerType === "mouse" && e.button !== 0) return;
-              startDrag(iso, e.pointerType === "touch");
+            onPointerDown={(event) => {
+              if (event.pointerType === "mouse" && event.button !== 0) return;
+              startDrag(iso, event.pointerType === "touch");
             }}
             className={cn(
               "tabular grid size-[var(--awc-pill)] place-items-center rounded-[6px] text-[8px] leading-none font-semibold transition-colors duration-100 select-none sm:text-[10px] md:text-[12px]",
@@ -163,9 +163,9 @@ export function YearGrid({
         >
           {year}
         </button>
-        {monthLabels.map((label, m) => (
+        {monthLabels.map((label, month) => (
           <div
-            key={m}
+            key={month}
             className="truncate px-0.5 text-center text-[10px] font-semibold tracking-wide text-primary uppercase sm:text-[11px] md:text-sm"
           >
             {label}

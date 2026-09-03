@@ -1,7 +1,7 @@
 import { SECTIONS } from "@/lib/nav";
 
 export function SectionStub({ slug }: { slug: string }) {
-  const section = SECTIONS.find((s) => s.slug === slug);
+  const section = SECTIONS.find((navSection) => navSection.slug === slug);
   if (!section) return null;
   const Icon = section.icon;
   return (

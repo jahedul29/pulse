@@ -13,11 +13,13 @@ const LOG = seedLog();
 const LIVE = seedLiveAlerts();
 
 export async function fetchTemplates(): Promise<MessageTemplate[]> {
-  return [...useNotificationStore.getState().templates].sort((a, b) => b.updatedAt - a.updatedAt);
+  return [...useNotificationStore.getState().templates].sort(
+    (templateA, templateB) => templateB.updatedAt - templateA.updatedAt,
+  );
 }
 
 export async function fetchTemplateDetail(code: string): Promise<MessageTemplate | null> {
-  return useNotificationStore.getState().templates.find((t) => t.code === code) ?? null;
+  return useNotificationStore.getState().templates.find((template) => template.code === code) ?? null;
 }
 
 export async function fetchEventMappings(): Promise<EventMapping[]> {
@@ -32,14 +34,14 @@ export async function fetchNotificationLog(
   query: NotificationLogQuery = {},
 ): Promise<NotificationLogEntry[]> {
   const { dateFrom, dateTo, roles, categories, statuses } = query;
-  return LOG.filter((n) => dateFrom == null || n.createdAt >= dateFrom)
-    .filter((n) => dateTo == null || n.createdAt <= dateTo)
-    .filter((n) => !roles || roles.length === 0 || roles.includes(n.recipientRole))
-    .filter((n) => !categories || categories.length === 0 || categories.includes(n.category))
-    .filter((n) => !statuses || statuses.length === 0 || statuses.includes(n.status))
-    .sort((a, b) => b.createdAt - a.createdAt);
+  return LOG.filter((entry) => dateFrom == null || entry.createdAt >= dateFrom)
+    .filter((entry) => dateTo == null || entry.createdAt <= dateTo)
+    .filter((entry) => !roles || roles.length === 0 || roles.includes(entry.recipientRole))
+    .filter((entry) => !categories || categories.length === 0 || categories.includes(entry.category))
+    .filter((entry) => !statuses || statuses.length === 0 || statuses.includes(entry.status))
+    .sort((entryA, entryB) => entryB.createdAt - entryA.createdAt);
 }
 
 export async function fetchLiveAlerts(): Promise<LiveAlert[]> {
-  return [...LIVE].sort((a, b) => b.firedAt - a.firedAt);
+  return [...LIVE].sort((alertA, alertB) => alertB.firedAt - alertA.firedAt);
 }

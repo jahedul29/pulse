@@ -9,20 +9,20 @@ const money = new Intl.NumberFormat("en-US", {
 const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
 const plain = new Intl.NumberFormat("en-US");
 
-export function fmtMoney(n: number): string {
-  return money.format(n);
+export function fmtMoney(value: number): string {
+  return money.format(value);
 }
 
-export function fmtNumber(n: number): string {
-  return plain.format(n);
+export function fmtNumber(value: number): string {
+  return plain.format(value);
 }
 
-export function fmtCompact(n: number): string {
-  return compact.format(n);
+export function fmtCompact(value: number): string {
+  return compact.format(value);
 }
 
-export function fmtDelta(n: number): string {
-  return `${n > 0 ? "+" : ""}${n}%`;
+export function fmtDelta(value: number): string {
+  return `${value > 0 ? "+" : ""}${value}%`;
 }
 
 const monthFmtCache = new Map<string, Intl.DateTimeFormat>();
@@ -37,10 +37,10 @@ function monthFmt(locale: string): Intl.DateTimeFormat {
 }
 
 export function fmtDate(iso: string, locale = "en"): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  if (!y || !m || !d) return iso;
-  const month = monthFmt(locale).format(new Date(Date.UTC(y, m - 1, d)));
-  return `${String(d).padStart(2, "0")}-${month}-${y}`;
+  const [y, monthNum, day] = iso.split("-").map(Number);
+  if (!y || !monthNum || !day) return iso;
+  const month = monthFmt(locale).format(new Date(Date.UTC(y, monthNum - 1, day)));
+  return `${String(day).padStart(2, "0")}-${month}-${y}`;
 }
 
 const dateTimeFmtCache = new Map<string, Intl.DateTimeFormat>();
@@ -64,7 +64,7 @@ function dateTimeFmt(locale: string): Intl.DateTimeFormat {
 export function fmtDateTimeParts(epochMs: number, locale = "en"): { time: string; date: string } {
   const parts = dateTimeFmt(locale).formatToParts(new Date(epochMs));
   const get = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((p) => p.type === type)?.value ?? "";
+    parts.find((part) => part.type === type)?.value ?? "";
   return {
     time: `${get("hour")}:${get("minute")}`,
     date: `${get("day")}-${get("month")}-${get("year")}`,
@@ -77,10 +77,10 @@ export function fmtDateTime(epochMs: number, locale = "en"): string {
 }
 
 export function startOfTomorrow(): Date {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + 1);
-  return d;
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + 1);
+  return date;
 }
 
 export function fmtRelative(epochMs: number, locale = "en"): string {

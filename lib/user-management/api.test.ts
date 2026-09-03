@@ -11,24 +11,24 @@ describe("user-management api", () => {
   it("returns rows with an effectiveStatus and flags the locked account", async () => {
     const rows = await fetchAdminUsers();
     expect(rows.length).toBeGreaterThan(0);
-    expect(rows.find((r) => r.id === "ad-3")?.effectiveStatus).toBe("locked");
+    expect(rows.find((row) => row.id === "ad-3")?.effectiveStatus).toBe("locked");
   });
 
   it("filters by status", async () => {
     const rows = await fetchAdminUsers({ statuses: ["pending"] });
     expect(rows.length).toBeGreaterThan(0);
-    expect(rows.every((r) => r.effectiveStatus === "pending")).toBe(true);
+    expect(rows.every((row) => row.effectiveStatus === "pending")).toBe(true);
   });
 
   it("filters by role", async () => {
     const rows = await fetchAdminUsers({ roleIds: ["role-superadmin"] });
     expect(rows.length).toBeGreaterThan(0);
-    expect(rows.every((r) => r.roleIds.includes("role-superadmin"))).toBe(true);
+    expect(rows.every((row) => row.roleIds.includes("role-superadmin"))).toBe(true);
   });
 
   it("searches by name or email", async () => {
     const rows = await fetchAdminUsers({ search: "dana" });
-    expect(rows.some((r) => r.name.toLowerCase().includes("dana"))).toBe(true);
+    expect(rows.some((row) => row.name.toLowerCase().includes("dana"))).toBe(true);
   });
 
   it("fetchAdminUser returns a single row", async () => {
@@ -52,10 +52,10 @@ describe("user-management api", () => {
 
   it("unlinked staff excludes linked/terminated/deactivated-linked; revoked frees the staff", async () => {
     const before = await fetchUnlinkedStaff();
-    expect(before.some((s) => s.id === "st-5")).toBe(false); // terminated
-    expect(before.some((s) => s.id === "st-1")).toBe(false); // linked to active ad-1
-    expect(before.some((s) => s.id === "st-9")).toBe(false); // linked to deactivated ad-9
-    expect(before.some((s) => s.id === "st-10")).toBe(true); // linked to revoked ad-10 -> free
+    expect(before.some((staff) => staff.id === "st-5")).toBe(false); // terminated
+    expect(before.some((staff) => staff.id === "st-1")).toBe(false); // linked to active ad-1
+    expect(before.some((staff) => staff.id === "st-9")).toBe(false); // linked to deactivated ad-9
+    expect(before.some((staff) => staff.id === "st-10")).toBe(true); // linked to revoked ad-10 -> free
 
     const id = useUserStore.getState().invite({
       staffId: "st-40",
@@ -65,9 +65,9 @@ describe("user-management api", () => {
       roleIds: ["role-cco"],
       by: "T",
     });
-    expect((await fetchUnlinkedStaff()).some((s) => s.id === "st-40")).toBe(false);
+    expect((await fetchUnlinkedStaff()).some((staff) => staff.id === "st-40")).toBe(false);
 
     useUserStore.getState().revoke(id, "T");
-    expect((await fetchUnlinkedStaff()).some((s) => s.id === "st-40")).toBe(true);
+    expect((await fetchUnlinkedStaff()).some((staff) => staff.id === "st-40")).toBe(true);
   });
 });

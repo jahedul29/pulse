@@ -20,8 +20,8 @@ export function ProfileMenu() {
   const t = useTranslations("auth");
   const ts = useTranslations("sessions");
   const router = useRouter();
-  const session = useAuthStore((s) => s.session);
-  const signOut = useAuthStore((s) => s.signOut);
+  const session = useAuthStore((state) => state.session);
+  const signOut = useAuthStore((state) => state.signOut);
   const [open, setOpen] = useState(false);
 
   if (!session) return null;

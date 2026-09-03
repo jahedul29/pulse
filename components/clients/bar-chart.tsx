@@ -37,7 +37,7 @@ export function BarChart({
   data: { label: string; value: number }[];
   height?: number;
 }) {
-  const peak = Math.max(...data.map((d) => d.value));
+  const peak = Math.max(...data.map((datum) => datum.value));
   return (
     <ResponsiveContainer width="100%" height={height}>
       <RBarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} barCategoryGap="30%">
@@ -63,8 +63,8 @@ export function BarChart({
         />
         <Tooltip content={<BarTooltip />} cursor={{ fill: "var(--muted)", opacity: 0.5 }} />
         <Bar dataKey="value" radius={[8, 8, 0, 0]} maxBarSize={44} isAnimationActive={false}>
-          {data.map((d) => (
-            <Cell key={d.label} fill={d.value === peak ? "var(--color-chart-1)" : "url(#bar-fill)"} />
+          {data.map((datum) => (
+            <Cell key={datum.label} fill={datum.value === peak ? "var(--color-chart-1)" : "url(#bar-fill)"} />
           ))}
         </Bar>
       </RBarChart>

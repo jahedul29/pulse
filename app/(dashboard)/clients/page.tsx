@@ -16,7 +16,7 @@ import {
   territories,
 } from "@/lib/mock/data";
 import { coercePeriod } from "@/lib/period";
-import { getTranslations } from "next-intl/server";
+import { I18nText } from "@/components/common/i18n-text";
 
 export const metadata: Metadata = { title: "Clients & Profiles" };
 
@@ -25,7 +25,6 @@ export default async function ClientsPage({
 }: {
   searchParams: Promise<{ period?: string }>;
 }) {
-  const t = await getTranslations("clients");
   const period = coercePeriod((await searchParams).period);
 
   return (
@@ -38,7 +37,7 @@ export default async function ClientsPage({
 
       <section>
         <KpiGrid
-          kpis={kpis.filter((k) => FEATURED_KPI_KEYS.includes(k.key as (typeof FEATURED_KPI_KEYS)[number]))}
+          kpis={kpis.filter((kpi) => FEATURED_KPI_KEYS.includes(kpi.key as (typeof FEATURED_KPI_KEYS)[number]))}
           period={period}
         />
       </section>
@@ -49,8 +48,12 @@ export default async function ClientsPage({
         </div>
         <Card>
           <CardHeader>
-            <CardTitle>{t("activePackages")}</CardTitle>
-            <p className="text-xs text-muted-foreground">{t("splitByRecurrence")}</p>
+            <CardTitle>
+              <I18nText ns="clients" k="activePackages" />
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              <I18nText ns="clients" k="splitByRecurrence" />
+            </p>
           </CardHeader>
           <CardContent>
             <Donut data={packageSplit} />
@@ -61,7 +64,9 @@ export default async function ClientsPage({
       <section className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>{t("sessionsBySupervision")}</CardTitle>
+            <CardTitle>
+              <I18nText ns="clients" k="sessionsBySupervision" />
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <Donut data={supervisionSplit} />
@@ -69,7 +74,9 @@ export default async function ClientsPage({
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>{t("cancellationsByReason")}</CardTitle>
+            <CardTitle>
+              <I18nText ns="clients" k="cancellationsByReason" />
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <Donut data={cancellationSplit} />
@@ -81,8 +88,12 @@ export default async function ClientsPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>{t("clientAccounts")}</CardTitle>
-          <p className="text-xs text-muted-foreground">{t("accountsHint")}</p>
+          <CardTitle>
+            <I18nText ns="clients" k="clientAccounts" />
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            <I18nText ns="clients" k="accountsHint" />
+          </p>
         </CardHeader>
         <CardContent>
           <ClientTable />

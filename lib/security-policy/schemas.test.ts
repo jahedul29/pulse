@@ -18,7 +18,7 @@ const valid: SecurityPolicy = {
 
 describe("policySchema", () => {
   const schema = policySchema({
-    atLeast: (n) => `min ${n}`,
+    atLeast: (minimum) => `min ${minimum}`,
     passwordFloor: "floor",
     mustBeNumber: "not-a-number",
     mustBeInteger: "not-an-integer",
@@ -29,10 +29,10 @@ describe("policySchema", () => {
   });
 
   it("reports a human message for an empty (NaN) number field", () => {
-    const r = schema.safeParse({ ...valid, lockoutThreshold: Number.NaN });
-    expect(r.success).toBe(false);
-    if (!r.success) {
-      expect(r.error.issues.some((i) => i.message === "not-a-number")).toBe(true);
+    const result = schema.safeParse({ ...valid, lockoutThreshold: Number.NaN });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.message === "not-a-number")).toBe(true);
     }
   });
 
@@ -49,9 +49,9 @@ describe("policySchema", () => {
   });
 
   it("reports a translated message for a non-integer value", () => {
-    const r = schema.safeParse({ ...valid, sessionLifetimeMins: 1.5 });
-    expect(r.success).toBe(false);
-    if (!r.success) expect(r.error.issues.some((i) => i.message === "not-an-integer")).toBe(true);
+    const result = schema.safeParse({ ...valid, sessionLifetimeMins: 1.5 });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues.some((i) => i.message === "not-an-integer")).toBe(true);
   });
 });
 

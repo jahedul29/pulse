@@ -9,10 +9,10 @@ import {
   type AdminUsersQuery,
 } from "./types";
 
-const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-function toRow(u: AdminUser, now: number): AdminUserRow {
-  return { ...u, effectiveStatus: effectiveStatus(u, now), resendReady: canResend(u, now) };
+function toRow(user: AdminUser, now: number): AdminUserRow {
+  return { ...user, effectiveStatus: effectiveStatus(user, now), resendReady: canResend(user, now) };
 }
 
 export async function fetchAdminUsers(query: AdminUsersQuery = {}): Promise<AdminUserRow[]> {
@@ -21,26 +21,31 @@ export async function fetchAdminUsers(query: AdminUsersQuery = {}): Promise<Admi
   const term = search?.trim().toLowerCase();
   return useUserStore
     .getState()
-    .users.map((u) => toRow(u, now))
-    .filter((u) => !term || u.name.toLowerCase().includes(term) || u.email.toLowerCase().includes(term))
-    .filter((u) => !statuses || statuses.length === 0 || statuses.includes(u.effectiveStatus))
-    .filter((u) => !roleIds || roleIds.length === 0 || u.roleIds.some((r) => roleIds.includes(r)))
-    .sort((a, b) => b.invitedAt - a.invitedAt);
+    .users.map((user) => toRow(user, now))
+    .filter(
+      (user) =>
+        !term || user.name.toLowerCase().includes(term) || user.email.toLowerCase().includes(term),
+    )
+    .filter((user) => !statuses || statuses.length === 0 || statuses.includes(user.effectiveStatus))
+    .filter(
+      (user) => !roleIds || roleIds.length === 0 || user.roleIds.some((roleId) => roleIds.includes(roleId)),
+    )
+    .sort((userA, userB) => userB.invitedAt - userA.invitedAt);
 }
 
 export async function fetchAdminUser(id: string): Promise<AdminUserRow | null> {
   const now = Date.now();
-  const u = useUserStore.getState().users.find((x) => x.id === id);
-  return u ? toRow(u, now) : null;
+  const user = useUserStore.getState().users.find((x) => x.id === id);
+  return user ? toRow(user, now) : null;
 }
 
 export async function commitStatusChange(id: string, actorEmail?: string): Promise<void> {
   await wait(400);
-  const u = useUserStore.getState().users.find((x) => x.id === id);
-  if (!u) return;
-  if (actorEmail && u.email.trim().toLowerCase() === actorEmail.trim().toLowerCase())
+  const user = useUserStore.getState().users.find((x) => x.id === id);
+  if (!user) return;
+  if (actorEmail && user.email.trim().toLowerCase() === actorEmail.trim().toLowerCase())
     throw new Error("self-action-forbidden");
-  if (u.willFailMutation) throw new Error("mutation-failed");
+  if (user.willFailMutation) throw new Error("mutation-failed");
 }
 
 export async function adminEmailExists(email: string, excludeId?: string): Promise<boolean> {
@@ -50,7 +55,10 @@ export async function adminEmailExists(email: string, excludeId?: string): Promi
   return useUserStore
     .getState()
     .users.some(
-      (u) => u.id !== excludeId && u.status !== "revoked" && u.email.trim().toLowerCase() === target,
+      (user) =>
+        user.id !== excludeId &&
+        user.status !== "revoked" &&
+        user.email.trim().toLowerCase() === target,
     );
 }
 
@@ -58,11 +66,11 @@ export async function fetchUnlinkedStaff(): Promise<StaffRecord[]> {
   const occupied = new Set(
     useUserStore
       .getState()
-      .users.filter((u) => u.status !== "revoked")
-      .map((u) => u.staffId),
+      .users.filter((user) => user.status !== "revoked")
+      .map((user) => user.staffId),
   );
   return useStaffStore
     .getState()
-    .staff.filter((s) => !s.terminated && !occupied.has(s.id))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .staff.filter((staffMember) => !staffMember.terminated && !occupied.has(staffMember.id))
+    .sort((staffA, staffB) => staffA.name.localeCompare(staffB.name));
 }

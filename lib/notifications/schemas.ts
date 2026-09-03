@@ -26,7 +26,7 @@ export function templateSchema(
         .trim()
         .min(1, msgs.codeRequired)
         .regex(/^[A-Z0-9_]+$/, msgs.codeFormat)
-        .refine((c) => !opts.existingCodes.includes(c), msgs.codeExists)
+        .refine((codeValue) => !opts.existingCodes.includes(codeValue), msgs.codeExists)
     : z.string();
   return z.object({
     code,

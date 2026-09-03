@@ -33,15 +33,15 @@ const RESULTS: LoginResult[] = [
 
 const NON_FAILURE = new Set<LoginResult>(["SUCCESS", "MFA_REQUIRED", "ACCOUNT_UNLOCKED"]);
 
-function resultTone(r: LoginResult): Tone {
-  if (r === "SUCCESS") return "success";
-  if (r === "ACCOUNT_LOCKED") return "warning";
-  if (r === "ACCOUNT_UNLOCKED") return "neutral";
+function resultTone(result: LoginResult): Tone {
+  if (result === "SUCCESS") return "success";
+  if (result === "ACCOUNT_LOCKED") return "warning";
+  if (result === "ACCOUNT_UNLOCKED") return "neutral";
   return "danger";
 }
 
-function shownIdentifier(r: LoginAuditEntry): string {
-  return r.adminAccountId ? r.attemptedIdentifier : maskIdentifier(r.attemptedIdentifier);
+function shownIdentifier(entry: LoginAuditEntry): string {
+  return entry.adminAccountId ? entry.attemptedIdentifier : maskIdentifier(entry.attemptedIdentifier);
 }
 
 function fmtStamp(ms: number, locale: string): string {
@@ -57,8 +57,8 @@ export function LoginAuditLog() {
 
   useEffect(() => {
     let active = true;
-    fetchLoginAudit().then((r) => {
-      if (active) setRows(r);
+    fetchLoginAudit().then((fetchedRows) => {
+      if (active) setRows(fetchedRows);
     });
     return () => {
       active = false;
@@ -68,26 +68,26 @@ export function LoginAuditLog() {
   const flagged = useMemo(() => {
     const set = new Set<string>();
     let start = 0;
-    for (let k = 1; k <= rows.length; k++) {
-      const prev = rows[k - 1];
-      const cur = rows[k];
+    for (let index = 1; index <= rows.length; index++) {
+      const prev = rows[index - 1];
+      const cur = rows[index];
       const continues =
         cur != null &&
         !NON_FAILURE.has(cur.result) &&
         !NON_FAILURE.has(prev.result) &&
         cur.attemptedIdentifier === prev.attemptedIdentifier;
       if (!continues) {
-        if (k - start >= 3 && !NON_FAILURE.has(rows[start].result)) {
-          for (let m = start; m < k; m++) set.add(rows[m].id);
+        if (index - start >= 3 && !NON_FAILURE.has(rows[start].result)) {
+          for (let fillIndex = start; fillIndex < index; fillIndex++) set.add(rows[fillIndex].id);
         }
-        start = k;
+        start = index;
       }
     }
     return set;
   }, [rows]);
 
   const adminOptions = useMemo(() => {
-    const names = auditAdminOptions().map((a) => ({ value: a.name, label: a.name }));
+    const names = auditAdminOptions().map((admin) => ({ value: admin.name, label: admin.name }));
     return [...names, { value: t("unmatchedAdmin"), label: t("unmatchedAdmin") }];
   }, [t]);
 
@@ -95,7 +95,7 @@ export function LoginAuditLog() {
     () => [
       {
         id: "admin",
-        accessorFn: (r) => r.adminName ?? t("unmatchedAdmin"),
+        accessorFn: (entry) => entry.adminName ?? t("unmatchedAdmin"),
         size: 200,
         header: t("colAdmin"),
         meta: { filter: "select", filterOptions: adminOptions, filterLabel: t("colAdmin") },
@@ -108,7 +108,7 @@ export function LoginAuditLog() {
       },
       {
         id: "identifier",
-        accessorFn: (r) => r.attemptedIdentifier,
+        accessorFn: (entry) => entry.attemptedIdentifier,
         size: 230,
         header: t("colIdentifier"),
         cell: ({ row }) => (
@@ -117,12 +117,12 @@ export function LoginAuditLog() {
       },
       {
         id: "result",
-        accessorFn: (r) => r.result,
+        accessorFn: (entry) => entry.result,
         size: 170,
         header: t("colResult"),
         meta: {
           filter: "select",
-          filterOptions: RESULTS.map((r) => ({ value: r, label: t(`result_${r}`) })),
+          filterOptions: RESULTS.map((result) => ({ value: result, label: t(`result_${result}`) })),
           filterLabel: t("colResult"),
         },
         cell: ({ row }) => (
@@ -133,14 +133,14 @@ export function LoginAuditLog() {
       },
       {
         id: "method",
-        accessorFn: (r) => r.method,
+        accessorFn: (entry) => entry.method,
         size: 150,
         header: t("colMethod"),
         cell: ({ row }) => <span className="text-sm">{t(`method_${row.original.method}`)}</span>,
       },
       {
         id: "timestamp",
-        accessorFn: (r) => r.createdAt,
+        accessorFn: (entry) => entry.createdAt,
         size: 172,
         header: t("colTimestamp"),
         meta: { filter: "dateRange", filterLabel: t("colTimestamp") },
@@ -163,13 +163,13 @@ export function LoginAuditLog() {
       t("colTimestamp"),
       "IP",
     ];
-    const csvRows = exportRows.map((r) => [
-      r.adminName ?? t("unmatchedAdmin"),
-      shownIdentifier(r),
-      t(`result_${r.result}`),
-      t(`method_${r.method}`),
-      fmtStamp(r.createdAt, locale),
-      r.ip,
+    const csvRows = exportRows.map((entry) => [
+      entry.adminName ?? t("unmatchedAdmin"),
+      shownIdentifier(entry),
+      t(`result_${entry.result}`),
+      t(`method_${entry.method}`),
+      fmtStamp(entry.createdAt, locale),
+      entry.ip,
     ]);
     exportCsv("login-audit.csv", headers, csvRows);
   };
@@ -189,7 +189,7 @@ export function LoginAuditLog() {
             searchPlaceholder={t("search")}
             emptyLabel={t("empty")}
             itemsLabel={t("items")}
-            getSearchText={(r) => `${shownIdentifier(r)} ${r.adminName ?? ""} ${r.ip}`}
+            getSearchText={(entry) => `${shownIdentifier(entry)} ${entry.adminName ?? ""} ${entry.ip}`}
             filterLabels={{
               filter: t("filter"),
               clear: t("clear"),
@@ -200,8 +200,8 @@ export function LoginAuditLog() {
             }}
             enableFreeze
             maxFreeze={3}
-            rowClassName={(r) =>
-              flagged.has(r.id)
+            rowClassName={(entry) =>
+              flagged.has(entry.id)
                 ? "[&>td:first-child]:border-s-2 [&>td:first-child]:border-danger/60"
                 : undefined
             }

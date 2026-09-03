@@ -23,7 +23,7 @@ import type { Client } from "@/lib/types";
 export function ClientActions({ client }: { client: Client }) {
   const t = useTranslations();
   const router = useRouter();
-  const deleteClient = useClientStore((s) => s.deleteClient);
+  const deleteClient = useClientStore((state) => state.deleteClient);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 

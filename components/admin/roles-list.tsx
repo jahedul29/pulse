@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
+import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -36,68 +37,42 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { StatusBadge } from "@/components/common/status-badge";
-import { DataTable, toolbarIconButtonClass } from "@/components/common/data-table";
+import { DataTable, toolbarIconButtonClass, type ServerTableState } from "@/components/common/data-table";
 import { fmtDateTimeParts } from "@/lib/format";
-import { useRbacStore } from "@/lib/rbac/store";
-import { useAuthStore } from "@/lib/auth/store";
-import { fetchRoles } from "@/lib/rbac/api";
+import { apiErrorMessage } from "@/lib/api/error-message";
+import { useCreateRole, useDeleteRole, useRoles, useUpdateRole } from "@/lib/rbac/queries";
+import { serverStateToParams } from "@/lib/rbac/list-params";
 import { roleSchema, type RoleForm } from "@/lib/rbac/schemas";
-import { countGranted } from "@/lib/rbac/modules";
-import type { Role } from "@/lib/rbac/types";
+import type { RoleDto } from "@/lib/rbac/dto";
 
 export function RolesList() {
   const t = useTranslations("rbac");
   const tc = useTranslations("common");
+  const te = useTranslations("apiErrors");
   const locale = useLocale();
   const router = useRouter();
 
-  const rolesState = useRbacStore((s) => s.roles);
-  const permissions = useRbacStore((s) => s.permissions);
-  const createRole = useRbacStore((s) => s.createRole);
-  const updateRole = useRbacStore((s) => s.updateRole);
-  const deleteRole = useRbacStore((s) => s.deleteRole);
-  const actorName = useAuthStore((s) => s.session?.name ?? "You");
-
-  const [rows, setRows] = useState<Role[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [server, setServer] = useState<ServerTableState | null>(null);
+  const params = useMemo(() => serverStateToParams(server), [server]);
+  const rolesQuery = useRoles(params);
+  const roles = useMemo(() => rolesQuery.data?.data ?? [], [rolesQuery.data]);
+  const total = rolesQuery.data?.meta?.total ?? roles.length;
+  const onServerStateChange = useCallback((state: ServerTableState) => setServer(state), []);
+  const createRole = useCreateRole();
+  const updateRole = useUpdateRole();
+  const deleteRole = useDeleteRole();
 
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
-  const [editing, setEditing] = useState<Role | null>(null);
-  const [deleting, setDeleting] = useState<Role | null>(null);
+  const [editing, setEditing] = useState<RoleDto | null>(null);
+  const [deleting, setDeleting] = useState<RoleDto | null>(null);
 
-  const schema = useMemo(
-    () =>
-      roleSchema(
-        { nameRequired: t("nameRequired"), nameExists: t("nameExists") },
-        { existingNames: rolesState.filter((r) => r.id !== editing?.id).map((r) => r.name) },
-      ),
-    [t, rolesState, editing],
-  );
+  const schema = useMemo(() => roleSchema({ nameRequired: t("nameRequired") }), [t]);
   const form = useForm<RoleForm>({
     resolver: zodResolver(schema),
     mode: "onSubmit",
     defaultValues: { name: "", description: "" },
   });
   const { register, handleSubmit, reset, formState } = form;
-
-  useEffect(() => {
-    let active = true;
-    fetchRoles()
-      .then((r) => {
-        if (!active) return;
-        setRows(r);
-        setLoading(false);
-      })
-      .catch(() => {
-        if (!active) return;
-        setError(true);
-        setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [rolesState]);
 
   const openCreate = () => {
     reset({ name: "", description: "" });
@@ -106,8 +81,8 @@ export function RolesList() {
   };
 
   const openEdit = useCallback(
-    (role: Role) => {
-      reset({ name: role.name, description: role.description });
+    (role: RoleDto) => {
+      reset({ name: role.name, description: role.description ?? "" });
       setEditing(role);
       setDialogMode("edit");
     },
@@ -116,31 +91,41 @@ export function RolesList() {
 
   const closeDialog = () => setDialogMode(null);
 
-  const onSubmit = (values: RoleForm) => {
-    if (dialogMode === "edit" && editing) {
-      updateRole(editing.id, { name: values.name, description: values.description });
-      toast.success(t("renamedToast"));
+  const onSubmit = async (values: RoleForm) => {
+    if (createRole.isPending || updateRole.isPending) return;
+    try {
+      if (dialogMode === "edit" && editing) {
+        await updateRole.mutateAsync({ id: editing.id, body: { name: values.name, description: values.description } });
+        toast.success(t("renamedToast"));
+        closeDialog();
+        return;
+      }
+      const created = await createRole.mutateAsync({ name: values.name, description: values.description });
+      toast.success(t("createdToast", { name: values.name }));
       closeDialog();
-      return;
+      router.push(`/admin/roles/${created.id}`);
+    } catch (error) {
+      toast.error(apiErrorMessage(error, te));
     }
-    const id = createRole({ name: values.name, description: values.description, by: actorName });
-    toast.success(t("createdToast", { name: values.name }));
-    closeDialog();
-    router.push(`/admin/roles/${id}`);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleting) return;
-    deleteRole(deleting.id);
-    toast.success(t("deletedToast", { name: deleting.name }));
-    setDeleting(null);
+    const target = deleting;
+    try {
+      await deleteRole.mutateAsync(target.id);
+      toast.success(t("deletedToast", { name: target.name }));
+      setDeleting(null);
+    } catch (error) {
+      toast.error(apiErrorMessage(error, te));
+    }
   };
 
-  const columns = useMemo<ColumnDef<Role, unknown>[]>(
+  const columns = useMemo<ColumnDef<RoleDto, unknown>[]>(
     () => [
       {
         id: "role",
-        accessorFn: (r) => `${r.name} ${r.description}`,
+        accessorFn: (role) => `${role.name} ${role.description ?? ""}`,
         size: 340,
         header: t("colRole"),
         cell: ({ row }) => (
@@ -152,19 +137,19 @@ export function RolesList() {
       },
       {
         id: "type",
-        accessorFn: (r) => (r.builtIn ? t("typeBuiltin") : t("typeCustom")),
+        accessorFn: (role) => (role.is_system ? t("typeBuiltin") : t("typeCustom")),
         size: 150,
         header: t("colType"),
         meta: {
           filter: "select",
           filterOptions: [
-            { value: t("typeBuiltin"), label: t("typeBuiltin") },
-            { value: t("typeCustom"), label: t("typeCustom") },
+            { value: "1", label: t("typeBuiltin") },
+            { value: "0", label: t("typeCustom") },
           ],
           filterLabel: t("colType"),
         },
         cell: ({ row }) =>
-          row.original.builtIn ? (
+          row.original.is_system ? (
             <Tooltip>
               <TooltipTrigger render={<span className="w-fit cursor-default" />}>
                 <StatusBadge tone="neutral" equalWidth={false} className="min-w-[6.5rem] gap-1">
@@ -182,31 +167,25 @@ export function RolesList() {
       },
       {
         id: "access",
-        accessorFn: (r) => (permissions[r.id] ? countGranted(permissions[r.id]).view : 0),
+        accessorFn: (role) => role.permissions?.length ?? 0,
+        enableSorting: false,
         size: 150,
         header: t("colAccess"),
-        cell: ({ row }) => {
-          const p = permissions[row.original.id];
-          const c = p ? countGranted(p) : { view: 0, edit: 0 };
-          return (
-            <span className="text-xs text-muted-foreground tabular">
-              {t("accessSummary", { view: c.view, edit: c.edit })}
-            </span>
-          );
-        },
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground tabular">
+            {t("permCount", { count: row.original.permissions?.length ?? 0 })}
+          </span>
+        ),
       },
       {
         id: "created",
-        accessorFn: (r) => r.createdAt,
-        size: 190,
+        accessorFn: (role) => (role.created_at ? new Date(role.created_at).getTime() : 0),
+        size: 160,
         header: t("colCreated"),
         cell: ({ row }) => (
-          <div className="flex flex-col leading-tight">
-            <span className="text-xs">{t("createdBy", { name: row.original.createdBy })}</span>
-            <span className="text-xs text-muted-foreground tabular">
-              {fmtDateTimeParts(row.original.createdAt, locale).date}
-            </span>
-          </div>
+          <span className="text-xs text-muted-foreground tabular">
+            {row.original.created_at ? fmtDateTimeParts(new Date(row.original.created_at).getTime(), locale).date : "—"}
+          </span>
         ),
       },
       {
@@ -225,18 +204,18 @@ export function RolesList() {
                     <Button
                       size="icon-sm"
                       variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      onClick={(event) => {
+                        event.stopPropagation();
                         openEdit(role);
                       }}
-                      disabled={role.builtIn}
+                      disabled={role.is_system}
                       aria-label={t("rename")}
                     />
                   }
                 >
                   <Pencil className="size-4" />
                 </TooltipTrigger>
-                <TooltipContent>{role.builtIn ? t("builtinHint") : t("rename")}</TooltipContent>
+                <TooltipContent>{role.is_system ? t("builtinHint") : t("rename")}</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger
@@ -244,11 +223,11 @@ export function RolesList() {
                     <Button
                       size="icon-sm"
                       variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      onClick={(event) => {
+                        event.stopPropagation();
                         setDeleting(role);
                       }}
-                      disabled={role.builtIn}
+                      disabled={role.is_system}
                       aria-label={t("delete")}
                       className="hover:bg-danger/10 hover:text-danger"
                     />
@@ -256,14 +235,14 @@ export function RolesList() {
                 >
                   <Trash2 className="size-4" />
                 </TooltipTrigger>
-                <TooltipContent>{role.builtIn ? t("builtinHint") : t("delete")}</TooltipContent>
+                <TooltipContent>{role.is_system ? t("builtinHint") : t("delete")}</TooltipContent>
               </Tooltip>
             </div>
           );
         },
       },
     ],
-    [t, locale, permissions, openEdit],
+    [t, locale, openEdit],
   );
 
   return (
@@ -274,11 +253,14 @@ export function RolesList() {
           <CardDescription>{t("rolesSubtitle")}</CardDescription>
         </CardHeader>
         <CardContent>
-          {error ? (
+          {rolesQuery.isError ? (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
               <p className="text-sm text-muted-foreground">{t("loadError")}</p>
+              <Button variant="outline" size="sm" onClick={() => rolesQuery.refetch()}>
+                {tc("retry")}
+              </Button>
             </div>
-          ) : loading ? (
+          ) : rolesQuery.isPending ? (
             <div className="flex flex-col gap-2">
               {Array.from({ length: 6 }).map((_, i) => (
                 <Skeleton key={i} className="h-11 w-full" />
@@ -287,14 +269,17 @@ export function RolesList() {
           ) : (
             <DataTable
               columns={columns}
-              data={rows}
+              data={roles}
               pageSize={10}
+              manualServer
+              rowCount={total}
+              onServerStateChange={onServerStateChange}
               searchPlaceholder={t("search")}
               emptyLabel={t("empty")}
               itemsLabel={t("items")}
-              onRowClick={(r) => router.push(`/admin/roles/${r.id}`)}
-              rowAriaLabel={(r) => r.name}
-              getSearchText={(r) => `${r.name} ${r.description}`}
+              onRowClick={(role) => router.push(`/admin/roles/${role.id}`)}
+              rowAriaLabel={(role) => role.name}
+              getSearchText={(role) => `${role.name} ${role.description ?? ""}`}
               filterLabels={{
                 filter: t("filter"),
                 clear: t("clear"),
@@ -327,35 +312,27 @@ export function RolesList() {
         </CardContent>
       </Card>
 
-      <Dialog open={dialogMode != null} onOpenChange={(o) => !o && closeDialog()}>
+      <Dialog open={dialogMode != null} onOpenChange={(open) => !open && closeDialog()}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{dialogMode === "edit" ? t("editTitle") : t("createTitle")}</DialogTitle>
             {dialogMode === "create" && <DialogDescription>{t("createDesc")}</DialogDescription>}
           </DialogHeader>
-          <DialogBody className="flex flex-col gap-4">
-            <Field
-              label={t("nameLabel")}
-              htmlFor="role-name"
-              error={formState.errors.name?.message}
-              reserveMessage={false}
-            >
-              <Input
-                id="role-name"
-                {...register("name")}
-                placeholder={t("namePlaceholder")}
-                autoFocus
-              />
-            </Field>
-            <Field label={t("descLabel")} htmlFor="role-desc" reserveMessage={false}>
-              <Textarea
-                id="role-desc"
-                rows={3}
-                {...register("description")}
-                placeholder={t("descPlaceholder")}
-              />
-            </Field>
-          </DialogBody>
+          <Form onSubmit={handleSubmit(onSubmit)}>
+            <DialogBody className="flex flex-col gap-4">
+              <Field
+                label={t("nameLabel")}
+                htmlFor="role-name"
+                error={formState.errors.name?.message}
+                reserveMessage={false}
+              >
+                <Input id="role-name" {...register("name")} placeholder={t("namePlaceholder")} autoFocus />
+              </Field>
+              <Field label={t("descLabel")} htmlFor="role-desc" reserveMessage={false}>
+                <Textarea id="role-desc" rows={3} {...register("description")} placeholder={t("descPlaceholder")} />
+              </Field>
+            </DialogBody>
+          </Form>
           <DialogFooter layout="split">
             <Button variant="outline" size="lg" onClick={closeDialog}>
               {tc("cancel")}
@@ -363,6 +340,7 @@ export function RolesList() {
             <Button
               size="lg"
               onClick={handleSubmit(onSubmit)}
+              loading={createRole.isPending || updateRole.isPending}
               disabled={dialogMode === "edit" && !formState.isDirty}
             >
               {dialogMode === "edit" ? tc("save") : t("create")}
@@ -371,7 +349,12 @@ export function RolesList() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={deleting != null} onOpenChange={(o) => !o && setDeleting(null)}>
+      <AlertDialog
+        open={deleting != null}
+        onOpenChange={(open) => {
+          if (!open && !deleteRole.isPending) setDeleting(null);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
@@ -380,9 +363,10 @@ export function RolesList() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter layout="split">
-            <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteRole.isPending}>{tc("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
+              loading={deleteRole.isPending}
               className="bg-danger text-danger-foreground hover:bg-danger/90"
             >
               {t("deleteConfirm")}

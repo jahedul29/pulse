@@ -11,7 +11,7 @@ function initialsOf(name: string): string {
   return name
     .split(" ")
     .filter(Boolean)
-    .map((w) => w[0])
+    .map((word) => word[0])
     .join("")
     .slice(0, 2)
     .toUpperCase();
@@ -36,34 +36,34 @@ type Seed = {
   willFail?: boolean;
 };
 
-function build(s: Seed): AdminUser {
+function build(seed: Seed): AdminUser {
   const now = Date.now();
-  const invitedAt = now - s.invitedDaysAgo * DAY;
-  const pendingLike = s.status === "pending" || s.status === "revoked";
+  const invitedAt = now - seed.invitedDaysAgo * DAY;
+  const pendingLike = seed.status === "pending" || seed.status === "revoked";
   return {
-    id: s.id,
-    staffId: s.staffId,
-    name: s.name,
-    email: s.email,
-    initials: initialsOf(s.name),
-    status: s.status,
-    mfaEnabled: s.mfa,
-    lockedUntil: s.lockedMins ? now + s.lockedMins * MINUTE : null,
-    lastLogin: s.lastLoginHoursAgo == null ? null : now - s.lastLoginHoursAgo * HOUR,
-    roleIds: s.roleIds,
-    invitedBy: s.invitedBy ?? OWNER,
+    id: seed.id,
+    staffId: seed.staffId,
+    name: seed.name,
+    email: seed.email,
+    initials: initialsOf(seed.name),
+    status: seed.status,
+    mfaEnabled: seed.mfa,
+    lockedUntil: seed.lockedMins ? now + seed.lockedMins * MINUTE : null,
+    lastLogin: seed.lastLoginHoursAgo == null ? null : now - seed.lastLoginHoursAgo * HOUR,
+    roleIds: seed.roleIds,
+    invitedBy: seed.invitedBy ?? OWNER,
     invitedAt,
     activatedAt: pendingLike ? null : invitedAt + 2 * HOUR,
-    lastStatusChangeAt: s.statusChangedDaysAgo != null ? now - s.statusChangedDaysAgo * DAY : null,
-    lastStatusChangeBy: s.statusChangedBy ?? null,
-    registeredDevices: s.devices,
+    lastStatusChangeAt: seed.statusChangedDaysAgo != null ? now - seed.statusChangedDaysAgo * DAY : null,
+    lastStatusChangeBy: seed.statusChangedBy ?? null,
+    registeredDevices: seed.devices,
     lastInviteSentAt:
-      s.status === "pending"
-        ? s.inviteSentMinsAgo != null
-          ? now - s.inviteSentMinsAgo * MINUTE
+      seed.status === "pending"
+        ? seed.inviteSentMinsAgo != null
+          ? now - seed.inviteSentMinsAgo * MINUTE
           : invitedAt
         : null,
-    willFailMutation: s.willFail,
+    willFailMutation: seed.willFail,
   };
 }
 

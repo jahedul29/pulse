@@ -28,7 +28,7 @@ function PasswordInput({
       />
       <button
         type="button"
-        onClick={() => setShow((v) => !v)}
+        onClick={() => setShow((prev) => !prev)}
         aria-label={show ? hideLabel : showLabel}
         aria-pressed={show}
         className="absolute end-2 top-1/2 grid -translate-y-1/2 place-items-center rounded text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"

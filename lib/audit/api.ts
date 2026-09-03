@@ -9,21 +9,21 @@ function liveEntries(): LoginAuditEntry[] {
   const audit = useAuthStore.getState().audit;
   const admins = useUserStore.getState().users;
   return audit
-    .filter((a) => a.stage !== "admin")
-    .map((a) => {
+    .filter((entry) => entry.stage !== "admin")
+    .map((entry) => {
       const match = admins.find(
-        (m) => m.email.toLowerCase() === a.email.trim().toLowerCase(),
+        (admin) => admin.email.toLowerCase() === entry.email.trim().toLowerCase(),
       );
       return {
-        id: a.id,
-        createdAt: a.at,
-        attemptedIdentifier: a.email,
+        id: entry.id,
+        createdAt: entry.at,
+        attemptedIdentifier: entry.email,
         adminAccountId: match?.id ?? null,
         adminName: match?.name ?? null,
-        result: a.result,
+        result: entry.result,
         method: "password_mfa" as LoginMethod,
-        ip: a.ip,
-        device: a.device,
+        ip: entry.ip,
+        device: entry.device,
       };
     });
 }
@@ -31,17 +31,17 @@ function liveEntries(): LoginAuditEntry[] {
 export async function fetchLoginAudit(query: LoginAuditQuery = {}): Promise<LoginAuditEntry[]> {
   const { dateFrom, dateTo, results, adminId } = query;
   return [...liveEntries(), ...SEED_LOGIN_AUDIT]
-    .filter((r) => dateFrom == null || r.createdAt >= dateFrom)
-    .filter((r) => dateTo == null || r.createdAt <= dateTo)
-    .filter((r) => !results || results.length === 0 || results.includes(r.result))
-    .filter((r) => {
+    .filter((entry) => dateFrom == null || entry.createdAt >= dateFrom)
+    .filter((entry) => dateTo == null || entry.createdAt <= dateTo)
+    .filter((entry) => !results || results.length === 0 || results.includes(entry.result))
+    .filter((entry) => {
       if (!adminId) return true;
-      if (adminId === UNMATCHED_ADMIN) return r.adminAccountId === null;
-      return r.adminAccountId === adminId;
+      if (adminId === UNMATCHED_ADMIN) return entry.adminAccountId === null;
+      return entry.adminAccountId === adminId;
     })
-    .sort((a, b) => b.createdAt - a.createdAt);
+    .sort((first, second) => second.createdAt - first.createdAt);
 }
 
 export function auditAdminOptions(): { id: string; name: string }[] {
-  return useUserStore.getState().users.map((a) => ({ id: a.id, name: a.name }));
+  return useUserStore.getState().users.map((admin) => ({ id: admin.id, name: admin.name }));
 }

@@ -33,12 +33,16 @@ export function MultiSelect({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [q, setQ] = useState("");
-  const labelOf = useMemo(() => new Map(options.map((o) => [o.value, o.label])), [options]);
-  const term = q.trim().toLowerCase();
-  const shown = options.filter((o) => o.label.toLowerCase().includes(term));
-  const toggle = (v: string) =>
-    onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v]);
+  const [query, setQuery] = useState("");
+  const labelOf = useMemo(() => new Map(options.map((option) => [option.value, option.label])), [options]);
+  const term = query.trim().toLowerCase();
+  const shown = options.filter((option) => option.label.toLowerCase().includes(term));
+  const toggle = (optionValue: string) =>
+    onChange(
+      value.includes(optionValue)
+        ? value.filter((x) => x !== optionValue)
+        : [...value, optionValue],
+    );
   const chips = value.slice(0, maxChips);
   const extra = value.length - chips.length;
 
@@ -58,8 +62,8 @@ export function MultiSelect({
           <span className="text-muted-foreground">{placeholder}</span>
         ) : (
           <span className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
-            {chips.map((v) => (
-              <Chip key={v}>{labelOf.get(v) ?? v}</Chip>
+            {chips.map((chipValue) => (
+              <Chip key={chipValue}>{labelOf.get(chipValue) ?? chipValue}</Chip>
             ))}
             {extra > 0 && <Chip variant="soft">+{extra}</Chip>}
           </span>
@@ -73,20 +77,23 @@ export function MultiSelect({
             size="sm"
             autoFocus={autoFocusSearch()}
             placeholder={searchPlaceholder}
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
             className="ps-8"
           />
         </div>
         <div className="mt-1.5 max-h-56 overflow-y-auto">
           <div className="flex flex-col gap-0.5">
-            {shown.map((o) => (
+            {shown.map((option) => (
               <label
-                key={o.value}
+                key={option.value}
                 className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-start text-sm transition-colors hover:bg-muted"
               >
-                <Checkbox checked={value.includes(o.value)} onCheckedChange={() => toggle(o.value)} />
-                <span className="truncate">{o.label}</span>
+                <Checkbox
+                  checked={value.includes(option.value)}
+                  onCheckedChange={() => toggle(option.value)}
+                />
+                <span className="truncate">{option.label}</span>
               </label>
             ))}
             {shown.length === 0 && (

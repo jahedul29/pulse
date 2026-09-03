@@ -39,58 +39,59 @@ export const useRbacStore = create<RbacState>((set) => ({
 
   createRole: ({ name, description, by }) => {
     const id = uid("role");
-    set((s) => ({
+    set((state) => ({
       roles: [
-        ...s.roles,
+        ...state.roles,
         { id, name, description, builtIn: false, tier: null, createdBy: by, createdAt: Date.now() },
       ],
-      permissions: { ...s.permissions, [id]: emptyPermissions() },
+      permissions: { ...state.permissions, [id]: emptyPermissions() },
     }));
     return id;
   },
 
   updateRole: (id, patch) =>
-    set((s) => ({
-      roles: s.roles.map((r) => (r.id === id && !r.builtIn ? { ...r, ...patch } : r)),
+    set((state) => ({
+      roles: state.roles.map((role) => (role.id === id && !role.builtIn ? { ...role, ...patch } : role)),
     })),
 
   deleteRole: (id) =>
-    set((s) => {
-      const role = s.roles.find((r) => r.id === id);
-      if (!role || role.builtIn) return s;
-      const permissions = { ...s.permissions };
+    set((state) => {
+      const role = state.roles.find((candidate) => candidate.id === id);
+      if (!role || role.builtIn) return state;
+      const permissions = { ...state.permissions };
       delete permissions[id];
       return {
-        roles: s.roles.filter((r) => r.id !== id),
+        roles: state.roles.filter((candidate) => candidate.id !== id),
         permissions,
-        grants: s.grants.filter((g) => g.roleId !== id),
+        grants: state.grants.filter((grant) => grant.roleId !== id),
       };
     }),
 
   setPermissions: (roleId, permissions) =>
-    set((s) => {
-      const role = s.roles.find((r) => r.id === roleId);
-      if (role?.tier === "superadmin") return s;
-      return { permissions: { ...s.permissions, [roleId]: permissions } };
+    set((state) => {
+      const role = state.roles.find((candidate) => candidate.id === roleId);
+      if (role?.tier === "superadmin") return state;
+      return { permissions: { ...state.permissions, [roleId]: permissions } };
     }),
 
   addGrant: ({ adminId, roleId, expiresAt, by }) =>
-    set((s) => ({
+    set((state) => ({
       grants: [
-        ...s.grants,
+        ...state.grants,
         { id: uid("grant"), adminId, roleId, expiresAt, grantedBy: by, grantedAt: Date.now() },
       ],
     })),
 
-  revokeGrant: (id) => set((s) => ({ grants: s.grants.filter((g) => g.id !== id) })),
+  revokeGrant: (id) => set((state) => ({ grants: state.grants.filter((grant) => grant.id !== id) })),
 
   addOverlay: ({ adminId, moduleId, action, by }) =>
-    set((s) => ({
+    set((state) => ({
       overlays: [
-        ...s.overlays,
+        ...state.overlays,
         { id: uid("ov"), adminId, moduleId, action, grantedBy: by, grantedAt: Date.now() },
       ],
     })),
 
-  removeOverlay: (id) => set((s) => ({ overlays: s.overlays.filter((o) => o.id !== id) })),
+  removeOverlay: (id) =>
+    set((state) => ({ overlays: state.overlays.filter((overlay) => overlay.id !== id) })),
 }));

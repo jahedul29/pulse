@@ -35,17 +35,17 @@ export function HidableGrid<T>({
     const el = gridRef.current;
     if (!el) return;
     const nodes = Array.from(el.querySelectorAll<HTMLElement>("[data-flip]"));
-    const keys = nodes.map((n) => n.dataset.flip).join(",");
+    const keys = nodes.map((node) => node.dataset.flip).join(",");
     const lastRects = new Map<string, DOMRect>();
-    nodes.forEach((n) => {
-      if (n.dataset.flip) lastRects.set(n.dataset.flip, n.getBoundingClientRect());
+    nodes.forEach((node) => {
+      if (node.dataset.flip) lastRects.set(node.dataset.flip, node.getBoundingClientRect());
     });
 
     const setChanged = prevKeys.current !== null && keys !== prevKeys.current;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (setChanged && !reduce) {
-      nodes.forEach((n) => {
-        const id = n.dataset.flip;
+      nodes.forEach((node) => {
+        const id = node.dataset.flip;
         if (!id) return;
         const first = prevRects.current.get(id);
         const last = lastRects.get(id);
@@ -53,7 +53,7 @@ export function HidableGrid<T>({
         const dx = first.left - last.left;
         const dy = first.top - last.top;
         if (dx || dy) {
-          n.animate(
+          node.animate(
             [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }],
             { duration: 320, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" },
           );
@@ -66,7 +66,7 @@ export function HidableGrid<T>({
   });
 
   const hide = useCallback((key: string) => {
-    setLeaving((l) => (l.includes(key) ? l : [...l, key]));
+    setLeaving((prev) => (prev.includes(key) ? prev : [...prev, key]));
   }, []);
 
   const restoreAll = useCallback(() => {
@@ -77,7 +77,7 @@ export function HidableGrid<T>({
   useEffect(() => {
     if (leaving.length === 0) return;
     const id = window.setTimeout(() => {
-      setHidden((h) => [...h, ...leaving]);
+      setHidden((prev) => [...prev, ...leaving]);
       setLeaving([]);
     }, LEAVE_MS);
     return () => clearTimeout(id);

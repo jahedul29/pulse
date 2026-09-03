@@ -29,8 +29,8 @@ function useRemaining(target: number) {
   return remaining;
 }
 
-const R = 46;
-const C = 2 * Math.PI * R;
+const RADIUS = 46;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 export function AccountLockout({
   lockedUntil,
@@ -94,18 +94,18 @@ export function AccountLockout({
               <stop offset="100%" stopColor="var(--danger)" />
             </linearGradient>
           </defs>
-          <circle cx="52" cy="52" r={R} fill="none" strokeWidth="6" className="stroke-muted" />
+          <circle cx="52" cy="52" r={RADIUS} fill="none" strokeWidth="6" className="stroke-muted" />
           <circle
             cx="52"
             cy="52"
-            r={R}
+            r={RADIUS}
             fill="none"
             stroke="url(#lockArc)"
             strokeWidth="6"
             strokeLinecap="round"
             className="transition-[stroke-dashoffset] duration-1000 ease-linear motion-reduce:transition-none"
-            strokeDasharray={C}
-            strokeDashoffset={C * (1 - progress)}
+            strokeDasharray={CIRCUMFERENCE}
+            strokeDashoffset={CIRCUMFERENCE * (1 - progress)}
           />
         </svg>
         <div className="flex flex-col items-center gap-0.5 leading-none">

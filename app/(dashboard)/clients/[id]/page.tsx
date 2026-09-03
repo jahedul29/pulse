@@ -10,7 +10,7 @@ import { useClientStore } from "@/lib/store";
 export default function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const t = useTranslations("clients.detail");
-  const client = useClientStore((s) => s.clients.find((c) => c.id === id));
+  const client = useClientStore((state) => state.clients.find((candidate) => candidate.id === id));
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6">

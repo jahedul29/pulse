@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ButtonRow } from "@/components/ui/button-row";
+import { Form } from "@/components/ui/form";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -54,9 +55,9 @@ export function SecurityPolicyEditor() {
   const tc = useTranslations("common");
   const locale = useLocale();
 
-  const versionsState = usePolicyStore((s) => s.versions);
-  const savePolicy = usePolicyStore((s) => s.savePolicy);
-  const actorName = useAuthStore((s) => s.session?.name ?? "You");
+  const versionsState = usePolicyStore((state) => state.versions);
+  const savePolicy = usePolicyStore((state) => state.savePolicy);
+  const actorName = useAuthStore((state) => state.session?.name ?? "You");
 
   const [history, setHistory] = useState<PolicyVersion[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -64,14 +65,14 @@ export function SecurityPolicyEditor() {
   const [saveOpen, setSaveOpen] = useState(false);
 
   const current = useMemo(
-    () => versionsState.find((v) => v.effectiveTo == null)?.policy ?? null,
+    () => versionsState.find((version) => version.effectiveTo == null)?.policy ?? null,
     [versionsState],
   );
 
   const policySchemaMemo = useMemo(
     () =>
       policySchema({
-        atLeast: (n) => t("atLeast", { n }),
+        atLeast: (count) => t("atLeast", { n: count }),
         passwordFloor: t("passwordFloor"),
         mustBeNumber: t("mustBeNumber"),
         mustBeInteger: t("mustBeInteger"),
@@ -99,9 +100,9 @@ export function SecurityPolicyEditor() {
   useEffect(() => {
     let active = true;
     fetchPolicyVersions()
-      .then((v) => {
+      .then((versions) => {
         if (!active) return;
-        setHistory(v);
+        setHistory(versions);
         setLoaded(true);
       })
       .catch(() => {
@@ -132,13 +133,15 @@ export function SecurityPolicyEditor() {
   });
 
   const fmt = (ms: number) => fmtDateTimeParts(ms, locale).date;
-  const fmtMins = (m: number) => {
-    const H = t("hShort");
-    const M = t("mShort");
-    if (m < 60) return `${m}${M}`;
-    const h = Math.floor(m / 60);
-    const r = m % 60;
-    return r ? `${h}${H} ${r}${M}` : `${h}${H}`;
+  const fmtMins = (minutes: number) => {
+    const hourLabel = t("hShort");
+    const minuteLabel = t("mShort");
+    if (minutes < 60) return `${minutes}${minuteLabel}`;
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return remainingMinutes
+      ? `${hours}${hourLabel} ${remainingMinutes}${minuteLabel}`
+      : `${hours}${hourLabel}`;
   };
 
   if (error) {
@@ -208,7 +211,7 @@ export function SecurityPolicyEditor() {
     </section>
   );
 
-  const currentVersion = history.find((v) => v.effectiveTo == null);
+  const currentVersion = history.find((version) => version.effectiveTo == null);
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6">
@@ -228,7 +231,8 @@ export function SecurityPolicyEditor() {
       <div className="grid gap-6 lg:grid-cols-5">
         <div className="lg:col-span-3">
           <Card>
-            <CardContent className="flex flex-col gap-6">
+            <Form onSubmit={openSave}>
+              <CardContent className="flex flex-col gap-6">
               {section(
                 t("sectionLockout"),
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -265,7 +269,8 @@ export function SecurityPolicyEditor() {
                   {numField("reauthWindowMins", t("reauthWindow"), t("unitMinutes"), t("reauthHint"))}
                 </div>,
               )}
-            </CardContent>
+              </CardContent>
+            </Form>
             <CardFooter className="flex-col items-stretch gap-3 sm:flex-row sm:items-center">
               {dirty && <span className="text-xs text-muted-foreground">{t("unsaved")}</span>}
               <ButtonRow layout="split" className="sm:ms-auto">
@@ -323,11 +328,11 @@ export function SecurityPolicyEditor() {
             </CardHeader>
             <CardContent>
               <ol className="flex flex-col">
-                {history.map((v, i) => {
-                  const isCurrent = v.effectiveTo == null;
+                {history.map((version, i) => {
+                  const isCurrent = version.effectiveTo == null;
                   const last = i === history.length - 1;
                   return (
-                    <li key={v.id} className="flex gap-3">
+                    <li key={version.id} className="flex gap-3">
                       <div className="flex flex-col items-center">
                         <span
                           className={cn(
@@ -345,13 +350,13 @@ export function SecurityPolicyEditor() {
                         )}
                         <span className="text-sm font-medium tabular">
                           {t("effective", {
-                            from: fmt(v.effectiveFrom),
-                            to: v.effectiveTo == null ? t("ongoing") : fmt(v.effectiveTo),
+                            from: fmt(version.effectiveFrom),
+                            to: version.effectiveTo == null ? t("ongoing") : fmt(version.effectiveTo),
                           })}
                         </span>
-                        <p className="text-sm text-muted-foreground">{v.reason}</p>
+                        <p className="text-sm text-muted-foreground">{version.reason}</p>
                         <span className="text-xs text-muted-foreground">
-                          {t("changedBy", { name: v.changedBy })}
+                          {t("changedBy", { name: version.changedBy })}
                         </span>
                       </div>
                     </li>

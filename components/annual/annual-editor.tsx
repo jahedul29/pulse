@@ -15,7 +15,7 @@ import { YearPickerDialog } from "./year-picker-dialog";
 
 export function AnnualEditor({ specialist }: { specialist: Specialist }) {
   const t = useTranslations();
-  const saveAnnual = useSpecialistStore((s) => s.saveAnnual);
+  const saveAnnual = useSpecialistStore((state) => state.saveAnnual);
   const config = useMemo(() => annualConfigFor(specialist.role), [specialist.role]);
 
   // Date-dependent parts render only after mount so the first (server-matched) render is
@@ -45,14 +45,14 @@ export function AnnualEditor({ specialist }: { specialist: Specialist }) {
   // No Save button (matches the weekly calendar): valid edits persist to the store immediately.
   const handleCommit = (dates: string[], makeUnavailable: boolean) => {
     const next = new Set(offSet);
-    for (const d of dates) {
-      if (makeUnavailable) next.add(d);
-      else next.delete(d);
+    for (const date of dates) {
+      if (makeUnavailable) next.add(date);
+      else next.delete(date);
     }
     if (makeUnavailable) {
       const fail = firstFailure([...next], config);
       if (fail) {
-        setShake((n) => n + 1);
+        setShake((prev) => prev + 1);
         toast.error(t(fail.messageKey, fail.values));
         return;
       }
@@ -84,7 +84,7 @@ export function AnnualEditor({ specialist }: { specialist: Specialist }) {
         </p>
       </div>
 
-      <AnnualLegend expanded={expanded} onToggleExpanded={() => setExpanded((v) => !v)} />
+      <AnnualLegend expanded={expanded} onToggleExpanded={() => setExpanded((prev) => !prev)} />
 
       <div className="-mx-4 min-h-[420px] overflow-x-auto px-[5px] pb-2 md:mx-0 md:px-0 lg:flex lg:justify-center lg:overflow-visible">
         {year != null && todayIso != null && (

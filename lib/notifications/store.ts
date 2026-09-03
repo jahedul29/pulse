@@ -18,22 +18,26 @@ export const useNotificationStore = create<NotificationState>((set) => ({
   routing: seedRouting(),
 
   upsertTemplate: (template) =>
-    set((s) => {
+    set((state) => {
       const record = { ...template, updatedAt: Date.now() };
-      const exists = s.templates.some((t) => t.code === record.code);
+      const exists = state.templates.some((existing) => existing.code === record.code);
       return {
         templates: exists
-          ? s.templates.map((t) => (t.code === record.code ? record : t))
-          : [...s.templates, record],
+          ? state.templates.map((existing) => (existing.code === record.code ? record : existing))
+          : [...state.templates, record],
       };
     }),
 
   deleteTemplate: (code) =>
-    set((s) => ({ templates: s.templates.filter((t) => t.code !== code) })),
+    set((state) => ({ templates: state.templates.filter((existing) => existing.code !== code) })),
 
   setMapping: (mapping) =>
-    set((s) => ({ mappings: s.mappings.map((m) => (m.eventId === mapping.eventId ? mapping : m)) })),
+    set((state) => ({
+      mappings: state.mappings.map((existing) => (existing.eventId === mapping.eventId ? mapping : existing)),
+    })),
 
   setRouting: (routing) =>
-    set((s) => ({ routing: s.routing.map((r) => (r.eventId === routing.eventId ? routing : r)) })),
+    set((state) => ({
+      routing: state.routing.map((existing) => (existing.eventId === routing.eventId ? routing : existing)),
+    })),
 }));

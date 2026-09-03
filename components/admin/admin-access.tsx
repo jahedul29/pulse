@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
+import { Form } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -63,15 +64,15 @@ export function AdminAccess() {
   const tc = useTranslations("common");
   const locale = useLocale();
 
-  const admins = useUserStore((s) => s.users);
-  const roles = useRbacStore((s) => s.roles);
-  const grantsState = useRbacStore((s) => s.grants);
-  const overlaysState = useRbacStore((s) => s.overlays);
-  const addGrant = useRbacStore((s) => s.addGrant);
-  const revokeGrant = useRbacStore((s) => s.revokeGrant);
-  const addOverlay = useRbacStore((s) => s.addOverlay);
-  const removeOverlay = useRbacStore((s) => s.removeOverlay);
-  const actorName = useAuthStore((s) => s.session?.name ?? "You");
+  const admins = useUserStore((state) => state.users);
+  const roles = useRbacStore((state) => state.roles);
+  const grantsState = useRbacStore((state) => state.grants);
+  const overlaysState = useRbacStore((state) => state.overlays);
+  const addGrant = useRbacStore((state) => state.addGrant);
+  const revokeGrant = useRbacStore((state) => state.revokeGrant);
+  const addOverlay = useRbacStore((state) => state.addOverlay);
+  const removeOverlay = useRbacStore((state) => state.removeOverlay);
+  const actorName = useAuthStore((state) => state.session?.name ?? "You");
 
   const [adminId, setAdminId] = useState("");
   const [access, setAccess] = useState<{
@@ -94,7 +95,7 @@ export function AdminAccess() {
     () =>
       grantSchema(
         { roleRequired: t("roleRequired"), duplicateRole: t("duplicateRole") },
-        { existingRoleIds: grantsState.filter((g) => g.adminId === adminId).map((g) => g.roleId) },
+        { existingRoleIds: grantsState.filter((grant) => grant.adminId === adminId).map((grant) => grant.roleId) },
       ),
     [t, grantsState, adminId],
   );
@@ -110,8 +111,8 @@ export function AdminAccess() {
         { duplicateOverlay: t("duplicateOverlay") },
         {
           existingKeys: overlaysState
-            .filter((o) => o.adminId === adminId)
-            .map((o) => `${o.moduleId}:${o.action}`),
+            .filter((overlay) => overlay.adminId === adminId)
+            .map((overlay) => `${overlay.moduleId}:${overlay.action}`),
         },
       ),
     [t, overlaysState, adminId],
@@ -143,15 +144,15 @@ export function AdminAccess() {
   }, [adminId, grantsState, overlaysState]);
 
   const roleName = useMemo(() => {
-    const map = new Map(roles.map((r) => [r.id, r.name]));
+    const map = new Map(roles.map((role) => [role.id, role.name]));
     return (id: string) => map.get(id) ?? id;
   }, [roles]);
 
   const loading = adminId !== "" && access?.adminId !== adminId;
-  const selectedAdmin = admins.find((a) => a.id === adminId);
+  const selectedAdmin = admins.find((admin) => admin.id === adminId);
 
-  const expiryBadge = (g: RoleGrant) => {
-    const status = roleExpiryStatus(g.expiresAt);
+  const expiryBadge = (grant: RoleGrant) => {
+    const status = roleExpiryStatus(grant.expiresAt);
     if (status === "permanent") {
       return (
         <StatusBadge tone="neutral" equalWidth={false}>
@@ -175,7 +176,7 @@ export function AdminAccess() {
     }
     return (
       <StatusBadge tone="neutral" equalWidth={false}>
-        {t("expiresOn", { date: fmtDateTimeParts(g.expiresAt as number, locale).date })}
+        {t("expiresOn", { date: fmtDateTimeParts(grant.expiresAt as number, locale).date })}
       </StatusBadge>
     );
   };
@@ -226,18 +227,18 @@ export function AdminAccess() {
       <Card>
         <CardContent>
           <Field label={t("selectAdmin")} reserveMessage={false}>
-            <Select value={adminId} onValueChange={(v) => setAdminId(v ?? "")}>
+            <Select value={adminId} onValueChange={(value) => setAdminId(value ?? "")}>
               <SelectTrigger className="w-full sm:w-80">
                 <SelectValue>
-                  {(v) =>
-                    v ? (admins.find((a) => a.id === v)?.name ?? "") : t("selectAdminPlaceholder")
+                  {(value) =>
+                    value ? (admins.find((admin) => admin.id === value)?.name ?? "") : t("selectAdminPlaceholder")
                   }
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {admins.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>
-                    {a.name}
+                {admins.map((admin) => (
+                  <SelectItem key={admin.id} value={admin.id}>
+                    {admin.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -313,23 +314,23 @@ export function AdminAccess() {
                 <p className="py-6 text-center text-sm text-muted-foreground">{t("noGrants")}</p>
               ) : (
                 <ul className="flex flex-col gap-2">
-                  {access.grants.map((g) => (
+                  {access.grants.map((grant) => (
                     <li
-                      key={g.id}
+                      key={grant.id}
                       className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border p-3"
                     >
-                      <span className="font-medium">{roleName(g.roleId)}</span>
-                      {expiryBadge(g)}
+                      <span className="font-medium">{roleName(grant.roleId)}</span>
+                      {expiryBadge(grant)}
                       <span className="ms-auto text-xs text-muted-foreground">
                         {t("grantedByOn", {
-                          name: g.grantedBy,
-                          date: fmtDateTimeParts(g.grantedAt, locale).date,
+                          name: grant.grantedBy,
+                          date: fmtDateTimeParts(grant.grantedAt, locale).date,
                         })}
                       </span>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setRevoking(g)}
+                        onClick={() => setRevoking(grant)}
                         className="hover:bg-danger/10 hover:text-danger"
                       >
                         <Trash2 className="size-4" />
@@ -358,25 +359,25 @@ export function AdminAccess() {
                 <p className="py-6 text-center text-sm text-muted-foreground">{t("noOverlays")}</p>
               ) : (
                 <ul className="flex flex-col gap-2">
-                  {access.overlays.map((o) => (
+                  {access.overlays.map((overlay) => (
                     <li
-                      key={o.id}
+                      key={overlay.id}
                       className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border p-3"
                     >
-                      <span className="font-medium">{t(`mod_${o.moduleId}`)}</span>
+                      <span className="font-medium">{t(`mod_${overlay.moduleId}`)}</span>
                       <StatusBadge tone="neutral" equalWidth={false}>
-                        {o.action === "edit" ? t("actionEdit") : t("actionView")}
+                        {overlay.action === "edit" ? t("actionEdit") : t("actionView")}
                       </StatusBadge>
                       <span className="ms-auto text-xs text-muted-foreground">
                         {t("grantedByOn", {
-                          name: o.grantedBy,
-                          date: fmtDateTimeParts(o.grantedAt, locale).date,
+                          name: overlay.grantedBy,
+                          date: fmtDateTimeParts(overlay.grantedAt, locale).date,
                         })}
                       </span>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setRemovingOverlay(o)}
+                        onClick={() => setRemovingOverlay(overlay)}
                         className="hover:bg-danger/10 hover:text-danger"
                       >
                         <X className="size-4" />
@@ -397,6 +398,7 @@ export function AdminAccess() {
             <DialogTitle>{t("grantRoleTitle")}</DialogTitle>
             <DialogDescription>{t("grantRoleDesc")}</DialogDescription>
           </DialogHeader>
+          <Form onSubmit={grantForm.handleSubmit(onGrant)}>
           <DialogBody className="flex flex-col gap-4">
             <Field
               label={t("role")}
@@ -407,16 +409,16 @@ export function AdminAccess() {
                 control={grantForm.control}
                 name="roleId"
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={(v) => field.onChange(v ?? "")}>
+                  <Select value={field.value} onValueChange={(value) => field.onChange(value ?? "")}>
                     <SelectTrigger className="w-full">
                       <SelectValue>
-                        {(v) => (v ? roleName(v) : t("selectAdminPlaceholder"))}
+                        {(value) => (value ? roleName(value) : t("selectAdminPlaceholder"))}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {roles.map((r) => (
-                        <SelectItem key={r.id} value={r.id}>
-                          {r.name}
+                      {roles.map((role) => (
+                        <SelectItem key={role.id} value={role.id}>
+                          {role.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -447,8 +449,8 @@ export function AdminAccess() {
                       <Calendar
                         mode="single"
                         selected={field.value != null ? new Date(field.value) : undefined}
-                        onSelect={(d) => {
-                          field.onChange(d ? d.getTime() : null);
+                        onSelect={(date) => {
+                          field.onChange(date ? date.getTime() : null);
                           setExpiryOpen(false);
                         }}
                         disabled={{ before: startOfTomorrow() }}
@@ -475,6 +477,7 @@ export function AdminAccess() {
               />
             </Field>
           </DialogBody>
+          </Form>
           <DialogFooter layout="split">
             <Button variant="outline" size="lg" onClick={() => setAddRoleOpen(false)}>
               {tc("cancel")}
@@ -492,15 +495,16 @@ export function AdminAccess() {
             <DialogTitle>{t("addOverlayTitle")}</DialogTitle>
             <DialogDescription>{t("addOverlayDesc")}</DialogDescription>
           </DialogHeader>
+          <Form onSubmit={overlayForm.handleSubmit(onAddOverlay)}>
           <DialogBody className="flex flex-col gap-4">
             <Field label={t("module")} reserveMessage={false}>
               <Controller
                 control={overlayForm.control}
                 name="moduleId"
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={(v) => field.onChange(v as ModuleId)}>
+                  <Select value={field.value} onValueChange={(value) => field.onChange(value as ModuleId)}>
                     <SelectTrigger className="w-full">
-                      <SelectValue>{(v) => (v ? t(`mod_${v}`) : "")}</SelectValue>
+                      <SelectValue>{(value) => (value ? t(`mod_${value}`) : "")}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {MODULE_IDS.map((id) => (
@@ -524,11 +528,11 @@ export function AdminAccess() {
                 render={({ field }) => (
                   <Select
                     value={field.value}
-                    onValueChange={(v) => field.onChange(v as PermissionAction)}
+                    onValueChange={(value) => field.onChange(value as PermissionAction)}
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue>
-                        {(v) => (v === "edit" ? t("actionEdit") : t("actionView"))}
+                        {(value) => (value === "edit" ? t("actionEdit") : t("actionView"))}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
@@ -540,6 +544,7 @@ export function AdminAccess() {
               />
             </Field>
           </DialogBody>
+          </Form>
           <DialogFooter layout="split">
             <Button variant="outline" size="lg" onClick={() => setAddOverlayOpen(false)}>
               {tc("cancel")}
@@ -551,7 +556,7 @@ export function AdminAccess() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={revoking != null} onOpenChange={(o) => !o && setRevoking(null)}>
+      <AlertDialog open={revoking != null} onOpenChange={(open) => !open && setRevoking(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("revokeTitle")}</AlertDialogTitle>
@@ -575,7 +580,7 @@ export function AdminAccess() {
 
       <AlertDialog
         open={removingOverlay != null}
-        onOpenChange={(o) => !o && setRemovingOverlay(null)}
+        onOpenChange={(open) => !open && setRemovingOverlay(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>

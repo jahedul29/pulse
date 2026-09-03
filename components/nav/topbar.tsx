@@ -32,21 +32,21 @@ const ADMIN_TITLE_KEYS: Record<string, string> = {
 export function Topbar() {
   const t = useTranslations();
   const pathname = usePathname();
-  const setMobileOpen = useUiStore((s) => s.setMobileOpen);
+  const setMobileOpen = useUiStore((state) => state.setMobileOpen);
 
   const segments = pathname.split("/").filter(Boolean);
-  const section = SECTIONS.find((s) => s.slug === segments[0]) ?? SECTIONS[2];
+  const section = SECTIONS.find((sectionItem) => sectionItem.slug === segments[0]) ?? SECTIONS[2];
   const sectionLabel = t(`nav.sections.${section.slug}`);
   const detailId = segments[1];
 
-  const specialistName = useSpecialistStore((s) =>
+  const specialistName = useSpecialistStore((state) =>
     section.slug === "personnel" && detailId
-      ? s.specialists.find((x) => x.id === detailId)?.name
+      ? state.specialists.find((x) => x.id === detailId)?.name
       : undefined,
   );
-  const clientName = useClientStore((s) =>
+  const clientName = useClientStore((state) =>
     section.slug === "clients" && detailId
-      ? s.clients.find((c) => c.id === detailId)?.fullName
+      ? state.clients.find((client) => client.id === detailId)?.fullName
       : undefined,
   );
   const detailName = detailId
@@ -110,19 +110,19 @@ export function Topbar() {
           aria-label="Breadcrumb"
           className="mt-0.5 hidden items-center gap-1 text-xs text-muted-foreground sm:flex"
         >
-          {desktopTrail.map((c, i) => (
-            <span key={`${c.label}-${i}`} className="flex min-w-0 items-center gap-1">
+          {desktopTrail.map((crumb, i) => (
+            <span key={`${crumb.label}-${i}`} className="flex min-w-0 items-center gap-1">
               {i > 0 && (
                 <ChevronRight className="size-3 shrink-0 text-muted-foreground/60 rtl:-scale-x-100" />
               )}
-              {c.ellipsis ? (
-                <span className="text-muted-foreground/60">{c.label}</span>
-              ) : c.href ? (
-                <Link href={c.href} className="truncate transition-colors hover:text-primary">
-                  {c.label}
+              {crumb.ellipsis ? (
+                <span className="text-muted-foreground/60">{crumb.label}</span>
+              ) : crumb.href ? (
+                <Link href={crumb.href} className="truncate transition-colors hover:text-primary">
+                  {crumb.label}
                 </Link>
               ) : (
-                <span className="truncate font-medium text-foreground">{c.label}</span>
+                <span className="truncate font-medium text-foreground">{crumb.label}</span>
               )}
             </span>
           ))}

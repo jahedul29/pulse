@@ -6,13 +6,13 @@ import { EdrMapping } from "./edr-mapping";
 jest.mock("next-intl", () => {
   const messages = mockMessages as Record<string, Record<string, unknown>>;
   const resolve = (ns: string, key: string): unknown =>
-    key.split(".").reduce<unknown>((o, k) => (o as Record<string, unknown>)?.[k], messages[ns]);
+    key.split(".").reduce<unknown>((node, segment) => (node as Record<string, unknown>)?.[segment], messages[ns]);
   return {
     useLocale: () => "en",
     useTranslations: (ns: string) => (key: string, vars?: Record<string, unknown>) => {
       const value = resolve(ns, key);
       let str = typeof value === "string" ? value : key;
-      if (vars) for (const [k, v] of Object.entries(vars)) str = str.replace(`{${k}}`, String(v));
+      if (vars) for (const [varName, varValue] of Object.entries(vars)) str = str.replace(`{${varName}}`, String(varValue));
       return str;
     },
   };

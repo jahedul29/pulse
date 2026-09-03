@@ -27,7 +27,7 @@ export function seedDays(daysOff: number[]): DayState[] {
 function make(id: string, name: string, role: SpecialistType, email: string): Specialist {
   const initials = name
     .split(" ")
-    .map((w) => w[0])
+    .map((word) => word[0])
     .slice(0, 2)
     .join("")
     .toUpperCase();
@@ -63,10 +63,14 @@ export const useSpecialistStore = create<SpecialistStore>((set) => ({
   specialists: SEED,
   saveAvailability: (id, patch) =>
     set((state) => ({
-      specialists: state.specialists.map((s) => (s.id === id ? { ...s, ...patch } : s)),
+      specialists: state.specialists.map((specialist) =>
+        specialist.id === id ? { ...specialist, ...patch } : specialist,
+      ),
     })),
   saveAnnual: (id, annualOff) =>
     set((state) => ({
-      specialists: state.specialists.map((s) => (s.id === id ? { ...s, annualOff } : s)),
+      specialists: state.specialists.map((specialist) =>
+        specialist.id === id ? { ...specialist, annualOff } : specialist,
+      ),
     })),
 }));

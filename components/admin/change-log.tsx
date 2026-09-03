@@ -69,9 +69,9 @@ export function ChangeLog() {
   useEffect(() => {
     let active = true;
     fetchChangeLog({ actionId })
-      .then((r) => {
+      .then((fetchedRows) => {
         if (!active) return;
-        setRows(r);
+        setRows(fetchedRows);
         setLoading(false);
       })
       .catch(() => {
@@ -93,7 +93,7 @@ export function ChangeLog() {
     () => [
       {
         id: "timestamp",
-        accessorFn: (r) => r.createdAt,
+        accessorFn: (entry) => entry.createdAt,
         size: 168,
         header: t("colTimestamp"),
         meta: { filter: "dateRange", filterLabel: t("colTimestamp") },
@@ -108,7 +108,7 @@ export function ChangeLog() {
       },
       {
         id: "table",
-        accessorFn: (r) => r.table,
+        accessorFn: (entry) => entry.table,
         size: 170,
         header: t("colTable"),
         meta: { filter: "select", filterOptions: tableOptions, filterLabel: t("colTable") },
@@ -116,19 +116,19 @@ export function ChangeLog() {
       },
       {
         id: "record",
-        accessorFn: (r) => r.recordId,
+        accessorFn: (entry) => entry.recordId,
         size: 150,
         header: t("colRecord"),
         cell: ({ row }) => <span className="text-xs">{row.original.recordId}</span>,
       },
       {
         id: "operation",
-        accessorFn: (r) => r.operation,
+        accessorFn: (entry) => entry.operation,
         size: 130,
         header: t("colOperation"),
         meta: {
           filter: "select",
-          filterOptions: OPS.map((o) => ({ value: o, label: t(`op_${o}`) })),
+          filterOptions: OPS.map((operation) => ({ value: operation, label: t(`op_${operation}`) })),
           filterLabel: t("colOperation"),
         },
         cell: ({ row }) => (
@@ -139,7 +139,7 @@ export function ChangeLog() {
       },
       {
         id: "columns",
-        accessorFn: (r) => r.changes.length,
+        accessorFn: (entry) => entry.changes.length,
         size: 130,
         header: t("colColumns"),
         cell: ({ row }) => (
@@ -150,14 +150,14 @@ export function ChangeLog() {
       },
       {
         id: "who",
-        accessorFn: (r) => r.actorName,
+        accessorFn: (entry) => entry.actorName,
         size: 170,
         header: t("colWho"),
         cell: ({ row }) => <ProfileCell name={row.original.actorName} />,
       },
       {
         id: "action",
-        accessorFn: (r) => actionName(r.actionId) ?? "",
+        accessorFn: (entry) => actionName(entry.actionId) ?? "",
         size: 200,
         header: t("colAction"),
         cell: ({ row }) => {
@@ -211,11 +211,11 @@ export function ChangeLog() {
               searchPlaceholder={t("search")}
               emptyLabel={t("empty")}
               itemsLabel={t("items")}
-              onRowClick={(r) => openAt(rows.indexOf(r))}
-              rowAriaLabel={(r) => `${r.table} ${r.recordId}`}
-              rowClassName={(r) => (active && r.id === active.id ? "bg-accent" : undefined)}
-              getSearchText={(r) =>
-                `${r.table} ${r.recordId} ${r.actorName} ${r.changes.map((c) => c.column).join(" ")}`
+              onRowClick={(entry) => openAt(rows.indexOf(entry))}
+              rowAriaLabel={(entry) => `${entry.table} ${entry.recordId}`}
+              rowClassName={(entry) => (active && entry.id === active.id ? "bg-accent" : undefined)}
+              getSearchText={(entry) =>
+                `${entry.table} ${entry.recordId} ${entry.actorName} ${entry.changes.map((change) => change.column).join(" ")}`
               }
               filterLabels={{
                 filter: t("filter"),
@@ -232,7 +232,7 @@ export function ChangeLog() {
         </CardContent>
       </Card>
 
-      <Sheet open={selectedIndex != null} onOpenChange={(o) => !o && setSelectedIndex(null)}>
+      <Sheet open={selectedIndex != null} onOpenChange={(open) => !open && setSelectedIndex(null)}>
         {selected && (
           <SheetContent onSwipeNext={() => page(1)} onSwipePrev={() => page(-1)}>
             <SheetHeader>

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Field, FieldError } from "@/components/ui/field";
+import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { IconInput } from "@/components/ui/icon-input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -46,9 +47,9 @@ export function InviteAdminDialog({
   const t = useTranslations("userManagement");
   const tc = useTranslations("common");
 
-  const invite = useUserStore((s) => s.invite);
-  const users = useUserStore((s) => s.users);
-  const actorName = useAuthStore((s) => s.session?.name ?? "You");
+  const invite = useUserStore((state) => state.invite);
+  const users = useUserStore((state) => state.users);
+  const actorName = useAuthStore((state) => state.session?.name ?? "You");
 
   const [staff, setStaff] = useState<StaffRecord[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -70,7 +71,7 @@ export function InviteAdminDialog({
           emailExists: t("emailExists"),
           roleRequired: t("roleRequired"),
         },
-        { existingEmails: users.filter((u) => u.status !== "revoked").map((u) => u.email) },
+        { existingEmails: users.filter((user) => user.status !== "revoked").map((user) => user.email) },
       ),
     [t, users],
   );
@@ -90,11 +91,11 @@ export function InviteAdminDialog({
     let alive = true;
     reset({ staffId: "", email: "", roleIds: [] });
     Promise.all([fetchUnlinkedStaff(), fetchRoles(), fetchCurrentPolicy()])
-      .then(([s, r, p]) => {
+      .then(([staffList, roleList, policy]) => {
         if (!alive) return;
-        setStaff(s);
-        setRoles(r);
-        setExpiryDays(p?.inviteExpiryDays ?? null);
+        setStaff(staffList);
+        setRoles(roleList);
+        setExpiryDays(policy?.inviteExpiryDays ?? null);
         setStaffQuery("");
         setEmailTaken(false);
         setLoaded(true);
@@ -118,18 +119,18 @@ export function InviteAdminDialog({
     return () => clearTimeout(timer);
   }, [email]);
 
-  const selectedStaff = staff.find((s) => s.id === staffField.field.value);
-  const roleOptions = useMemo(() => roles.map((r) => ({ value: r.id, label: r.name })), [roles]);
+  const selectedStaff = staff.find((staffMember) => staffMember.id === staffField.field.value);
+  const roleOptions = useMemo(() => roles.map((role) => ({ value: role.id, label: role.name })), [roles]);
 
   const shownStaff = staff.filter(
-    (s) =>
-      s.name.toLowerCase().includes(staffQuery.trim().toLowerCase()) ||
-      s.email.toLowerCase().includes(staffQuery.trim().toLowerCase()),
+    (staffMember) =>
+      staffMember.name.toLowerCase().includes(staffQuery.trim().toLowerCase()) ||
+      staffMember.email.toLowerCase().includes(staffQuery.trim().toLowerCase()),
   );
 
-  const pickStaff = (s: StaffRecord) => {
-    staffField.field.onChange(s.id);
-    setValue("email", s.email, { shouldValidate: false });
+  const pickStaff = (staffMember: StaffRecord) => {
+    staffField.field.onChange(staffMember.id);
+    setValue("email", staffMember.email, { shouldValidate: false });
     setStaffOpen(false);
   };
 
@@ -154,11 +155,12 @@ export function InviteAdminDialog({
           <DialogTitle>{t("inviteTitle")}</DialogTitle>
           <DialogDescription>{t("inviteDesc")}</DialogDescription>
         </DialogHeader>
+        <Form onSubmit={handleSubmit(onSubmit)}>
         <DialogBody className="flex flex-col gap-4">
           {loadError ? (
             <div className="flex flex-col items-center gap-3 py-10 text-center">
               <p className="text-sm text-muted-foreground">{t("loadError")}</p>
-              <Button variant="outline" size="sm" onClick={() => setAttempt((a) => a + 1)}>
+              <Button variant="outline" size="sm" onClick={() => setAttempt((previous) => previous + 1)}>
                 {tc("retry")}
               </Button>
             </div>
@@ -193,26 +195,26 @@ export function InviteAdminDialog({
                     autoFocus={autoFocusSearch()}
                     placeholder={t("staffSearchPlaceholder")}
                     value={staffQuery}
-                    onChange={(e) => setStaffQuery(e.target.value)}
+                    onChange={(event) => setStaffQuery(event.target.value)}
                     className="ps-8"
                   />
                 </div>
                 <div className="mt-1.5 max-h-56 overflow-y-auto">
                   <div className="flex flex-col gap-0.5">
-                    {shownStaff.map((s) => (
+                    {shownStaff.map((staffMember) => (
                       <button
-                        key={s.id}
+                        key={staffMember.id}
                         type="button"
-                        onClick={() => pickStaff(s)}
+                        onClick={() => pickStaff(staffMember)}
                         className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-start text-sm transition-colors hover:bg-muted"
                       >
                         <span className="flex min-w-0 flex-col">
-                          <span className="truncate font-medium">{s.name}</span>
+                          <span className="truncate font-medium">{staffMember.name}</span>
                           <span className="truncate text-xs text-muted-foreground">
-                            {s.title} · {s.email}
+                            {staffMember.title} · {staffMember.email}
                           </span>
                         </span>
-                        {s.id === staffField.field.value && (
+                        {staffMember.id === staffField.field.value && (
                           <Check className="size-4 shrink-0 text-primary" />
                         )}
                       </button>
@@ -263,6 +265,7 @@ export function InviteAdminDialog({
             </>
           )}
         </DialogBody>
+        </Form>
         <DialogFooter layout="split">
           <Button variant="outline" size="lg" onClick={() => onOpenChange(false)}>
             {tc("cancel")}

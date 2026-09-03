@@ -9,7 +9,9 @@ jest.mock("next-intl", () => {
     useTranslations: (ns: string) => (key: string, vars?: Record<string, unknown>) => {
       const value = messages[ns]?.[key];
       let str = typeof value === "string" ? value : key;
-      if (vars) for (const [k, v] of Object.entries(vars)) str = str.replace(`{${k}}`, String(v));
+      if (vars)
+        for (const [key, value] of Object.entries(vars))
+          str = str.replace(`{${key}}`, String(value));
       return str;
     },
   };

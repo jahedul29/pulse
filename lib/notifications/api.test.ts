@@ -19,13 +19,13 @@ describe("notification api seams", () => {
     expect(all.length).toBeGreaterThan(0);
 
     const clientsOnly = await fetchNotificationLog({ roles: ["client"] });
-    expect(clientsOnly.every((n) => n.recipientRole === "client")).toBe(true);
+    expect(clientsOnly.every((entry) => entry.recipientRole === "client")).toBe(true);
 
     const failed = await fetchNotificationLog({ statuses: ["failed"] });
-    expect(failed.every((n) => n.status === "failed")).toBe(true);
+    expect(failed.every((entry) => entry.status === "failed")).toBe(true);
 
     const auth = await fetchNotificationLog({ categories: ["auth"] });
-    expect(auth.every((n) => n.category === "auth")).toBe(true);
+    expect(auth.every((entry) => entry.category === "auth")).toBe(true);
   });
 
   it("fetchNotificationLog sorts newest first", async () => {

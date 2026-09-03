@@ -21,7 +21,7 @@ export function ClientTable() {
   const tc = useTranslations("common");
   const locale = useLocale();
   const router = useRouter();
-  const clients = useClientStore((s) => s.clients);
+  const clients = useClientStore((state) => state.clients);
   const [addOpen, setAddOpen] = useState(false);
 
   const columns = useMemo<ColumnDef<Client, unknown>[]>(
@@ -54,19 +54,19 @@ export function ClientTable() {
         meta: {
           filter: "select",
           filterLabel: t("colStatus"),
-          filterOptions: ["active", "suspended", "deleted"].map((s) => ({
-            value: s,
-            label: t(`status.${s}`),
+          filterOptions: ["active", "suspended", "deleted"].map((status) => ({
+            value: status,
+            label: t(`status.${status}`),
           })),
         },
         cell: ({ row }) => {
-          const c = row.original;
+          const client = row.original;
           return (
             <div className="flex items-center gap-1.5">
-              <StatusBadge tone={accountTone(c.status)} equalWidth={false} className="min-w-[6.5rem]">
-                {t(`status.${c.status}`)}
+              <StatusBadge tone={accountTone(client.status)} equalWidth={false} className="min-w-[6.5rem]">
+                {t(`status.${client.status}`)}
               </StatusBadge>
-              {c.activePackage && (
+              {client.activePackage && (
                 <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
                   {t("pkg")}
                 </span>
@@ -77,7 +77,7 @@ export function ClientTable() {
       },
       {
         id: "profiles",
-        accessorFn: (c) => c.profiles.length,
+        accessorFn: (client) => client.profiles.length,
         header: t("colProfiles"),
         filterFn: "inNumberRange",
         cell: ({ row }) => <span className="tabular">{row.original.profiles.length}</span>,
@@ -85,7 +85,7 @@ export function ClientTable() {
       },
       {
         id: "wallet",
-        accessorFn: (c) => c.wallet.balance,
+        accessorFn: (client) => client.wallet.balance,
         header: t("colWallet"),
         filterFn: "inNumberRange",
         cell: ({ row }) => <Money value={row.original.wallet.balance} className="tabular" />,
@@ -120,12 +120,12 @@ export function ClientTable() {
         searchPlaceholder={t("searchPlaceholder")}
         emptyLabel={t("tableEmpty")}
         itemsLabel={t("itemsLabel")}
-        getSearchText={(c) => `${c.fullName} ${c.email} ${c.refCode} ${c.region}`}
+        getSearchText={(client) => `${client.fullName} ${client.email} ${client.refCode} ${client.region}`}
         filterLabels={{ filter: tc("filter"), clear: tc("clear"), clearFilters: tc("clearFilters"), min: tc("min"), max: tc("max") }}
         enableFreeze
         maxFreeze={3}
-        onRowClick={(c) => router.push(`/clients/${c.id}`)}
-        rowAriaLabel={(c) => t("openAria", { name: c.fullName })}
+        onRowClick={(client) => router.push(`/clients/${client.id}`)}
+        rowAriaLabel={(client) => t("openAria", { name: client.fullName })}
         toolbar={
           <Button size="sm" onClick={() => setAddOpen(true)}>
             <Plus />

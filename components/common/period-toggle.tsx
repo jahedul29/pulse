@@ -22,20 +22,20 @@ export function PeriodToggle() {
 
   return (
     <div className="inline-flex items-center rounded-lg border bg-card p-0.5">
-      {PERIODS.map((p) => (
+      {PERIODS.map((period) => (
         <button
-          key={p}
+          key={period}
           type="button"
-          onClick={() => select(p)}
-          aria-pressed={active === p}
+          onClick={() => select(period)}
+          aria-pressed={active === period}
           className={cn(
             "cursor-pointer rounded-md px-2.5 py-1 font-mono text-xs font-medium transition-colors",
-            active === p
+            active === period
               ? "bg-primary text-primary-foreground"
               : "text-muted-foreground hover:text-foreground",
           )}
         >
-          {p}
+          {period}
         </button>
       ))}
     </div>

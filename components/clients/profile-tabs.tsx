@@ -41,53 +41,53 @@ export function ProfileTabs({ profiles }: { profiles: Profile[] }) {
   return (
     <Tabs defaultValue={profiles[0].id} className="gap-4">
       <TabsList className="flex-wrap">
-        {profiles.map((p) => (
-          <TabsTrigger key={p.id} value={p.id}>
-            {p.name}
+        {profiles.map((profile) => (
+          <TabsTrigger key={profile.id} value={profile.id}>
+            {profile.name}
           </TabsTrigger>
         ))}
       </TabsList>
 
-      {profiles.map((p) => (
-        <TabsContent key={p.id} value={p.id} className="flex flex-col gap-4">
+      {profiles.map((profile) => (
+        <TabsContent key={profile.id} value={profile.id} className="flex flex-col gap-4">
           <div className="grid gap-4 lg:grid-cols-[1fr_1.1fr]">
             <Card>
               <CardHeader>
-                <CardTitle>{p.name}</CardTitle>
+                <CardTitle>{profile.name}</CardTitle>
                 <p className="text-xs text-muted-foreground">
                   {t("profile.meta", {
-                    gender: t(`form.gender${p.gender}`),
-                    age: p.age,
-                    date: fmtDate(p.createdAt, locale),
+                    gender: t(`form.gender${profile.gender}`),
+                    age: profile.age,
+                    date: fmtDate(profile.createdAt, locale),
                   })}
                 </p>
               </CardHeader>
               <CardContent className="flex flex-col gap-2.5">
                 <Meta icon={Globe}>
-                  {p.primaryLanguage}
-                  {p.secondaryLanguage ? ` · ${p.secondaryLanguage}` : ""}
+                  {profile.primaryLanguage}
+                  {profile.secondaryLanguage ? ` · ${profile.secondaryLanguage}` : ""}
                 </Meta>
                 <Meta icon={MapPin}>
-                  {p.location.address}, {p.location.region}
+                  {profile.location.address}, {profile.location.region}
                 </Meta>
                 <Meta icon={Video}>
-                  {p.onlineAvailable
+                  {profile.onlineAvailable
                     ? t("profile.onlineAvailable")
                     : t("profile.onlineUnavailable")}
                 </Meta>
-                <Meta icon={CalendarDays}>{t("profile.dobLabel", { date: fmtDate(p.dob, locale) })}</Meta>
+                <Meta icon={CalendarDays}>{t("profile.dobLabel", { date: fmtDate(profile.dob, locale) })}</Meta>
                 <div className="mt-1 flex flex-col gap-2">
                   <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                     {t("profile.assignedSpecialists")}
                   </span>
                   <div className="flex flex-col gap-1.5">
-                    {p.specialists.map((s) => (
-                      <div key={s.type} className="flex items-center justify-between gap-2 text-sm">
-                        <span className="text-muted-foreground">{s.type}</span>
+                    {profile.specialists.map((specialist) => (
+                      <div key={specialist.type} className="flex items-center justify-between gap-2 text-sm">
+                        <span className="text-muted-foreground">{specialist.type}</span>
                         <span className="flex items-center gap-2">
-                          <span>{s.name}</span>
-                          <StatusBadge tone={s.active ? "success" : "neutral"}>
-                            {s.active ? t("profile.active") : t("profile.inactive")}
+                          <span>{specialist.name}</span>
+                          <StatusBadge tone={specialist.active ? "success" : "neutral"}>
+                            {specialist.active ? t("profile.active") : t("profile.inactive")}
                           </StatusBadge>
                         </span>
                       </div>
@@ -100,19 +100,19 @@ export function ProfileTabs({ profiles }: { profiles: Profile[] }) {
             <Card className="overflow-hidden">
               <CardHeader>
                 <CardTitle>{t("profile.location")}</CardTitle>
-                <p className="text-xs text-muted-foreground">{p.location.region}</p>
+                <p className="text-xs text-muted-foreground">{profile.location.region}</p>
               </CardHeader>
               <CardContent>
                 <div className="h-[280px]">
                   <Map
-                    center={[p.location.lat, p.location.lng]}
+                    center={[profile.location.lat, profile.location.lng]}
                     zoom={13}
                     markers={[
                       {
-                        lat: p.location.lat,
-                        lng: p.location.lng,
-                        label: p.name,
-                        sub: p.location.region,
+                        lat: profile.location.lat,
+                        lng: profile.location.lng,
+                        label: profile.name,
+                        sub: profile.location.region,
                         radius: 11,
                       },
                     ]}
@@ -127,8 +127,8 @@ export function ProfileTabs({ profiles }: { profiles: Profile[] }) {
               {t("profile.serviceBalances")}
             </h3>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {p.balances.map((b) => (
-                <ServiceBalanceCard key={b.key} balance={b} />
+              {profile.balances.map((balance) => (
+                <ServiceBalanceCard key={balance.key} balance={balance} />
               ))}
             </div>
           </div>
@@ -149,12 +149,12 @@ export function ProfileTabs({ profiles }: { profiles: Profile[] }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {p.usage.map((u) => (
-                      <tr key={u.scope} className="border-t">
-                        <td className="py-2">{u.scope}</td>
-                        <td className="py-2 text-end font-mono tabular">{u.completed}</td>
-                        <td className="py-2 text-end font-mono tabular">{u.scheduled}</td>
-                        <td className="py-2 text-end font-mono tabular">{u.canceled}</td>
+                    {profile.usage.map((usageRow) => (
+                      <tr key={usageRow.scope} className="border-t">
+                        <td className="py-2">{usageRow.scope}</td>
+                        <td className="py-2 text-end font-mono tabular">{usageRow.completed}</td>
+                        <td className="py-2 text-end font-mono tabular">{usageRow.scheduled}</td>
+                        <td className="py-2 text-end font-mono tabular">{usageRow.canceled}</td>
                       </tr>
                     ))}
                   </tbody>

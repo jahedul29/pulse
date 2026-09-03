@@ -9,8 +9,8 @@ import { NavItems } from "./nav-items";
 
 export function Sidebar() {
   const t = useTranslations();
-  const collapsed = useUiStore((s) => s.collapsed);
-  const toggleCollapsed = useUiStore((s) => s.toggleCollapsed);
+  const collapsed = useUiStore((state) => state.collapsed);
+  const toggleCollapsed = useUiStore((state) => state.toggleCollapsed);
 
   return (
     <aside
@@ -25,9 +25,9 @@ export function Sidebar() {
           <Logo className="h-7 w-auto" />
         </span>
         {!collapsed && (
-          <div className="leading-tight">
-            <div className="font-heading text-base font-semibold">{t("common.appName")}</div>
-            <div className="text-xs text-muted-foreground">{t("common.appTagline")}</div>
+          <div className="flex h-9 min-w-0 flex-col justify-center">
+            <div className="truncate font-heading text-base font-semibold leading-5">{t("common.appName")}</div>
+            <div className="truncate text-xs leading-4 text-muted-foreground">{t("common.appTagline")}</div>
           </div>
         )}
       </div>

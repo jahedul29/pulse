@@ -47,8 +47,8 @@ function IconAction({
             variant="ghost"
             size="icon"
             aria-label={label}
-            onClick={(e) => {
-              e.stopPropagation();
+            onClick={(event) => {
+              event.stopPropagation();
               onClick();
             }}
             className={cn(
@@ -68,8 +68,8 @@ function IconAction({
 export function ClientRowActions({ client }: { client: Client }) {
   const t = useTranslations();
   const router = useRouter();
-  const updateClient = useClientStore((s) => s.updateClient);
-  const deleteClient = useClientStore((s) => s.deleteClient);
+  const updateClient = useClientStore((state) => state.updateClient);
+  const deleteClient = useClientStore((state) => state.deleteClient);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const suspended = client.status === "suspended";
@@ -91,7 +91,7 @@ export function ClientRowActions({ client }: { client: Client }) {
   };
 
   return (
-    <div className="flex items-center justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
+    <div className="flex items-center justify-end gap-0.5" onClick={(event) => event.stopPropagation()}>
       <TooltipProvider>
         <IconAction
           label={t("common.view")}

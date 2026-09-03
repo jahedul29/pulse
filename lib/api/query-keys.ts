@@ -1,0 +1,15 @@
+export const queryKeys = {
+  adminUsers: (query?: unknown) => ["admin-users", query ?? {}] as const,
+  adminUser: (id: string) => ["admin-user", id] as const,
+  unlinkedStaff: () => ["unlinked-staff"] as const,
+  roles: () => ["roles"] as const,
+  roleDetail: (id: number | string) => ["role", String(id)] as const,
+  permissionModules: () => ["permission-modules"] as const,
+  permissions: () => ["permissions"] as const,
+  adminAccess: (adminId: string) => ["admin-access", adminId] as const,
+  effectivePermissions: (adminId: string) => ["effective-permissions", adminId] as const,
+  sessions: () => ["sessions"] as const,
+  loginAudit: (query?: unknown) => ["login-audit", query ?? {}] as const,
+  policyVersions: () => ["policy-versions"] as const,
+  currentPolicy: () => ["current-policy"] as const,
+} as const;

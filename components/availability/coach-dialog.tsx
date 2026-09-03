@@ -59,10 +59,10 @@ export function CoachDialog({
     if (!el || !stageRef.current) return;
     const x = el.offsetLeft;
     const y = el.offsetTop;
-    const w = el.offsetWidth;
-    const h = el.offsetHeight;
-    setHole({ x: x - 3, y: y - 3, w: w + 6, h: h + 6 });
-    center.current = { x: x + w / 2, y: y + h / 2, s: Math.max(w, h) + 8 };
+    const width = el.offsetWidth;
+    const height = el.offsetHeight;
+    setHole({ x: x - 3, y: y - 3, w: width + 6, h: height + 6 });
+    center.current = { x: x + width / 2, y: y + height / 2, s: Math.max(width, height) + 8 };
   };
 
   const spotRange = (k1: string, k2: string) => {
@@ -70,11 +70,11 @@ export function CoachDialog({
     const e2 = cellRefs.current[k2];
     if (!e1 || !e2 || !stageRef.current) return;
     const x = e1.offsetLeft;
-    const w = e1.offsetWidth;
+    const width = e1.offsetWidth;
     const y1 = e1.offsetTop;
     const y2 = e2.offsetTop + e2.offsetHeight;
-    setHole({ x: x - 3, y: y1 - 3, w: w + 6, h: y2 - y1 + 6 });
-    center.current = { x: x + w / 2, y: (y1 + y2) / 2, s: Math.max(w, y2 - y1) + 8 };
+    setHole({ x: x - 3, y: y1 - 3, w: width + 6, h: y2 - y1 + 6 });
+    center.current = { x: x + width / 2, y: (y1 + y2) / 2, s: Math.max(width, y2 - y1) + 8 };
   };
 
   const doPulse = () => {
@@ -94,10 +94,10 @@ export function CoachDialog({
   };
 
   const nextStatus = useCallback(
-    (s: Status): Status =>
-      s === "available"
+    (status: Status): Status =>
+      status === "available"
         ? "unavailable"
-        : s === "unavailable"
+        : status === "unavailable"
           ? supportsOnline
             ? "online"
             : "available"
@@ -128,17 +128,17 @@ export function CoachDialog({
 
     let t = 300;
 
-    OFF_DAYS.forEach((d) => {
-      after(t, () => spotEl(dayRefs.current[d]));
+    OFF_DAYS.forEach((dayIndex) => {
+      after(t, () => spotEl(dayRefs.current[dayIndex]));
       after(t + 120, doPulse);
-      after(t + 260, () => setOffDays((prev) => [...prev, d]));
+      after(t + 260, () => setOffDays((prev) => [...prev, dayIndex]));
       t += gap;
     });
 
     t += 160;
 
     const clicksA = supportsOnline ? 3 : 2;
-    for (let k = 0; k < clicksA; k++) {
+    for (let clickIndex = 0; clickIndex < clicksA; clickIndex++) {
       after(t, () => spotEl(cellRefs.current[SAMPLE_A]));
       after(t + 120, doPulse);
       after(t + 240, () => cycleCell(SAMPLE_A));
@@ -231,9 +231,9 @@ export function CoachDialog({
             )}
           >
             <div />
-            {DAYS.map((d, i) => (
+            {DAYS.map((dayLabel, i) => (
               <button
-                key={d}
+                key={dayLabel}
                 ref={(el) => {
                   dayRefs.current[i] = el;
                 }}
@@ -250,21 +250,21 @@ export function CoachDialog({
           </div>
 
           <div className={cn("mt-1 grid", GRID_COLS)}>
-            {Array.from({ length: VISIBLE_SLOTS }, (_, r) => (
-              <Fragment key={r}>
+            {Array.from({ length: VISIBLE_SLOTS }, (_, row) => (
+              <Fragment key={row}>
                 <div
                   className="tabular flex items-center justify-end whitespace-nowrap pe-1.5 text-[8px] leading-none text-primary"
                   style={{ height: "var(--cslot)" }}
                 >
-                  {slotToTime(r)} - {slotToTime(r + 1)}
+                  {slotToTime(row)} - {slotToTime(row + 1)}
                 </div>
-                {DAYS.map((_, c) => {
-                  const key = `${r}-${c}`;
-                  const status: Status = offDays.includes(c)
+                {DAYS.map((_, column) => {
+                  const key = `${row}-${column}`;
+                  const status: Status = offDays.includes(column)
                     ? "unavailable"
                     : (cells[key] ?? "available");
                   return (
-                    <div key={c} className="px-0.5 py-px" style={{ height: "var(--cslot)" }}>
+                    <div key={column} className="px-0.5 py-px" style={{ height: "var(--cslot)" }}>
                       <div
                         ref={(el) => {
                           cellRefs.current[key] = el;

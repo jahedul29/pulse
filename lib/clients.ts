@@ -16,7 +16,7 @@ export function initialsOf(name: string): string {
     .split(" ")
     .filter(Boolean)
     .slice(0, 2)
-    .map((w) => w[0])
+    .map((word) => word[0])
     .join("")
     .toUpperCase();
 }
@@ -26,8 +26,8 @@ export function computeAge(dob: string): number {
   if (Number.isNaN(birth.getTime())) return 0;
   const now = new Date();
   let age = now.getFullYear() - birth.getFullYear();
-  const m = now.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age -= 1;
+  const monthDiff = now.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) age -= 1;
   return Math.max(0, age);
 }
 
@@ -38,9 +38,9 @@ function digits(len: number): string {
 }
 
 function today(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate(),
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
+    now.getDate(),
   ).padStart(2, "0")}`;
 }
 

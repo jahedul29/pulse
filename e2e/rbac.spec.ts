@@ -1,4 +1,9 @@
 import { test, expect } from "@playwright/test";
+import { mockAdminIdentity } from "./support/mock-admin-identity";
+
+test.beforeEach(async ({ page }) => {
+  await mockAdminIdentity(page);
+});
 
 test("creates a custom role, sets a permission, and saves", async ({ page }) => {
   await page.goto("/admin/roles");
@@ -8,7 +13,7 @@ test("creates a custom role, sets a permission, and saves", async ({ page }) => 
   await page.getByLabel("Role name").fill("QA Reviewer");
   await page.getByRole("button", { name: "Create role" }).click();
 
-  await expect(page).toHaveURL(/\/admin\/roles\/role-/);
+  await expect(page).toHaveURL(/\/admin\/roles\/\d+/);
 
   await page.getByRole("checkbox").first().click();
   await page.getByRole("button", { name: "Save changes" }).click();

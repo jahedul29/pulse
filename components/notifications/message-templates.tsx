@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldError } from "@/components/ui/field";
+import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Label } from "@/components/ui/label";
@@ -68,18 +69,18 @@ function VarInserter({ label, onInsert }: { label: string; onInsert: (token: str
       </PopoverTrigger>
       <PopoverContent align="end" className="w-60 p-1">
         <div className="flex flex-col gap-0.5">
-          {MERGE_VARIABLES.map((v) => (
+          {MERGE_VARIABLES.map((variable) => (
             <button
-              key={v.token}
+              key={variable.token}
               type="button"
               onClick={() => {
-                onInsert(v.token);
+                onInsert(variable.token);
                 setOpen(false);
               }}
               className="flex flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-start transition-colors hover:bg-muted"
             >
-              <span className="font-mono text-xs">{`{${v.token}}`}</span>
-              <span className="text-xs text-muted-foreground">{t(`variables.${v.token}`)}</span>
+              <span className="font-mono text-xs">{`{${variable.token}}`}</span>
+              <span className="text-xs text-muted-foreground">{t(`variables.${variable.token}`)}</span>
             </button>
           ))}
         </div>
@@ -93,9 +94,9 @@ export function MessageTemplates() {
   const tc = useTranslations("common");
   const locale = useLocale();
 
-  const templatesState = useNotificationStore((s) => s.templates);
-  const upsertTemplate = useNotificationStore((s) => s.upsertTemplate);
-  const deleteTemplate = useNotificationStore((s) => s.deleteTemplate);
+  const templatesState = useNotificationStore((state) => state.templates);
+  const upsertTemplate = useNotificationStore((state) => state.upsertTemplate);
+  const deleteTemplate = useNotificationStore((state) => state.deleteTemplate);
 
   const [rows, setRows] = useState<MessageTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -136,8 +137,8 @@ export function MessageTemplates() {
 
   useEffect(() => {
     if (dialogMode === "edit" && detail.data) {
-      const d = detail.data;
-      reset({ code: d.code, category: d.category, en: d.en, ar: d.ar });
+      const data = detail.data;
+      reset({ code: data.code, category: data.category, en: data.en, ar: data.ar });
     }
   }, [dialogMode, detail.data, reset]);
 
@@ -152,9 +153,9 @@ export function MessageTemplates() {
   useEffect(() => {
     let active = true;
     fetchTemplates()
-      .then((r) => {
+      .then((result) => {
         if (!active) return;
-        setRows(r);
+        setRows(result);
         setLoading(false);
       })
       .catch(() => {
@@ -209,19 +210,19 @@ export function MessageTemplates() {
     () => [
       {
         id: "code",
-        accessorFn: (r) => r.code,
+        accessorFn: (template) => template.code,
         size: 220,
         header: t("templates.colCode"),
         cell: ({ row }) => <span className="font-medium">{row.original.code}</span>,
       },
       {
         id: "category",
-        accessorFn: (r) => r.category,
+        accessorFn: (template) => template.category,
         size: 150,
         header: t("templates.colCategory"),
         meta: {
           filter: "select",
-          filterOptions: MESSAGE_CATEGORIES.map((c) => ({ value: c, label: t(`categories.${c}`) })),
+          filterOptions: MESSAGE_CATEGORIES.map((category) => ({ value: category, label: t(`categories.${category}`) })),
           filterLabel: t("templates.colCategory"),
         },
         cell: ({ row }) => (
@@ -232,7 +233,7 @@ export function MessageTemplates() {
       },
       {
         id: "en",
-        accessorFn: (r) => r.en,
+        accessorFn: (template) => template.en,
         size: 300,
         header: t("templates.colEn"),
         cell: ({ row }) => (
@@ -243,7 +244,7 @@ export function MessageTemplates() {
       },
       {
         id: "ar",
-        accessorFn: (r) => r.ar,
+        accessorFn: (template) => template.ar,
         size: 300,
         header: t("templates.colAr"),
         cell: ({ row }) => (
@@ -254,7 +255,7 @@ export function MessageTemplates() {
       },
       {
         id: "updated",
-        accessorFn: (r) => r.updatedAt,
+        accessorFn: (template) => template.updatedAt,
         size: 130,
         header: t("templates.colUpdated"),
         cell: ({ row }) => (
@@ -279,8 +280,8 @@ export function MessageTemplates() {
                     <Button
                       size="icon-sm"
                       variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      onClick={(event) => {
+                        event.stopPropagation();
                         openEdit(tpl);
                       }}
                       aria-label={t("templates.edit")}
@@ -297,8 +298,8 @@ export function MessageTemplates() {
                     <Button
                       size="icon-sm"
                       variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      onClick={(event) => {
+                        event.stopPropagation();
                         setDeleting(tpl);
                       }}
                       aria-label={t("templates.delete")}
@@ -342,9 +343,9 @@ export function MessageTemplates() {
               searchPlaceholder={t("templates.search")}
               emptyLabel={t("templates.empty")}
               itemsLabel={t("templates.items")}
-              onRowClick={(r) => openEdit(r)}
-              rowAriaLabel={(r) => r.code}
-              getSearchText={(r) => `${r.code} ${r.en} ${r.ar}`}
+              onRowClick={(template) => openEdit(template)}
+              rowAriaLabel={(template) => template.code}
+              getSearchText={(template) => `${template.code} ${template.en} ${template.ar}`}
               filterLabels={{
                 filter: t("templates.filter"),
                 clear: t("templates.clear"),
@@ -376,7 +377,7 @@ export function MessageTemplates() {
         </CardContent>
       </Card>
 
-      <Dialog open={dialogMode != null} onOpenChange={(o) => !o && closeDialog()}>
+      <Dialog open={dialogMode != null} onOpenChange={(open) => !open && closeDialog()}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>
@@ -384,6 +385,7 @@ export function MessageTemplates() {
             </DialogTitle>
             <DialogDescription>{t("templates.editDesc")}</DialogDescription>
           </DialogHeader>
+          <Form onSubmit={handleSubmit(onSubmit)}>
           <DialogBody className="flex flex-col gap-4">
             {dialogMode === "edit" && detail.loading ? (
               <div className="flex flex-col gap-4">
@@ -427,15 +429,15 @@ export function MessageTemplates() {
                   render={({ field }) => (
                     <Select
                       value={field.value}
-                      onValueChange={(v) => field.onChange((v ?? "validation") as MessageCategory)}
+                      onValueChange={(value) => field.onChange((value ?? "validation") as MessageCategory)}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue>{(v) => (v ? t(`categories.${v}`) : "")}</SelectValue>
+                        <SelectValue>{(value) => (value ? t(`categories.${value}`) : "")}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        {MESSAGE_CATEGORIES.map((c) => (
-                          <SelectItem key={c} value={c}>
-                            {t(`categories.${c}`)}
+                        {MESSAGE_CATEGORIES.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {t(`categories.${category}`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -524,6 +526,7 @@ export function MessageTemplates() {
               </>
             )}
           </DialogBody>
+          </Form>
           <DialogFooter layout="split">
             <Button variant="outline" size="lg" onClick={closeDialog}>
               {tc("cancel")}
@@ -541,7 +544,7 @@ export function MessageTemplates() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={deleting != null} onOpenChange={(o) => !o && setDeleting(null)}>
+      <AlertDialog open={deleting != null} onOpenChange={(open) => !open && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("templates.deleteTitle")}</AlertDialogTitle>

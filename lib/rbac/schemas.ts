@@ -5,16 +5,11 @@ import type { ModuleId, PermissionAction } from "./types";
 const MODULE = MODULE_IDS as [ModuleId, ...ModuleId[]];
 const ACTION = ["view", "edit"] as [PermissionAction, ...PermissionAction[]];
 
-export type RoleMessages = { nameRequired: string; nameExists: string };
+export type RoleMessages = { nameRequired: string };
 
-export function roleSchema(msgs: RoleMessages, opts: { existingNames: string[] }) {
-  const taken = opts.existingNames.map((n) => n.trim().toLowerCase());
+export function roleSchema(msgs: RoleMessages) {
   return z.object({
-    name: z
-      .string()
-      .trim()
-      .min(1, msgs.nameRequired)
-      .refine((n) => !taken.includes(n.toLowerCase()), msgs.nameExists),
+    name: z.string().trim().min(1, msgs.nameRequired),
     description: z.string().trim(),
   });
 }
@@ -39,7 +34,7 @@ export function overlaySchema(msgs: { duplicateOverlay: string }, opts: { existi
       moduleId: z.enum(MODULE),
       action: z.enum(ACTION),
     })
-    .refine((v) => !opts.existingKeys.includes(`${v.moduleId}:${v.action}`), {
+    .refine((value) => !opts.existingKeys.includes(`${value.moduleId}:${value.action}`), {
       message: msgs.duplicateOverlay,
       path: ["action"],
     });

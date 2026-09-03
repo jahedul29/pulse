@@ -47,8 +47,8 @@ export function AppScroll({ children }: { children: ReactNode }) {
     scan(document.body);
 
     const observer = new MutationObserver((mutations) => {
-      for (const m of mutations) {
-        m.addedNodes.forEach((node) => {
+      for (const mutation of mutations) {
+        mutation.addedNodes.forEach((node) => {
           if (!(node instanceof HTMLElement)) return;
           if (node.matches(SCROLL_SELECTOR)) initEl(node);
           scan(node);

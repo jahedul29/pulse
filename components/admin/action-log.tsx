@@ -71,9 +71,9 @@ export function ActionLog() {
   useEffect(() => {
     let active = true;
     fetchAdminActions()
-      .then((r) => {
+      .then((fetchedRows) => {
         if (!active) return;
-        setRows(r);
+        setRows(fetchedRows);
         setLoading(false);
       })
       .catch(() => {
@@ -87,7 +87,7 @@ export function ActionLog() {
   }, []);
 
   const serviceOptions = useMemo(
-    () => actionServiceOptions().map((s) => ({ value: s, label: s })),
+    () => actionServiceOptions().map((service) => ({ value: service, label: service })),
     [],
   );
 
@@ -95,7 +95,7 @@ export function ActionLog() {
     () => [
       {
         id: "timestamp",
-        accessorFn: (r) => r.createdAt,
+        accessorFn: (action) => action.createdAt,
         size: 168,
         header: t("colTimestamp"),
         meta: { filter: "dateRange", filterLabel: t("colTimestamp") },
@@ -110,14 +110,14 @@ export function ActionLog() {
       },
       {
         id: "actor",
-        accessorFn: (r) => r.actorName,
+        accessorFn: (action) => action.actorName,
         size: 180,
         header: t("colActor"),
         cell: ({ row }) => <ProfileCell name={row.original.actorName} />,
       },
       {
         id: "action",
-        accessorFn: (r) => `${r.actionName} ${r.summary}`,
+        accessorFn: (action) => `${action.actionName} ${action.summary}`,
         size: 300,
         header: t("colAction"),
         cell: ({ row }) => (
@@ -129,7 +129,7 @@ export function ActionLog() {
       },
       {
         id: "service",
-        accessorFn: (r) => r.service,
+        accessorFn: (action) => action.service,
         size: 180,
         header: t("colService"),
         meta: { filter: "select", filterOptions: serviceOptions, filterLabel: t("colService") },
@@ -137,12 +137,12 @@ export function ActionLog() {
       },
       {
         id: "result",
-        accessorFn: (r) => r.result,
+        accessorFn: (action) => action.result,
         size: 130,
         header: t("colResult"),
         meta: {
           filter: "select",
-          filterOptions: RESULTS.map((r) => ({ value: r, label: t(`result_${r}`) })),
+          filterOptions: RESULTS.map((result) => ({ value: result, label: t(`result_${result}`) })),
           filterLabel: t("colResult"),
         },
         cell: ({ row }) => (
@@ -153,12 +153,12 @@ export function ActionLog() {
       },
       {
         id: "severity",
-        accessorFn: (r) => r.severity,
+        accessorFn: (action) => action.severity,
         size: 130,
         header: t("colSeverity"),
         meta: {
           filter: "select",
-          filterOptions: SEVERITIES.map((s) => ({ value: s, label: t(`severity_${s}`) })),
+          filterOptions: SEVERITIES.map((severity) => ({ value: severity, label: t(`severity_${severity}`) })),
           filterLabel: t("colSeverity"),
         },
         cell: ({ row }) => (
@@ -169,7 +169,7 @@ export function ActionLog() {
       },
       {
         id: "ticket",
-        accessorFn: (r) => r.ticketId ?? "",
+        accessorFn: (action) => action.ticketId ?? "",
         size: 120,
         header: t("colTicket"),
         cell: ({ row }) =>
@@ -195,16 +195,16 @@ export function ActionLog() {
       t("colSeverity"),
       t("colTicket"),
     ];
-    const csvRows = exportRows.map((r) => {
-      const { date, time } = fmtDateTimeParts(r.createdAt, locale);
+    const csvRows = exportRows.map((action) => {
+      const { date, time } = fmtDateTimeParts(action.createdAt, locale);
       return [
         `${date} ${time}`,
-        r.actorName,
-        `${r.actionName} — ${r.summary}`,
-        r.service,
-        t(`result_${r.result}`),
-        t(`severity_${r.severity}`),
-        r.ticketId ?? "",
+        action.actorName,
+        `${action.actionName} — ${action.summary}`,
+        action.service,
+        t(`result_${action.result}`),
+        t(`severity_${action.severity}`),
+        action.ticketId ?? "",
       ];
     });
     exportCsv("admin-action-log.csv", headers, csvRows);
@@ -234,11 +234,11 @@ export function ActionLog() {
               searchPlaceholder={t("search")}
               emptyLabel={t("empty")}
               itemsLabel={t("items")}
-              onRowClick={(r) => openAt(rows.indexOf(r))}
-              rowAriaLabel={(r) => r.actionName}
-              rowClassName={(r) => (active && r.id === active.id ? "bg-accent" : undefined)}
-              getSearchText={(r) =>
-                `${r.actionName} ${r.summary} ${r.actorName} ${r.service} ${r.ticketId ?? ""}`
+              onRowClick={(action) => openAt(rows.indexOf(action))}
+              rowAriaLabel={(action) => action.actionName}
+              rowClassName={(action) => (active && action.id === active.id ? "bg-accent" : undefined)}
+              getSearchText={(action) =>
+                `${action.actionName} ${action.summary} ${action.actorName} ${action.service} ${action.ticketId ?? ""}`
               }
               filterLabels={{
                 filter: t("filter"),
@@ -274,7 +274,7 @@ export function ActionLog() {
         </CardContent>
       </Card>
 
-      <Sheet open={selectedIndex != null} onOpenChange={(o) => !o && setSelectedIndex(null)}>
+      <Sheet open={selectedIndex != null} onOpenChange={(open) => !open && setSelectedIndex(null)}>
         {selected && (
           <SheetContent onSwipeNext={() => page(1)} onSwipePrev={() => page(-1)}>
             <SheetHeader>

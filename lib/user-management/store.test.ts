@@ -2,7 +2,7 @@ import { useUserStore } from "./store";
 import type { InviteInput } from "./types";
 
 const get = () => useUserStore.getState();
-const find = (id: string) => get().users.find((u) => u.id === id);
+const find = (id: string) => get().users.find((user) => user.id === id);
 
 let seq = 0;
 function invite(): string {
@@ -20,11 +20,11 @@ function invite(): string {
 describe("useUserStore", () => {
   it("invite creates a pending account with no last login", () => {
     const id = invite();
-    const u = find(id)!;
-    expect(u.status).toBe("pending");
-    expect(u.lastLogin).toBeNull();
-    expect(u.lastInviteSentAt).not.toBeNull();
-    expect(u.roleIds).toEqual(["role-admin"]);
+    const user = find(id)!;
+    expect(user.status).toBe("pending");
+    expect(user.lastLogin).toBeNull();
+    expect(user.lastInviteSentAt).not.toBeNull();
+    expect(user.roleIds).toEqual(["role-admin"]);
   });
 
   it("suspend / reactivate / deactivate transition status and stamp the actor", () => {
