@@ -7,9 +7,10 @@ export const queryKeys = {
   permissionModules: () => ["permission-modules"] as const,
   permissions: () => ["permissions"] as const,
   adminAccess: (adminId: string) => ["admin-access", adminId] as const,
-  effectivePermissions: (adminId: string) => ["effective-permissions", adminId] as const,
   sessions: () => ["sessions"] as const,
   loginAudit: (query?: unknown) => ["login-audit", query ?? {}] as const,
+  adminActions: (query?: unknown) => ["admin-actions", query ?? {}] as const,
+  changeLog: (query?: unknown) => ["change-log", query ?? {}] as const,
   policyVersions: () => ["policy-versions"] as const,
   currentPolicy: () => ["current-policy"] as const,
 } as const;

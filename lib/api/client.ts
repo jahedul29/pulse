@@ -22,10 +22,13 @@ function buildUrl(path: string, query?: ApiFetchOptions["query"]): string {
   if (!query) return base;
   const params = new URLSearchParams();
   for (const [key, raw] of Object.entries(query)) {
-    const values = Array.isArray(raw) ? raw : [raw];
+    const isArray = Array.isArray(raw);
+    const paramKey = isArray ? `${key}[]` : key;
+    const values = isArray ? raw : [raw];
     for (const value of values) {
       if (value === undefined || value === null || value === "") continue;
-      params.append(key, String(value));
+      const encoded = typeof value === "boolean" ? (value ? "1" : "0") : String(value);
+      params.append(paramKey, encoded);
     }
   }
   const qs = params.toString();
