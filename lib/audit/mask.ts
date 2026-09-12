@@ -13,7 +13,7 @@ export function maskIdentifier(identifier: string): string {
 }
 
 const SENSITIVE_FIELD_RE =
-  /(email|e-mail|password|passwd|pwd|token|secret|hash|card|cvv|iban|ssn|national|passport|phone|mobile|dob|birth)/i;
+  /(email|e-mail|password|passwd|pwd|token|secret|hash|card|cvv|iban|ssn|national|passport|phone|mobile|dob|birth|api_key|apikey|access_key|credential|authorization|bearer|otp|session)/i;
 
 export function isSensitiveField(name: string): boolean {
   return SENSITIVE_FIELD_RE.test(name);

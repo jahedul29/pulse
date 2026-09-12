@@ -8,8 +8,8 @@ export interface LoginAuditEntry {
   attemptedIdentifier: string;
   adminAccountId: string | null;
   adminName: string | null;
-  result: LoginResult;
-  method: LoginMethod;
+  result: string;
+  method: string;
   ip: string;
   device: string;
 }

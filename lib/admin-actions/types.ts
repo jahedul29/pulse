@@ -15,9 +15,14 @@ export interface AdminAction {
   actionName: string;
   service: string;
   entity: string;
+  targetType?: string;
+  targetId?: string;
   summary: string;
-  result: ActionResult;
-  severity: ActionSeverity;
+  result: string;
+  severity: string;
+  correlationId?: string;
+  adminEmail?: string;
+  device?: string;
   ticketType: TicketType | null;
   ticketId: string | null;
   inputs: ActionInput[];
@@ -36,9 +41,10 @@ export interface ChangeLogEntry {
   createdAt: number;
   actionId: string | null;
   actorName: string;
+  schema?: string;
   table: string;
   recordId: string;
-  operation: ChangeOp;
+  operation: string;
   changes: ColumnChange[];
 }
 
