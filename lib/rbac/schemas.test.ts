@@ -1,5 +1,4 @@
 import { roleSchema, grantSchema, overlaySchema } from "./schemas";
-import { MODULE_IDS } from "./modules";
 
 describe("roleSchema", () => {
   const schema = roleSchema({ nameRequired: "req" });
@@ -21,27 +20,33 @@ describe("grantSchema", () => {
   );
 
   it("rejects an empty role", () => {
-    expect(schema.safeParse({ roleId: "", expiresAt: null }).success).toBe(false);
+    expect(schema.safeParse({ roleId: "" }).success).toBe(false);
   });
 
   it("rejects an already-granted role", () => {
-    expect(schema.safeParse({ roleId: "role_admin", expiresAt: null }).success).toBe(false);
+    expect(schema.safeParse({ roleId: "role_admin" }).success).toBe(false);
   });
 
-  it("accepts a new role with an optional expiry", () => {
-    expect(schema.safeParse({ roleId: "role_auditor", expiresAt: 123 }).success).toBe(true);
+  it("accepts a new role", () => {
+    expect(schema.safeParse({ roleId: "role_auditor" }).success).toBe(true);
   });
 });
 
 describe("overlaySchema", () => {
-  const mod = MODULE_IDS[0];
-  const schema = overlaySchema({ duplicateOverlay: "dup" }, { existingKeys: [`${mod}:view`] });
+  const schema = overlaySchema(
+    { permissionRequired: "req", duplicateOverlay: "dup" },
+    { existingIds: ["7"] },
+  );
 
-  it("rejects a duplicate module+action overlay", () => {
-    expect(schema.safeParse({ moduleId: mod, action: "view" }).success).toBe(false);
+  it("rejects an empty permission", () => {
+    expect(schema.safeParse({ permissionId: "" }).success).toBe(false);
   });
 
-  it("accepts a new module+action overlay", () => {
-    expect(schema.safeParse({ moduleId: mod, action: "edit" }).success).toBe(true);
+  it("rejects an already-assigned permission", () => {
+    expect(schema.safeParse({ permissionId: "7" }).success).toBe(false);
+  });
+
+  it("accepts a new permission", () => {
+    expect(schema.safeParse({ permissionId: "9" }).success).toBe(true);
   });
 });

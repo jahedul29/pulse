@@ -55,7 +55,7 @@ describe("rbac-api", () => {
     expect(role.permissions).toEqual([{ id: 2 }]);
     const [url] = fetchMock.mock.calls[0];
     expect(String(url)).toContain("/api/admin-identity/roles/7");
-    expect(String(url)).toContain("relations=permissions");
+    expect(decodeURIComponent(String(url))).toContain("relations[]=permissions");
   });
 
   it("createRole posts the body and returns the created role", async () => {

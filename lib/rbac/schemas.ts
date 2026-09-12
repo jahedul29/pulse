@@ -1,9 +1,4 @@
 import { z } from "zod";
-import { MODULE_IDS } from "./modules";
-import type { ModuleId, PermissionAction } from "./types";
-
-const MODULE = MODULE_IDS as [ModuleId, ...ModuleId[]];
-const ACTION = ["view", "edit"] as [PermissionAction, ...PermissionAction[]];
 
 export type RoleMessages = { nameRequired: string };
 
@@ -23,20 +18,18 @@ export function grantSchema(msgs: GrantMessages, opts: { existingRoleIds: string
       .string()
       .min(1, msgs.roleRequired)
       .refine((id) => !opts.existingRoleIds.includes(id), msgs.duplicateRole),
-    expiresAt: z.number().nullable(),
   });
 }
 export type GrantForm = z.infer<ReturnType<typeof grantSchema>>;
 
-export function overlaySchema(msgs: { duplicateOverlay: string }, opts: { existingKeys: string[] }) {
-  return z
-    .object({
-      moduleId: z.enum(MODULE),
-      action: z.enum(ACTION),
-    })
-    .refine((value) => !opts.existingKeys.includes(`${value.moduleId}:${value.action}`), {
-      message: msgs.duplicateOverlay,
-      path: ["action"],
-    });
+export type OverlayMessages = { permissionRequired: string; duplicateOverlay: string };
+
+export function overlaySchema(msgs: OverlayMessages, opts: { existingIds: string[] }) {
+  return z.object({
+    permissionId: z
+      .string()
+      .min(1, msgs.permissionRequired)
+      .refine((id) => !opts.existingIds.includes(id), msgs.duplicateOverlay),
+  });
 }
 export type OverlayForm = z.infer<ReturnType<typeof overlaySchema>>;
