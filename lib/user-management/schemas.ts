@@ -6,21 +6,18 @@ export type InviteMessages = {
   staffRequired: string;
   emailRequired: string;
   emailInvalid: string;
-  emailExists: string;
   roleRequired: string;
 };
 
-export function inviteSchema(msgs: InviteMessages, opts: { existingEmails: string[] }) {
-  const taken = opts.existingEmails.map((email) => email.trim().toLowerCase());
+export function inviteSchema(messages: InviteMessages) {
   return z.object({
-    staffId: z.string().min(1, msgs.staffRequired),
+    staffId: z.string().min(1, messages.staffRequired),
     email: z
       .string()
       .trim()
-      .min(1, msgs.emailRequired)
-      .refine((email) => EMAIL_RE.test(email), msgs.emailInvalid)
-      .refine((email) => !taken.includes(email.toLowerCase()), msgs.emailExists),
-    roleIds: z.array(z.string()).min(1, msgs.roleRequired),
+      .min(1, messages.emailRequired)
+      .refine((email) => EMAIL_RE.test(email), messages.emailInvalid),
+    roleIds: z.array(z.string()).min(1, messages.roleRequired),
   });
 }
 

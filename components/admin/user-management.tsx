@@ -4,14 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type SyntheticEvent 
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import type { ColumnDef } from "@tanstack/react-table";
-import {
-  ChevronDown,
-  ChevronUp,
-  MoreHorizontal,
-  Plus,
-  Shield,
-  ShieldCheck,
-} from "lucide-react";
+import { ChevronDown, ChevronUp, MoreHorizontal, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -38,7 +31,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { DataTable, toolbarIconButtonClass } from "@/components/common/data-table";
+import { DataTable, toolbarIconButtonClass, type ServerTableState } from "@/components/common/data-table";
 import { ProfileCell } from "@/components/common/profile-cell";
 import { Chip } from "@/components/common/chip";
 import { StatusBadge, type Tone } from "@/components/common/status-badge";
@@ -48,13 +41,19 @@ import { InviteAdminDialog } from "@/components/admin/invite-admin-dialog";
 import { fmtRelative, fmtDateTime } from "@/lib/format";
 import { stepIndex } from "@/lib/paging";
 import { useRecordDetail } from "@/lib/use-record-detail";
-import { useUserStore } from "@/lib/user-management/store";
-import { useStaffStore } from "@/lib/staff/store";
-import { useRbacStore } from "@/lib/rbac/store";
 import { useAuthStore } from "@/lib/auth/store";
-import { fetchAdminUsers, fetchAdminUser, commitStatusChange } from "@/lib/user-management/api";
+import {
+  useAdminUsers,
+  usePendingInvitationMap,
+  useRevokeInvitation,
+  useUpdateUserStatus,
+} from "@/lib/user-management/queries";
+import { fetchAdminUserDetail } from "@/lib/user-management/users-api";
+import { serverStateToParams } from "@/lib/user-management/list-params";
+import { userDetailToDetail } from "@/lib/user-management/dto";
+import { useRoles } from "@/lib/rbac/queries";
 import { useHasPermission, PERMISSIONS } from "@/lib/auth/permissions";
-import type { AdminUser, AdminUserRow, EffectiveStatus } from "@/lib/user-management/types";
+import type { AdminUserRow, AdminUserStatus, EffectiveStatus } from "@/lib/user-management/types";
 
 const CONFIRM_WORD = "DEACTIVATE";
 
@@ -67,37 +66,35 @@ const STATUS_TONE: Record<EffectiveStatus, Tone> = {
   locked: "danger",
 };
 
-const STATUS_ORDER: EffectiveStatus[] = [
-  "pending",
-  "active",
-  "suspended",
-  "deactivated",
-  "revoked",
-  "locked",
-];
+const STATUS_FILTER: AdminUserStatus[] = ["pending", "active", "suspended", "deactivated"];
 
 export function UserManagement() {
   const t = useTranslations("userManagement");
   const tc = useTranslations("common");
   const locale = useLocale();
 
-  const usersState = useUserStore((state) => state.users);
-  const resend = useUserStore((state) => state.resend);
-  const revoke = useUserStore((state) => state.revoke);
-  const suspend = useUserStore((state) => state.suspend);
-  const reactivate = useUserStore((state) => state.reactivate);
-  const deactivate = useUserStore((state) => state.deactivate);
-  const unlock = useUserStore((state) => state.unlock);
-  const replaceUser = useUserStore((state) => state.replaceUser);
-  const rolesState = useRbacStore((state) => state.roles);
-  const staff = useStaffStore((state) => state.staff);
-  const actorName = useAuthStore((state) => state.session?.name ?? "You");
   const selfEmail = useAuthStore((state) => state.session?.email?.toLowerCase() ?? "");
   const canManage = useHasPermission(PERMISSIONS.USER_MANAGEMENT_EDIT);
 
-  const [rows, setRows] = useState<AdminUserRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [server, setServer] = useState<ServerTableState | null>(null);
+  const params = useMemo(() => serverStateToParams(server), [server]);
+  const usersQuery = useAdminUsers(params);
+  const invitationMap = usePendingInvitationMap();
+  const rows = useMemo(() => {
+    const map = invitationMap.data ?? {};
+    return (usersQuery.data?.data ?? []).map((row) =>
+      row.status === "pending" && map[row.staffId] ? { ...row, invitationId: map[row.staffId] } : row,
+    );
+  }, [usersQuery.data, invitationMap.data]);
+  const total = usersQuery.data?.meta?.total ?? rows.length;
+  const loading = usersQuery.isPending;
+  const error = usersQuery.isError;
+  const onServerStateChange = useCallback((state: ServerTableState) => setServer(state), []);
+
+  const { mutate: mutateStatus, mutateAsync: mutateStatusAsync, isPending: statusPending } =
+    useUpdateUserStatus();
+  const { mutateAsync: mutateRevokeAsync, isPending: revokePending } = useRevokeInvitation();
+
   const [inviteOpen, setInviteOpen] = useState(false);
   const [revoking, setRevoking] = useState<AdminUserRow | null>(null);
   const [deactivating, setDeactivating] = useState<AdminUserRow | null>(null);
@@ -108,84 +105,66 @@ export function UserManagement() {
   const [retained, setRetained] = useState<AdminUserRow | null>(null);
   const selected = active ?? retained;
   const detailRef = useRef<HTMLDivElement>(null);
+  const loadDetail = useCallback(
+    (id: string) => fetchAdminUserDetail(id).then(userDetailToDetail),
+    [],
+  );
   const { data: detail, loading: detailLoading, error: detailError, reload } = useRecordDetail(
     selected?.id ?? null,
-    fetchAdminUser,
+    loadDetail,
   );
-
-  useEffect(() => {
-    let alive = true;
-    fetchAdminUsers()
-      .then((fetchedRows) => {
-        if (!alive) return;
-        setRows(fetchedRows);
-        setError(false);
-        setLoading(false);
-      })
-      .catch(() => {
-        if (!alive) return;
-        setError(true);
-        setLoading(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [usersState]);
 
   useEffect(() => {
     detailRef.current?.scrollTo({ top: 0 });
   }, [selected?.id]);
 
-  const openAt = (i: number) => {
-    setSelectedIndex(i);
-    setRetained(rows[i] ?? null);
+  const openAt = (index: number) => {
+    setSelectedIndex(index);
+    setRetained(rows[index] ?? null);
   };
   const page = (delta: number) => {
     if (selectedIndex == null) return;
     openAt(stepIndex(selectedIndex, delta, rows.length));
   };
 
-  const roleName = useMemo(() => {
-    const map = new Map(rolesState.map((role) => [role.id, role.name]));
-    return (id: string) => map.get(id) ?? id;
-  }, [rolesState]);
-
-  const staffById = useMemo(() => new Map(staff.map((staffMember) => [staffMember.id, staffMember])), [staff]);
-
+  const rolesQuery = useRoles({ page: 1, perPage: 100 });
   const roleOptions = useMemo(
-    () => rolesState.map((role) => ({ value: role.id, label: role.name })),
-    [rolesState],
+    () => (rolesQuery.data?.data ?? []).map((role) => ({ value: String(role.id), label: role.name })),
+    [rolesQuery.data],
   );
 
-  const runStatus = useCallback(
-    async (id: string, apply: () => void, successMsg: string) => {
-      const snapshot = useUserStore.getState().users.find((user) => user.id === id);
-      if (!snapshot) return;
-      const restore: AdminUser = { ...snapshot };
-      apply();
-      try {
-        await commitStatusChange(id, selfEmail);
-        toast.success(successMsg);
-      } catch {
-        replaceUser(id, restore);
-        toast.error(t("changeFailed"));
-      }
+  const applyStatus = useCallback(
+    (id: string, status: AdminUserStatus, successMsg: string) => {
+      mutateStatus(
+        { id, status },
+        { onSuccess: () => toast.success(successMsg), onError: () => toast.error(t("changeFailed")) },
+      );
     },
-    [t, replaceUser, selfEmail],
+    [mutateStatus, t],
   );
 
-  const confirmRevoke = () => {
-    if (!revoking) return;
+  const confirmRevoke = async () => {
+    if (!revoking?.invitationId) return;
     const target = revoking;
-    setRevoking(null);
-    runStatus(target.id, () => revoke(target.id, actorName), t("revokedToast", { name: target.name }));
+    try {
+      await mutateRevokeAsync(target.invitationId as string);
+      toast.success(t("revokedToast", { name: target.name }));
+      setRevoking(null);
+    } catch {
+      toast.error(t("changeFailed"));
+    }
   };
-  const confirmDeactivate = () => {
+  const confirmDeactivate = async () => {
     if (!deactivating || confirmText !== CONFIRM_WORD) return;
     const target = deactivating;
-    setDeactivating(null);
-    setConfirmText("");
-    runStatus(target.id, () => deactivate(target.id, actorName), t("deactivatedToast", { name: target.name }));
+    try {
+      await mutateStatusAsync({ id: target.id, status: "deactivated" });
+      toast.success(t("deactivatedToast", { name: target.name }));
+      setDeactivating(null);
+      setConfirmText("");
+    } catch {
+      toast.error(t("changeFailed"));
+    }
   };
 
   type RowAction = {
@@ -204,7 +183,7 @@ export function UserManagement() {
       const suspendItem: RowAction = {
         key: "suspend",
         label: t("actionSuspend"),
-        onSelect: () => runStatus(user.id, () => suspend(user.id, actorName), t("suspendedToast", { name: user.name })),
+        onSelect: () => applyStatus(user.id, "suspended", t("suspendedToast", { name: user.name })),
         disabled: Boolean(selfBlock),
         title: selfBlock,
       };
@@ -222,8 +201,7 @@ export function UserManagement() {
       const reactivateItem: RowAction = {
         key: "reactivate",
         label: t("actionReactivate"),
-        onSelect: () =>
-          runStatus(user.id, () => reactivate(user.id, actorName), t("reactivatedToast", { name: user.name })),
+        onSelect: () => applyStatus(user.id, "active", t("reactivatedToast", { name: user.name })),
         disabled: Boolean(selfBlock),
         title: selfBlock,
       };
@@ -233,33 +211,28 @@ export function UserManagement() {
             {
               key: "resend",
               label: t("actionResend"),
-              onSelect: () => {
-                resend(user.id);
-                toast.success(t("resentToast", { email: user.email }));
-              },
-              disabled: !user.resendReady,
-              title: user.resendReady ? undefined : t("resendWait"),
+              onSelect: () => undefined,
+              disabled: true,
+              title: t("resendPendingBackend"),
             },
-            { key: "revoke", label: t("actionRevoke"), variant: "destructive", onSelect: () => setRevoking(user) },
+            {
+              key: "revoke",
+              label: t("actionRevoke"),
+              variant: "destructive",
+              onSelect: () => setRevoking(user),
+              disabled: !user.invitationId,
+              title: user.invitationId ? undefined : t("resendPendingBackend"),
+            },
           ];
         case "active":
           return [suspendItem, deactivateItem];
         case "suspended":
           return [reactivateItem, deactivateItem];
-        case "locked":
-          return [
-            {
-              key: "unlock",
-              label: t("actionUnlock"),
-              onSelect: () => runStatus(user.id, () => unlock(user.id), t("unlockedToast", { name: user.name })),
-            },
-            deactivateItem,
-          ];
         default:
           return [];
       }
     },
-    [t, canManage, selfEmail, actorName, runStatus, suspend, reactivate, unlock, resend],
+    [t, canManage, selfEmail, applyStatus],
   );
 
   const columns = useMemo<ColumnDef<AdminUserRow, unknown>[]>(
@@ -269,6 +242,7 @@ export function UserManagement() {
         accessorFn: (user) => user.name,
         size: 220,
         header: t("colName"),
+        enableSorting: false,
         cell: ({ row }) => <ProfileCell name={row.original.name} initials={row.original.initials} />,
       },
       {
@@ -276,26 +250,25 @@ export function UserManagement() {
         accessorFn: (user) => user.email,
         size: 230,
         header: t("colEmail"),
+        enableSorting: false,
         cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.original.email}</span>,
       },
       {
         id: "roles",
-        accessorFn: (user) => user.roleIds.map(roleName).join(" "),
-        size: 230,
+        accessorFn: (user) => (user.roles ?? []).map((role) => role.name).join(" "),
+        size: 260,
         header: t("colRoles"),
         enableSorting: false,
-        filterFn: (row, _id, value) =>
-          !Array.isArray(value) || value.length === 0 || row.original.roleIds.some((roleId) => value.includes(roleId)),
         meta: { filter: "select", filterOptions: roleOptions, filterLabel: t("colRoles") },
         cell: ({ row }) => {
-          const ids = row.original.roleIds;
-          const shown = ids.slice(0, 3);
-          const extra = ids.length - shown.length;
-          if (ids.length === 0) return <span className="text-muted-foreground">—</span>;
+          const roles = row.original.roles ?? [];
+          const shown = roles.slice(0, 3);
+          const extra = roles.length - shown.length;
+          if (roles.length === 0) return <span className="text-muted-foreground">-</span>;
           return (
             <div className="flex flex-wrap items-center gap-1.5">
-              {shown.map((id) => (
-                <Chip key={id}>{roleName(id)}</Chip>
+              {shown.map((role) => (
+                <Chip key={role.id}>{role.name}</Chip>
               ))}
               {extra > 0 && <Chip variant="soft">{t("moreRoles", { count: extra })}</Chip>}
             </div>
@@ -307,9 +280,13 @@ export function UserManagement() {
         accessorFn: (user) => user.effectiveStatus,
         size: 140,
         header: t("colStatus"),
+        enableSorting: false,
         meta: {
           filter: "select",
-          filterOptions: STATUS_ORDER.map((status) => ({ value: status, label: t(`status_${status}`) })),
+          filterOptions: STATUS_FILTER.map((status) => ({
+            value: status.toUpperCase(),
+            label: t(`status_${status}`),
+          })),
           filterLabel: t("colStatus"),
         },
         cell: ({ row }) => (
@@ -321,29 +298,6 @@ export function UserManagement() {
             {t(`status_${row.original.effectiveStatus}`)}
           </StatusBadge>
         ),
-      },
-      {
-        id: "mfa",
-        accessorFn: (user) => (user.mfaEnabled ? 1 : 0),
-        size: 90,
-        header: t("colMfa"),
-        meta: { headClassName: "text-center", cellClassName: "text-center" },
-        cell: ({ row }) =>
-          row.original.mfaEnabled ? (
-            <Tooltip>
-              <TooltipTrigger render={<span className="inline-flex" />}>
-                <ShieldCheck className="size-5 fill-success/15 text-success" />
-              </TooltipTrigger>
-              <TooltipContent>{t("mfaOn")}</TooltipContent>
-            </Tooltip>
-          ) : (
-            <Tooltip>
-              <TooltipTrigger render={<span className="inline-flex" />}>
-                <Shield className="size-5 text-muted-foreground" />
-              </TooltipTrigger>
-              <TooltipContent>{t("mfaOff")}</TooltipContent>
-            </Tooltip>
-          ),
       },
       {
         id: "lastLogin",
@@ -361,7 +315,7 @@ export function UserManagement() {
         enableSorting: false,
         size: 80,
         header: "",
-        meta: { headClassName: "text-end", cellClassName: "text-end" },
+        meta: { headClassName: "text-end", cellClassName: "text-end", noClip: true },
         cell: ({ row }) => {
           const items = actionsFor(row.original);
           const stop = (event: SyntheticEvent) => event.stopPropagation();
@@ -422,10 +376,8 @@ export function UserManagement() {
         },
       },
     ],
-    [t, locale, roleName, roleOptions, actionsFor],
+    [t, locale, roleOptions, actionsFor],
   );
-
-  const linkedStaff = detail ? staffById.get(detail.staffId) : undefined;
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -436,11 +388,16 @@ export function UserManagement() {
         </CardHeader>
         <CardContent>
           {error ? (
-            <p className="py-16 text-center text-sm text-muted-foreground">{t("loadError")}</p>
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
+              <p className="text-sm text-muted-foreground">{t("loadError")}</p>
+              <Button variant="outline" size="sm" onClick={() => usersQuery.refetch()}>
+                {tc("retry")}
+              </Button>
+            </div>
           ) : loading ? (
             <div className="flex flex-col gap-2">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton key={i} className="h-11 w-full" />
+              {Array.from({ length: 8 }).map((_, index) => (
+                <Skeleton key={index} className="h-11 w-full" />
               ))}
             </div>
           ) : (
@@ -448,6 +405,9 @@ export function UserManagement() {
               columns={columns}
               data={rows}
               pageSize={25}
+              manualServer
+              rowCount={total}
+              onServerStateChange={onServerStateChange}
               searchPlaceholder={t("search")}
               emptyLabel={t("empty")}
               itemsLabel={t("items")}
@@ -489,7 +449,10 @@ export function UserManagement() {
 
       <InviteAdminDialog open={inviteOpen} onOpenChange={setInviteOpen} />
 
-      <AlertDialog open={revoking != null} onOpenChange={(open) => !open && setRevoking(null)}>
+      <AlertDialog
+        open={revoking != null}
+        onOpenChange={(open) => !open && !revokePending && setRevoking(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("revokeTitle")}</AlertDialogTitle>
@@ -498,9 +461,10 @@ export function UserManagement() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter layout="split">
-            <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
+            <AlertDialogCancel disabled={revokePending}>{tc("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmRevoke}
+              loading={revokePending}
               className="bg-danger text-danger-foreground hover:bg-danger/90"
             >
               {t("revokeConfirm")}
@@ -512,7 +476,7 @@ export function UserManagement() {
       <AlertDialog
         open={deactivating != null}
         onOpenChange={(open) => {
-          if (!open) {
+          if (!open && !statusPending) {
             setDeactivating(null);
             setConfirmText("");
           }
@@ -535,10 +499,11 @@ export function UserManagement() {
             />
           </Field>
           <AlertDialogFooter layout="split">
-            <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
+            <AlertDialogCancel disabled={statusPending}>{tc("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeactivate}
               disabled={confirmText !== CONFIRM_WORD}
+              loading={statusPending}
               className="bg-danger text-danger-foreground hover:bg-danger/90"
             >
               {t("deactivateConfirm")}
@@ -601,7 +566,7 @@ export function UserManagement() {
                 </div>
               ) : (
                 <>
-                  {linkedStaff?.terminated && (
+                  {detail.staffTerminated && (
                     <div className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-foreground">
                       {t("terminatedBanner")}
                     </div>
@@ -611,15 +576,13 @@ export function UserManagement() {
                     <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                       {t("sectionRoles")}
                     </h4>
-                    {detail.roleIds.length === 0 ? (
+                    {(detail.roles ?? []).length === 0 ? (
                       <p className="text-sm text-muted-foreground">{t("noRoles")}</p>
                     ) : (
                       <div className="flex flex-wrap gap-1.5">
-                        {detail.roleIds.map((id) => (
-                          <Link key={id} href={`/admin/roles/${id}`}>
-                            <Chip className="hover:border-primary hover:text-primary">
-                              {roleName(id)}
-                            </Chip>
+                        {(detail.roles ?? []).map((role) => (
+                          <Link key={role.id} href={`/admin/roles/${role.id}`}>
+                            <Chip className="hover:border-primary hover:text-primary">{role.name}</Chip>
                           </Link>
                         ))}
                       </div>
@@ -632,8 +595,6 @@ export function UserManagement() {
                     </h4>
                     <DetailList
                       items={[
-                        { label: t("mfaLabel"), value: detail.mfaEnabled ? t("mfaOn") : t("mfaOff") },
-                        { label: t("devicesLabel"), value: String(detail.registeredDevices) },
                         {
                           label: t("lastLoginLabel"),
                           value: detail.lastLogin == null ? t("never") : fmtDateTime(detail.lastLogin, locale),
@@ -648,21 +609,10 @@ export function UserManagement() {
                     </h4>
                     <DetailList
                       items={[
-                        { label: t("invitedByLabel"), value: detail.invitedBy },
+                        { label: t("invitedByLabel"), value: detail.invitedBy || "-" },
                         { label: t("invitedAtLabel"), value: fmtDateTime(detail.invitedAt, locale) },
                         ...(detail.activatedAt != null
                           ? [{ label: t("activatedAtLabel"), value: fmtDateTime(detail.activatedAt, locale) }]
-                          : []),
-                        ...(detail.lastStatusChangeAt != null
-                          ? [
-                              {
-                                label: t("lastChangeLabel"),
-                                value: t("lastChangeValue", {
-                                  date: fmtDateTime(detail.lastStatusChangeAt, locale),
-                                  name: detail.lastStatusChangeBy ?? "—",
-                                }),
-                              },
-                            ]
                           : []),
                       ]}
                     />
@@ -672,20 +622,12 @@ export function UserManagement() {
                     <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                       {t("sectionStaff")}
                     </h4>
-                    {linkedStaff ? (
-                      <DetailList
-                        items={[
-                          { label: t("staffNameLabel"), value: linkedStaff.name },
-                          { label: t("staffEmailLabel"), value: linkedStaff.email },
-                          {
-                            label: t("staffTitleLabel"),
-                            value: `${linkedStaff.title} · ${linkedStaff.department}`,
-                          },
-                        ]}
-                      />
-                    ) : (
-                      <p className="text-sm text-muted-foreground">{t("noStaff")}</p>
-                    )}
+                    <DetailList
+                      items={[
+                        { label: t("staffNameLabel"), value: detail.name },
+                        { label: t("staffEmailLabel"), value: detail.email },
+                      ]}
+                    />
                   </section>
                 </>
               )}

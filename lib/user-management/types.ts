@@ -2,6 +2,11 @@ export type AdminUserStatus = "pending" | "active" | "suspended" | "deactivated"
 
 export type EffectiveStatus = AdminUserStatus | "locked";
 
+export interface RoleRef {
+  id: string;
+  name: string;
+}
+
 export interface AdminUser {
   id: string;
   staffId: string;
@@ -9,11 +14,13 @@ export interface AdminUser {
   email: string;
   initials: string;
   status: AdminUserStatus;
-  mfaEnabled: boolean;
   lockedUntil: number | null;
   lastLogin: number | null;
   roleIds: string[];
+  roles?: RoleRef[];
   invitedBy: string;
+  invitationId?: string | null;
+  preferredLanguage?: string | null;
   invitedAt: number;
   activatedAt: number | null;
   lastStatusChangeAt: number | null;
