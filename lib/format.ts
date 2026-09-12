@@ -73,7 +73,7 @@ export function fmtDateTimeParts(epochMs: number, locale = "en"): { time: string
 
 export function fmtDateTime(epochMs: number, locale = "en"): string {
   const { time, date } = fmtDateTimeParts(epochMs, locale);
-  return `${time} ${date}`;
+  return `${date} ${time}`;
 }
 
 export function startOfTomorrow(): Date {

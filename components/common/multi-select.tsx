@@ -19,7 +19,7 @@ export function MultiSelect({
   onChange,
   placeholder,
   searchPlaceholder,
-  emptyLabel = "—",
+  emptyLabel = "-",
   maxChips = 2,
   className,
 }: {

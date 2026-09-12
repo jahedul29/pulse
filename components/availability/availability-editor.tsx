@@ -134,7 +134,7 @@ export function AvailabilityEditor({ specialist }: { specialist: Specialist }) {
       const list = issues
         .map((iss) => {
           const day = iss.day === "weekdays" ? t("availability.issueWeekdays") : weekdays[iss.day];
-          return `${day} — ${t(iss.labelKey).toLowerCase()}`;
+          return `${day} - ${t(iss.labelKey).toLowerCase()}`;
         })
         .join(" · ");
       toast.error(t("availability.cantSave", { issues: list }));
