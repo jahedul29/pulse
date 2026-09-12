@@ -1,39 +1,38 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import type { ColumnDef } from "@tanstack/react-table";
-import { ChevronDown, ChevronUp, Download } from "lucide-react";
-import { toast } from "sonner";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 import { fmtDateTimeParts } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Sheet,
   SheetBody,
   SheetContent,
   SheetDescription,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { DataTable, toolbarIconButtonClass } from "@/components/common/data-table";
-import { resultTone, severityTone } from "@/lib/admin-actions/tones";
+import { DataTable, type ServerTableState } from "@/components/common/data-table";
+import { auditTone } from "@/lib/audit/tone";
 import { stepIndex } from "@/lib/paging";
 import { useRecordDetail } from "@/lib/use-record-detail";
+import { useRetained } from "@/lib/use-retained";
 import { StatusBadge } from "@/components/common/status-badge";
 import { ProfileCell } from "@/components/common/profile-cell";
 import { DetailList } from "@/components/common/detail-list";
-import { exportCsv } from "@/lib/export/csv";
-import { fetchAdminActions, fetchActionDetail, actionServiceOptions } from "@/lib/admin-actions/api";
-import type { AdminAction, ActionResult, ActionSeverity } from "@/lib/admin-actions/types";
+import { useAdminActions } from "@/lib/admin-actions/queries";
+import { getAdminAction } from "@/lib/admin-actions/audit-api";
+import { actionServerStateToParams } from "@/lib/admin-actions/list-params";
+import type { AdminAction } from "@/lib/admin-actions/types";
 
-const RESULTS: ActionResult[] = ["success", "partial", "failure"];
-const SEVERITIES: ActionSeverity[] = ["info", "warning", "critical"];
+const RESULTS: string[] = ["SUCCESS", "PARTIAL", "FAILURE"];
+const SEVERITIES: string[] = ["INFO", "WARNING", "CRITICAL"];
 
 export function ActionLog() {
   const t = useTranslations("actionLog");
@@ -41,55 +40,47 @@ export function ActionLog() {
   const locale = useLocale();
   const router = useRouter();
 
-  const [rows, setRows] = useState<AdminAction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const resultLabel = useCallback(
+    (value: string) => (t.has(`result_${value}`) ? t(`result_${value}`) : value),
+    [t],
+  );
+  const severityLabel = useCallback(
+    (value: string) => (t.has(`severity_${value}`) ? t(`severity_${value}`) : value),
+    [t],
+  );
 
-  const active = selectedIndex == null ? null : (rows[selectedIndex] ?? null);
-  const [retained, setRetained] = useState<AdminAction | null>(null);
-  const selected = active ?? retained;
+  const searchParams = useSearchParams();
+  const openId = searchParams.get("open");
+
+  const [server, setServer] = useState<ServerTableState | null>(null);
+  const params = useMemo(() => actionServerStateToParams(server), [server]);
+  const actionsQuery = useAdminActions(params);
+  const rows = useMemo(() => actionsQuery.data?.data ?? [], [actionsQuery.data]);
+  const total = actionsQuery.data?.meta?.total ?? rows.length;
+  const onServerStateChange = useCallback((state: ServerTableState) => setServer(state), []);
+
+  const [selectedId, setSelectedId] = useState<string | null>(openId);
+  const index = selectedId ? rows.findIndex((action) => action.id === selectedId) : -1;
   const detailRef = useRef<HTMLDivElement>(null);
   const {
     data: detail,
     loading: detailLoading,
     error: detailError,
     reload,
-  } = useRecordDetail(selected?.id ?? null, fetchActionDetail);
+  } = useRecordDetail(selectedId, getAdminAction);
+  const liveHead = (index >= 0 ? rows[index] : null) ?? detail ?? null;
+  const selected = useRetained(liveHead);
   useEffect(() => {
     detailRef.current?.scrollTo({ top: 0 });
-  }, [selected?.id]);
-  const openAt = (i: number) => {
-    setSelectedIndex(i);
-    setRetained(rows[i] ?? null);
+  }, [selectedId]);
+  const close = () => {
+    setSelectedId(null);
+    if (openId) router.replace("/admin/audit/actions");
   };
   const page = (delta: number) => {
-    if (selectedIndex == null) return;
-    openAt(stepIndex(selectedIndex, delta, rows.length));
+    if (index < 0) return;
+    setSelectedId(rows[stepIndex(index, delta, rows.length)].id);
   };
-
-  useEffect(() => {
-    let active = true;
-    fetchAdminActions()
-      .then((fetchedRows) => {
-        if (!active) return;
-        setRows(fetchedRows);
-        setLoading(false);
-      })
-      .catch(() => {
-        if (!active) return;
-        setError(true);
-        setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const serviceOptions = useMemo(
-    () => actionServiceOptions().map((service) => ({ value: service, label: service })),
-    [],
-  );
 
   const columns = useMemo<ColumnDef<AdminAction, unknown>[]>(
     () => [
@@ -113,16 +104,26 @@ export function ActionLog() {
         accessorFn: (action) => action.actorName,
         size: 180,
         header: t("colActor"),
+        enableSorting: false,
         cell: ({ row }) => <ProfileCell name={row.original.actorName} />,
       },
       {
-        id: "action",
-        accessorFn: (action) => `${action.actionName} ${action.summary}`,
-        size: 300,
-        header: t("colAction"),
+        id: "actionCode",
+        accessorFn: (action) => action.actionName,
+        size: 210,
+        header: t("colActionCode"),
+        meta: { filter: "text", filterLabel: t("colActionCode") },
+        cell: ({ row }) => <span className="text-sm font-medium">{row.original.actionName}</span>,
+      },
+      {
+        id: "target",
+        accessorFn: (action) => `${action.targetType ?? ""} ${action.summary}`,
+        size: 280,
+        header: t("colTarget"),
+        meta: { filter: "text", filterLabel: t("colTarget") },
         cell: ({ row }) => (
           <div className="flex min-w-0 flex-col">
-            <span className="font-medium">{row.original.actionName}</span>
+            <span className="font-medium">{row.original.targetType || "-"}</span>
             <span className="truncate text-xs text-muted-foreground">{row.original.summary}</span>
           </div>
         ),
@@ -132,7 +133,7 @@ export function ActionLog() {
         accessorFn: (action) => action.service,
         size: 180,
         header: t("colService"),
-        meta: { filter: "select", filterOptions: serviceOptions, filterLabel: t("colService") },
+        enableSorting: false,
         cell: ({ row }) => <span className="text-sm">{row.original.service}</span>,
       },
       {
@@ -140,14 +141,15 @@ export function ActionLog() {
         accessorFn: (action) => action.result,
         size: 130,
         header: t("colResult"),
+        enableSorting: false,
         meta: {
           filter: "select",
-          filterOptions: RESULTS.map((result) => ({ value: result, label: t(`result_${result}`) })),
+          filterOptions: RESULTS.map((result) => ({ value: result, label: resultLabel(result) })),
           filterLabel: t("colResult"),
         },
         cell: ({ row }) => (
-          <StatusBadge tone={resultTone(row.original.result)} equalWidth={false} className="min-w-[5.5rem]">
-            {t(`result_${row.original.result}`)}
+          <StatusBadge tone={auditTone(row.original.result)} equalWidth={false} className="min-w-[5.5rem]">
+            {resultLabel(row.original.result)}
           </StatusBadge>
         ),
       },
@@ -156,59 +158,21 @@ export function ActionLog() {
         accessorFn: (action) => action.severity,
         size: 130,
         header: t("colSeverity"),
+        enableSorting: false,
         meta: {
           filter: "select",
-          filterOptions: SEVERITIES.map((severity) => ({ value: severity, label: t(`severity_${severity}`) })),
+          filterOptions: SEVERITIES.map((severity) => ({ value: severity, label: severityLabel(severity) })),
           filterLabel: t("colSeverity"),
         },
         cell: ({ row }) => (
-          <StatusBadge tone={severityTone(row.original.severity)} equalWidth={false} className="min-w-[5.5rem]">
-            {t(`severity_${row.original.severity}`)}
+          <StatusBadge tone={auditTone(row.original.severity)} equalWidth={false} className="min-w-[5.5rem]">
+            {severityLabel(row.original.severity)}
           </StatusBadge>
         ),
       },
-      {
-        id: "ticket",
-        accessorFn: (action) => action.ticketId ?? "",
-        size: 120,
-        header: t("colTicket"),
-        cell: ({ row }) =>
-          row.original.ticketId ? (
-            <span className="rounded-md border px-2 py-0.5 text-xs">
-              {row.original.ticketId}
-            </span>
-          ) : (
-            <span className="text-muted-foreground">{t("noTicket")}</span>
-          ),
-      },
     ],
-    [t, locale, serviceOptions],
+    [t, locale, resultLabel, severityLabel],
   );
-
-  const onExport = (exportRows: AdminAction[]) => {
-    const headers = [
-      t("colTimestamp"),
-      t("colActor"),
-      t("colAction"),
-      t("colService"),
-      t("colResult"),
-      t("colSeverity"),
-      t("colTicket"),
-    ];
-    const csvRows = exportRows.map((action) => {
-      const { date, time } = fmtDateTimeParts(action.createdAt, locale);
-      return [
-        `${date} ${time}`,
-        action.actorName,
-        `${action.actionName} — ${action.summary}`,
-        action.service,
-        t(`result_${action.result}`),
-        t(`severity_${action.severity}`),
-        action.ticketId ?? "",
-      ];
-    });
-    exportCsv("admin-action-log.csv", headers, csvRows);
-  };
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -218,12 +182,17 @@ export function ActionLog() {
           <CardDescription>{t("subtitle")}</CardDescription>
         </CardHeader>
         <CardContent>
-          {error ? (
-            <p className="py-16 text-center text-sm text-muted-foreground">{t("loadError")}</p>
-          ) : loading ? (
+          {actionsQuery.isError ? (
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
+              <p className="text-sm text-muted-foreground">{t("loadError")}</p>
+              <Button variant="outline" size="sm" onClick={() => actionsQuery.refetch()}>
+                {tc("retry")}
+              </Button>
+            </div>
+          ) : actionsQuery.isPending ? (
             <div className="flex flex-col gap-2">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-11 w-full" />
+              {Array.from({ length: 6 }).map((_, index) => (
+                <Skeleton key={index} className="h-11 w-full" />
               ))}
             </div>
           ) : (
@@ -231,14 +200,17 @@ export function ActionLog() {
               columns={columns}
               data={rows}
               pageSize={10}
+              manualServer
+              rowCount={total}
+              onServerStateChange={onServerStateChange}
               searchPlaceholder={t("search")}
               emptyLabel={t("empty")}
               itemsLabel={t("items")}
-              onRowClick={(action) => openAt(rows.indexOf(action))}
+              onRowClick={(action) => setSelectedId(action.id)}
               rowAriaLabel={(action) => action.actionName}
-              rowClassName={(action) => (active && action.id === active.id ? "bg-accent" : undefined)}
+              rowClassName={(action) => (action.id === selectedId ? "bg-accent" : undefined)}
               getSearchText={(action) =>
-                `${action.actionName} ${action.summary} ${action.actorName} ${action.service} ${action.ticketId ?? ""}`
+                `${action.actionName} ${action.summary} ${action.actorName} ${action.service}`
               }
               filterLabels={{
                 filter: t("filter"),
@@ -250,70 +222,51 @@ export function ActionLog() {
               }}
               enableFreeze
               maxFreeze={2}
-              toolbar={(visibleRows) => (
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        variant="outline"
-                        size="lg"
-                        onClick={() => onExport(visibleRows)}
-                        aria-label={t("export")}
-                        className={toolbarIconButtonClass}
-                      />
-                    }
-                  >
-                    <Download className="size-4" />
-                    <span className="hidden sm:inline">{t("export")}</span>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("export")}</TooltipContent>
-                </Tooltip>
-              )}
             />
           )}
         </CardContent>
       </Card>
 
-      <Sheet open={selectedIndex != null} onOpenChange={(open) => !open && setSelectedIndex(null)}>
+      <Sheet open={selectedId != null} onOpenChange={(open) => !open && close()}>
         {selected && (
           <SheetContent onSwipeNext={() => page(1)} onSwipePrev={() => page(-1)}>
             <SheetHeader>
-              <div className="flex items-center gap-1 pe-8">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => page(-1)}
-                  disabled={selectedIndex === 0}
-                  aria-label={tc("prevRecord")}
-                >
-                  <ChevronUp className="size-4" />
-                </Button>
-                <span className="text-xs text-muted-foreground tabular">
-                  {tc("recordPosition", { index: (selectedIndex ?? 0) + 1, total: rows.length })}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => page(1)}
-                  disabled={selectedIndex === rows.length - 1}
-                  aria-label={tc("nextRecord")}
-                >
-                  <ChevronDown className="size-4" />
-                </Button>
-              </div>
+              {index >= 0 && (
+                <div className="flex items-center gap-1 pe-8">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => page(-1)}
+                    disabled={index === 0}
+                    aria-label={tc("prevRecord")}
+                  >
+                    <ChevronUp className="size-4" />
+                  </Button>
+                  <span className="text-xs text-muted-foreground tabular">
+                    {tc("recordPosition", { index: index + 1, total: rows.length })}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => page(1)}
+                    disabled={index === rows.length - 1}
+                    aria-label={tc("nextRecord")}
+                  >
+                    <ChevronDown className="size-4" />
+                  </Button>
+                </div>
+              )}
               <SheetTitle>{selected.actionName}</SheetTitle>
-              <SheetDescription>{selected.summary}</SheetDescription>
+              <SheetDescription className="sr-only">{selected.actionName}</SheetDescription>
               <div className="flex flex-wrap items-center gap-2 pt-1">
-                <StatusBadge tone={resultTone(selected.result)} equalWidth={false}>
-                  {t(`result_${selected.result}`)}
+                <StatusBadge tone={auditTone(selected.result)} equalWidth={false}>
+                  {resultLabel(selected.result)}
                 </StatusBadge>
-                <StatusBadge tone={severityTone(selected.severity)} equalWidth={false}>
-                  {t(`severity_${selected.severity}`)}
+                <StatusBadge tone={auditTone(selected.severity)} equalWidth={false}>
+                  {severityLabel(selected.severity)}
                 </StatusBadge>
                 {selected.ticketId && (
-                  <span className="rounded-md border px-2 py-0.5 text-xs">
-                    {selected.ticketId}
-                  </span>
+                  <span className="rounded-md border px-2 py-0.5 text-xs">{selected.ticketId}</span>
                 )}
               </div>
             </SheetHeader>
@@ -333,37 +286,44 @@ export function ActionLog() {
                 </div>
               ) : (
                 <>
-                  <DetailList items={[{ label: t("detailService"), value: detail.entity }]} />
+                  <DetailList
+                    items={[
+                      {
+                        label: t("colActor"),
+                        value: <ProfileCell name={detail.actorName} subtitle={detail.adminEmail || undefined} />,
+                      },
+                      { label: t("detailTargetType"), value: detail.targetType || "-" },
+                      { label: t("detailTargetId"), value: detail.targetId || "-" },
+                      { label: t("detailSummary"), value: detail.summary || "-" },
+                      { label: t("colService"), value: detail.service || "-" },
+                      {
+                        label: t("colTimestamp"),
+                        value: (() => {
+                          const { date, time } = fmtDateTimeParts(detail.createdAt, locale);
+                          return `${date} ${time}`;
+                        })(),
+                      },
+                      { label: t("detailCorrelation"), value: detail.correlationId || "-" },
+                      { label: t("detailDevice"), value: detail.device || "-" },
+                    ]}
+                  />
                   <div className="flex flex-col gap-2">
                     <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                       {t("detailInputs")}
                     </h4>
                     <div className="rounded-lg border bg-muted/30 p-3">
-                      <DetailList
-                        items={detail.inputs.map((i) => ({ label: i.label, value: i.value }))}
-                      />
+                      {detail.inputs.length === 0 ? (
+                        <p className="py-2 text-center text-sm text-muted-foreground">{t("noInputs")}</p>
+                      ) : (
+                        <DetailList
+                          items={detail.inputs.map((input) => ({ label: input.label, value: input.value }))}
+                        />
+                      )}
                     </div>
                   </div>
                 </>
               )}
             </SheetBody>
-            <SheetFooter>
-              {selected.ticketId && (
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={() => toast(t("ticketToast", { ticket: selected.ticketId ?? "" }))}
-                >
-                  {t("openTicket", { ticket: selected.ticketId })}
-                </Button>
-              )}
-              <Button
-                size="lg"
-                onClick={() => router.push(`/admin/audit/changes?action=${selected.id}`)}
-              >
-                {t("viewChanges")}
-              </Button>
-            </SheetFooter>
           </SheetContent>
         )}
       </Sheet>

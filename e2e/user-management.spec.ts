@@ -1,11 +1,16 @@
 import { test, expect } from "@playwright/test";
+import { mockAdminIdentity } from "./support/mock-admin-identity";
+
+test.beforeEach(async ({ page }) => {
+  await mockAdminIdentity(page);
+});
 
 test("invites an admin and the pending row appears without a refresh", async ({ page }) => {
   await page.goto("/admin/user-management");
   await expect(page.getByText("Dana Okonkwo").first()).toBeVisible();
 
   await page.getByRole("button", { name: "Invite admin" }).click();
-  const dialog = page.getByRole("dialog");
+  const dialog = page.getByRole("dialog", { name: "Invite admin" });
   await expect(dialog).toBeVisible();
 
   await dialog.getByRole("button", { name: "Select a staff member" }).click();
@@ -47,7 +52,6 @@ test("suspends an active account with an optimistic status change", async ({ pag
 
 test("rolls back an optimistic status change when the API fails", async ({ page }) => {
   await page.goto("/admin/user-management");
-  await page.getByPlaceholder("Search by name or email").fill("Noah");
   const row = page.getByRole("link", { name: "Noah Weiss" });
   await expect(row).toBeVisible();
 

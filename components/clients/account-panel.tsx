@@ -55,7 +55,7 @@ export function AccountPanel({ client }: { client: Client }) {
             <Field label={t("account.phone")} value={<span className="font-mono">{client.phone}</span>} />
             <Field
               label={t("account.altPhone")}
-              value={<span className="font-mono">{client.altPhone ?? "—"}</span>}
+              value={<span className="font-mono">{client.altPhone ?? "-"}</span>}
             />
             <Field
               label={t("account.dob")}

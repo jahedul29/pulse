@@ -57,6 +57,7 @@ declare module "@tanstack/react-table" {
     filter?: "text" | "select" | "range" | "dateRange";
     filterOptions?: { value: string; label: string }[];
     filterLabel?: string;
+    noClip?: boolean;
   }
 }
 
@@ -224,7 +225,7 @@ function SelectFilter<TData>({
           </label>
         ))}
         {shown.length === 0 && (
-          <div className="px-1.5 py-2 text-center text-xs text-muted-foreground">—</div>
+          <div className="px-1.5 py-2 text-center text-xs text-muted-foreground">-</div>
         )}
         </div>
       </div>
@@ -326,7 +327,7 @@ function ColumnFilter<TData>({
             <PopoverTrigger
               aria-label={[labels.filter ?? "Filter", column.columnDef.meta?.filterLabel]
                 .filter(Boolean)
-                .join(" — ")}
+                .join(" - ")}
               onClick={(event) => event.stopPropagation()}
               className={cn(
                 "relative inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md transition-all focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none",
@@ -760,10 +761,13 @@ export function DataTable<TData>({
                 {row.getVisibleCells().map((cell) => {
                   const pinned = cell.column.getIsPinned() === "left";
                   const lastPinned = pinned && pinnedLeft[pinnedLeft.length - 1] === cell.column.id;
+                  const sized = cell.column.columnDef.size != null || pinned;
+                  const noClip = cell.column.columnDef.meta?.noClip;
                   return (
                     <TableCell
                       key={cell.id}
                       className={cn(
+                        sized && !noClip && "overflow-hidden",
                         cell.column.columnDef.meta?.cellClassName,
                         pinned && "sticky z-10 bg-card",
                         lastPinned &&

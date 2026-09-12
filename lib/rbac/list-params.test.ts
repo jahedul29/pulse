@@ -49,4 +49,13 @@ describe("serverStateToParams", () => {
       serverStateToParams(st({ columnFilters: [{ id: "type", value: ["1", "0"] }] })).filters,
     ).toBeUndefined();
   });
+
+  it("maps the created date range to created_at_from/to ISO filters", () => {
+    const min = Date.parse("2026-09-01T00:00:00Z");
+    const max = Date.parse("2026-09-10T00:00:00Z");
+    expect(serverStateToParams(st({ columnFilters: [{ id: "created", value: [min, max] }] })).filters).toEqual({
+      created_at_from: new Date(min).toISOString(),
+      created_at_to: new Date(max).toISOString(),
+    });
+  });
 });

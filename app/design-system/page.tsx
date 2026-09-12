@@ -288,7 +288,7 @@ const CLIENTS: Client[] = [
   { name: "Priya Nair", email: "priya.nair@pulse.health", role: "Analyst", status: "Active", packages: 2, mrr: "$310", sessions: 74, region: "EU-Central", phone: "+44 20 7946", plan: "Quarterly", owner: "R. Diaz", joined: "2025-09-18", lastActive: "2026-08-07" },
   { name: "Daniel Okoro", email: "daniel.okoro@pulse.health", role: "Therapist", status: "Suspended", packages: 1, mrr: "$120", sessions: 41, region: "NA-East", phone: "+1 555 0199", plan: "Monthly", owner: "S. Cole", joined: "2026-01-24", lastActive: "2026-07-20" },
   { name: "Maya Chen", email: "maya.chen@pulse.health", role: "Analyst", status: "Active", packages: 4, mrr: "$540", sessions: 210, region: "APAC", phone: "+65 6123 4567", plan: "Yearly", owner: "T. Weber", joined: "2025-12-06", lastActive: "2026-08-06" },
-  { name: "Tom Becker", email: "tom.becker@pulse.health", role: "Therapist", status: "Deleted", packages: 0, mrr: "$0", sessions: 12, region: "EU-West", phone: "+49 30 1234", plan: "—", owner: "R. Diaz", joined: "2026-02-11", lastActive: "2026-05-02" },
+  { name: "Tom Becker", email: "tom.becker@pulse.health", role: "Therapist", status: "Deleted", packages: 0, mrr: "$0", sessions: 12, region: "EU-West", phone: "+49 30 1234", plan: "-", owner: "R. Diaz", joined: "2026-02-11", lastActive: "2026-05-02" },
   { name: "Sara Lopez", email: "sara.lopez@pulse.health", role: "Analyst", status: "Active", packages: 2, mrr: "$280", sessions: 63, region: "NA-West", phone: "+1 555 0177", plan: "Monthly", owner: "S. Cole", joined: "2025-10-30", lastActive: "2026-08-04" },
   { name: "Idris Khan", email: "idris.khan@pulse.health", role: "Therapist", status: "Active", packages: 5, mrr: "$690", sessions: 305, region: "MENA", phone: "+971 4 123 45", plan: "Yearly", owner: "T. Weber", joined: "2026-03-02", lastActive: "2026-08-07" },
   { name: "Nora Bauer", email: "nora.bauer@pulse.health", role: "Analyst", status: "Suspended", packages: 1, mrr: "$150", sessions: 29, region: "EU-Central", phone: "+43 1 234 56", plan: "Quarterly", owner: "R. Diaz", joined: "2026-01-09", lastActive: "2026-06-28" },
@@ -509,7 +509,7 @@ function Swatch({ token, hex, source }: { token: string; hex?: string; source?: 
         style={{ background: `var(${token})` }}
       />
       <div className="font-mono text-xs text-muted-foreground">{token.slice(2)}</div>
-      <div className="font-mono text-xs text-foreground/70 uppercase">{hex || "—"}</div>
+      <div className="font-mono text-xs text-foreground/70 uppercase">{hex || "-"}</div>
       {source && <div className="text-xs text-foreground/60">{source}</div>}
     </div>
   );
@@ -897,7 +897,7 @@ export default function DesignSystemPage() {
         <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-5 py-4">
             <div className="mr-auto">
-              <div className="font-heading text-lg font-bold">ABAPRO — Design System</div>
+              <div className="font-heading text-lg font-bold">ABAPRO - Design System</div>
               <div className="text-xs text-muted-foreground">
                 Regal Violet · component &amp; token reference
               </div>
@@ -947,7 +947,7 @@ export default function DesignSystemPage() {
               <CardHeader>
                 <CardTitle>Color tokens</CardTitle>
                 <CardDescription>
-                  Every color is a CSS variable — swatches below adapt to light/dark.
+                  Every color is a CSS variable - swatches below adapt to light/dark.
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-6">
@@ -1091,7 +1091,7 @@ export default function DesignSystemPage() {
               <CardHeader>
                 <CardTitle>Currency signs</CardTitle>
                 <CardDescription>
-                  US dollar and UAE dirham marks — SVG, inherit color, scale with font size.
+                  US dollar and UAE dirham marks - SVG, inherit color, scale with font size.
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-wrap items-end gap-x-10 gap-y-6">
@@ -1134,7 +1134,7 @@ export default function DesignSystemPage() {
             <div className="grid gap-4 lg:grid-cols-2">
               <Card>
                 <CardHeader>
-                  <CardTitle>Sidebar — expanded</CardTitle>
+                  <CardTitle>Sidebar - expanded</CardTitle>
                   <CardDescription>Icons with labels; active item highlighted.</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -1143,7 +1143,7 @@ export default function DesignSystemPage() {
               </Card>
               <Card>
                 <CardHeader>
-                  <CardTitle>Sidebar — collapsed</CardTitle>
+                  <CardTitle>Sidebar - collapsed</CardTitle>
                   <CardDescription>Icons only; labels appear on hover as tooltips.</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -1225,12 +1225,12 @@ export default function DesignSystemPage() {
                   <StatusBadge tone="danger">Deleted</StatusBadge>
                   <StatusBadge tone="neutral">Draft</StatusBadge>
                 </Sub>
-                <Sub label="Chips — outline (default)">
+                <Sub label="Chips - outline (default)">
                   <Chip>Admin</Chip>
                   <Chip>Supervisor</Chip>
                   <Chip>Call center operator</Chip>
                 </Sub>
-                <Sub label="Chips — soft">
+                <Sub label="Chips - soft">
                   <Chip variant="soft">Content editor</Chip>
                   <Chip variant="soft">+2 more</Chip>
                 </Sub>
@@ -1379,7 +1379,7 @@ export default function DesignSystemPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Date &amp; time</CardTitle>
-                <CardDescription>Date, date-time, and range pickers — all DD-Mmm-YYYY.</CardDescription>
+                <CardDescription>Date, date-time, and range pickers - all DD-Mmm-YYYY.</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-5 sm:grid-cols-3">
                 <Field label="Date">
@@ -1453,7 +1453,7 @@ export default function DesignSystemPage() {
                   <Checkbox checked={notify} onCheckedChange={setNotify} label="Email notifications" />
                   <Checkbox checked={marketing} onCheckedChange={setMarketing} label="Product updates" />
                 </Sub>
-                <Sub label="Radio group — billing cycle">
+                <Sub label="Radio group - billing cycle">
                   {["monthly", "quarterly", "yearly"].map((cycle) => (
                     <Radio
                       key={cycle}
@@ -1581,7 +1581,7 @@ export default function DesignSystemPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Charts</CardTitle>
-                <CardDescription>Area, bar, donut, and sparkline — all driven by chart tokens.</CardDescription>
+                <CardDescription>Area, bar, donut, and sparkline - all driven by chart tokens.</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-6 lg:grid-cols-2">
                 <div className="flex flex-col gap-2">
@@ -1731,7 +1731,7 @@ export default function DesignSystemPage() {
               <CardHeader>
                 <CardTitle>Clients</CardTitle>
                 <CardDescription>
-                  Universal search, per-column sort &amp; filter, freeze columns, and row actions — all
+                  Universal search, per-column sort &amp; filter, freeze columns, and row actions - all
                   from the shared DataTable.
                 </CardDescription>
               </CardHeader>

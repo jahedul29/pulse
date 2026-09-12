@@ -1,7 +1,7 @@
 import type { ServerTableState } from "@/components/common/data-table";
 import type { ListParams } from "./rbac-api";
 
-const SORT_FIELD: Record<string, string> = { role: "name", created: "created_at", type: "is_system" };
+const SORT_FIELD: Record<string, string> = { role: "name", created: "created_at" };
 
 export function serverStateToParams(state: ServerTableState | null): ListParams {
   if (!state) return { page: 1, perPage: 10 };
@@ -14,6 +14,11 @@ export function serverStateToParams(state: ServerTableState | null): ListParams 
   for (const columnFilter of state.columnFilters) {
     if (columnFilter.id === "type" && Array.isArray(columnFilter.value) && columnFilter.value.length === 1) {
       filters.is_system = String(columnFilter.value[0]);
+    }
+    if (columnFilter.id === "created" && Array.isArray(columnFilter.value)) {
+      const [min, max] = columnFilter.value as [number?, number?];
+      if (min != null) filters.created_at_from = new Date(min).toISOString();
+      if (max != null) filters.created_at_to = new Date(max).toISOString();
     }
   }
   return {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -18,32 +18,42 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { DataTable } from "@/components/common/data-table";
-import { opTone } from "@/lib/admin-actions/tones";
+import { DataTable, type ServerTableState } from "@/components/common/data-table";
+import { auditTone } from "@/lib/audit/tone";
 import { stepIndex } from "@/lib/paging";
 import { useRecordDetail } from "@/lib/use-record-detail";
 import { ProfileCell } from "@/components/common/profile-cell";
 import { StatusBadge } from "@/components/common/status-badge";
 import { DetailList } from "@/components/common/detail-list";
 import { DiffViewer } from "@/components/common/diff-viewer";
-import { fetchChangeLog, fetchChangeDetail, changeTableOptions, actionName } from "@/lib/admin-actions/api";
-import type { ChangeLogEntry, ChangeOp } from "@/lib/admin-actions/types";
+import { useChangeLog } from "@/lib/admin-actions/queries";
+import { getChangeLog } from "@/lib/admin-actions/audit-api";
+import { changeServerStateToParams } from "@/lib/admin-actions/list-params";
+import type { ChangeLogEntry } from "@/lib/admin-actions/types";
 
-const OPS: ChangeOp[] = ["insert", "update", "delete"];
+const OPS: string[] = ["INSERT", "UPDATE", "DELETE"];
 
 export function ChangeLog() {
   const t = useTranslations("changeLog");
   const tc = useTranslations("common");
   const locale = useLocale();
+
+  const opLabel = useCallback(
+    (value: string) => (t.has(`op_${value}`) ? t(`op_${value}`) : value),
+    [t],
+  );
   const router = useRouter();
-  const params = useSearchParams();
-  const actionId = params.get("action");
+  const searchParams = useSearchParams();
+  const actionId = searchParams.get("action");
 
-  const [rows, setRows] = useState<ChangeLogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [server, setServer] = useState<ServerTableState | null>(null);
+  const params = useMemo(() => changeServerStateToParams(server, actionId), [server, actionId]);
+  const changeQuery = useChangeLog(params);
+  const rows = useMemo(() => changeQuery.data?.data ?? [], [changeQuery.data]);
+  const total = changeQuery.data?.meta?.total ?? rows.length;
+  const onServerStateChange = useCallback((state: ServerTableState) => setServer(state), []);
+
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-
   const active = selectedIndex == null ? null : (rows[selectedIndex] ?? null);
   const [retained, setRetained] = useState<ChangeLogEntry | null>(null);
   const selected = active ?? retained;
@@ -53,41 +63,18 @@ export function ChangeLog() {
     loading: detailLoading,
     error: detailError,
     reload,
-  } = useRecordDetail(selected?.id ?? null, fetchChangeDetail);
+  } = useRecordDetail(selected?.id ?? null, getChangeLog);
   useEffect(() => {
     detailRef.current?.scrollTo({ top: 0 });
   }, [selected?.id]);
-  const openAt = (i: number) => {
-    setSelectedIndex(i);
-    setRetained(rows[i] ?? null);
+  const openAt = (index: number) => {
+    setSelectedIndex(index);
+    setRetained(rows[index] ?? null);
   };
   const page = (delta: number) => {
     if (selectedIndex == null) return;
     openAt(stepIndex(selectedIndex, delta, rows.length));
   };
-
-  useEffect(() => {
-    let active = true;
-    fetchChangeLog({ actionId })
-      .then((fetchedRows) => {
-        if (!active) return;
-        setRows(fetchedRows);
-        setLoading(false);
-      })
-      .catch(() => {
-        if (!active) return;
-        setError(true);
-        setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [actionId]);
-
-  const tableOptions = useMemo(
-    () => changeTableOptions().map((tb) => ({ value: tb, label: tb })),
-    [],
-  );
 
   const columns = useMemo<ColumnDef<ChangeLogEntry, unknown>[]>(
     () => [
@@ -107,11 +94,18 @@ export function ChangeLog() {
         },
       },
       {
+        id: "schema",
+        accessorFn: (entry) => entry.schema ?? "",
+        size: 150,
+        header: t("colSchema"),
+        cell: ({ row }) => <span className="text-xs">{row.original.schema || "-"}</span>,
+      },
+      {
         id: "table",
         accessorFn: (entry) => entry.table,
         size: 170,
         header: t("colTable"),
-        meta: { filter: "select", filterOptions: tableOptions, filterLabel: t("colTable") },
+        meta: { filter: "text", filterLabel: t("colTable") },
         cell: ({ row }) => <span className="text-xs">{row.original.table}</span>,
       },
       {
@@ -119,33 +113,24 @@ export function ChangeLog() {
         accessorFn: (entry) => entry.recordId,
         size: 150,
         header: t("colRecord"),
-        cell: ({ row }) => <span className="text-xs">{row.original.recordId}</span>,
+        enableSorting: false,
+        cell: ({ row }) => <span className="block truncate text-xs">{row.original.recordId}</span>,
       },
       {
         id: "operation",
         accessorFn: (entry) => entry.operation,
         size: 130,
         header: t("colOperation"),
+        enableSorting: false,
         meta: {
           filter: "select",
-          filterOptions: OPS.map((operation) => ({ value: operation, label: t(`op_${operation}`) })),
+          filterOptions: OPS.map((operation) => ({ value: operation, label: opLabel(operation) })),
           filterLabel: t("colOperation"),
         },
         cell: ({ row }) => (
-          <StatusBadge tone={opTone(row.original.operation)} equalWidth={false} className="min-w-[5rem]">
-            {t(`op_${row.original.operation}`)}
+          <StatusBadge tone={auditTone(row.original.operation)} equalWidth={false} className="min-w-[5rem]">
+            {opLabel(row.original.operation)}
           </StatusBadge>
-        ),
-      },
-      {
-        id: "columns",
-        accessorFn: (entry) => entry.changes.length,
-        size: 130,
-        header: t("colColumns"),
-        cell: ({ row }) => (
-          <span className="text-xs text-muted-foreground tabular">
-            {t("columnsCount", { count: row.original.changes.length })}
-          </span>
         ),
       },
       {
@@ -153,24 +138,24 @@ export function ChangeLog() {
         accessorFn: (entry) => entry.actorName,
         size: 170,
         header: t("colWho"),
+        enableSorting: false,
         cell: ({ row }) => <ProfileCell name={row.original.actorName} />,
       },
       {
         id: "action",
-        accessorFn: (entry) => actionName(entry.actionId) ?? "",
-        size: 200,
+        accessorFn: (entry) => entry.actionId ?? "",
+        size: 120,
         header: t("colAction"),
-        cell: ({ row }) => {
-          const name = actionName(row.original.actionId);
-          return name ? (
-            <span className="truncate text-sm">{name}</span>
+        enableSorting: false,
+        cell: ({ row }) =>
+          row.original.actionId ? (
+            <span className="block truncate text-xs text-muted-foreground tabular">{row.original.actionId}</span>
           ) : (
             <span className="text-muted-foreground">{t("noAction")}</span>
-          );
-        },
+          ),
       },
     ],
-    [t, locale, tableOptions],
+    [t, locale, opLabel],
   );
 
   return (
@@ -195,12 +180,17 @@ export function ChangeLog() {
               </Button>
             </div>
           )}
-          {error ? (
-            <p className="py-16 text-center text-sm text-muted-foreground">{t("loadError")}</p>
-          ) : loading ? (
+          {changeQuery.isError ? (
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
+              <p className="text-sm text-muted-foreground">{t("loadError")}</p>
+              <Button variant="outline" size="sm" onClick={() => changeQuery.refetch()}>
+                {tc("retry")}
+              </Button>
+            </div>
+          ) : changeQuery.isPending ? (
             <div className="flex flex-col gap-2">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-11 w-full" />
+              {Array.from({ length: 6 }).map((_, index) => (
+                <Skeleton key={index} className="h-11 w-full" />
               ))}
             </div>
           ) : (
@@ -208,6 +198,9 @@ export function ChangeLog() {
               columns={columns}
               data={rows}
               pageSize={10}
+              manualServer
+              rowCount={total}
+              onServerStateChange={onServerStateChange}
               searchPlaceholder={t("search")}
               emptyLabel={t("empty")}
               itemsLabel={t("items")}
@@ -215,7 +208,7 @@ export function ChangeLog() {
               rowAriaLabel={(entry) => `${entry.table} ${entry.recordId}`}
               rowClassName={(entry) => (active && entry.id === active.id ? "bg-accent" : undefined)}
               getSearchText={(entry) =>
-                `${entry.table} ${entry.recordId} ${entry.actorName} ${entry.changes.map((change) => change.column).join(" ")}`
+                `${entry.schema ?? ""} ${entry.table} ${entry.recordId} ${entry.actorName}`
               }
               filterLabels={{
                 filter: t("filter"),
@@ -260,7 +253,7 @@ export function ChangeLog() {
                 </Button>
               </div>
               <SheetTitle className="font-mono text-base">
-                {selected.table} · {selected.recordId}
+                {[selected.schema, selected.recordId].filter(Boolean).join(" · ")}
               </SheetTitle>
             </SheetHeader>
             <SheetBody ref={detailRef} className="flex flex-col gap-4">
@@ -284,12 +277,16 @@ export function ChangeLog() {
                       {
                         label: t("colOperation"),
                         value: (
-                          <StatusBadge tone={opTone(detail.operation)} equalWidth={false}>
-                            {t(`op_${detail.operation}`)}
+                          <StatusBadge tone={auditTone(detail.operation)} equalWidth={false}>
+                            {opLabel(detail.operation)}
                           </StatusBadge>
                         ),
                       },
-                      { label: t("colWho"), value: detail.actorName },
+                      { label: t("colWho"), value: <ProfileCell name={detail.actorName} /> },
+                      {
+                        label: t("linkedAction"),
+                        value: detail.actionId ?? t("noAction"),
+                      },
                       {
                         label: t("colTimestamp"),
                         value: (() => {
@@ -297,10 +294,7 @@ export function ChangeLog() {
                           return `${date} ${time}`;
                         })(),
                       },
-                      {
-                        label: t("linkedAction"),
-                        value: actionName(detail.actionId) ?? t("noAction"),
-                      },
+                      { label: t("colTable"), value: detail.table },
                     ]}
                   />
                   <div className="flex flex-col gap-2">
@@ -314,7 +308,10 @@ export function ChangeLog() {
             </SheetBody>
             {selected.actionId && (
               <SheetFooter>
-                <Button size="lg" onClick={() => router.push("/admin/audit/actions")}>
+                <Button
+                  size="lg"
+                  onClick={() => router.push(`/admin/audit/actions?open=${selected.actionId}`)}
+                >
                   {t("viewAction")}
                 </Button>
               </SheetFooter>

@@ -1,5 +1,5 @@
 // Locale-aware short calendar labels, derived from Intl. Latin/other digits are not
-// involved here — these are month/weekday *names*. Week starts on Monday app-wide.
+// involved here - these are month/weekday *names*. Week starts on Monday app-wide.
 
 export function monthShortLabels(locale: string): string[] {
   const fmt = new Intl.DateTimeFormat(locale, { month: "short", timeZone: "UTC" });

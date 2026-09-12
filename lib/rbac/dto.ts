@@ -28,6 +28,14 @@ export interface RoleDto {
   updated_at?: string;
 }
 
+export interface AdminAccountAssignmentDto {
+  id: string;
+  email: string;
+  roles: RoleDto[];
+  direct_permissions: PermissionDto[];
+  effective_permissions: (PermissionDto | string)[];
+}
+
 export interface StoreRoleBody {
   name: string;
   description?: string;

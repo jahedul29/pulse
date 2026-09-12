@@ -41,6 +41,25 @@ describe("apiFetch", () => {
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer tok-123");
   });
 
+  it("encodes array query params with [] (Laravel array syntax)", async () => {
+    fetchMock.mockResolvedValueOnce(fakeRes(200, { ok: true }));
+    await apiFetch("/users", { query: { relations: ["staff", "roles"], per_page: 15 } });
+    const decoded = decodeURIComponent(String(fetchMock.mock.calls[0][0]));
+    expect(decoded).toContain("relations[]=staff");
+    expect(decoded).toContain("relations[]=roles");
+    expect(decoded).toContain("per_page=15");
+    expect(decoded).not.toContain("relations=staff");
+  });
+
+  it("encodes boolean query params as 1/0 (Laravel boolean rule rejects 'true'/'false')", async () => {
+    fetchMock.mockResolvedValueOnce(fakeRes(200, { ok: true }));
+    await apiFetch("/users/1", { query: { detail: true, archived: false } });
+    const decoded = decodeURIComponent(String(fetchMock.mock.calls[0][0]));
+    expect(decoded).toContain("detail=1");
+    expect(decoded).toContain("archived=0");
+    expect(decoded).not.toContain("detail=true");
+  });
+
   it("omits Authorization when auth:false", async () => {
     fetchMock.mockResolvedValueOnce(fakeRes(200, {}));
     await apiFetch("/auth/login", { method: "POST", body: { email: "a" }, auth: false });

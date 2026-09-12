@@ -5,6 +5,7 @@ import {
   fmtCompact,
   fmtDelta,
   fmtDateTimeParts,
+  fmtDateTime,
   startOfTomorrow,
 } from "./format";
 
@@ -12,6 +13,10 @@ describe("format helpers", () => {
   it("fmtDate renders dd-Mmm-YYYY", () => {
     expect(fmtDate("2026-08-17")).toBe("17-Aug-2026");
     expect(fmtDate("2026-01-05")).toBe("05-Jan-2026");
+  });
+
+  it("fmtDateTime is date-first (dd-Mmm-YYYY hh:mm), not time-first", () => {
+    expect(fmtDateTime(Date.parse("2026-09-10T13:24:00"))).toMatch(/^\d{2}-[A-Za-z]{3}-\d{4} \d{2}:\d{2}$/);
   });
 
   it("fmtMoney is grouped with two decimals", () => {

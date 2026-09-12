@@ -481,7 +481,7 @@ export function MessageTemplates() {
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {t("templates.pushPreview")}: {htmlToPlainText(renderTemplate(enVal, "en")) || "—"}
+                  {t("templates.pushPreview")}: {htmlToPlainText(renderTemplate(enVal, "en")) || "-"}
                 </p>
               </div>
               <div className="flex flex-col gap-1.5">
@@ -519,7 +519,7 @@ export function MessageTemplates() {
                   )}
                 </div>
                 <p dir="rtl" className="text-xs text-muted-foreground">
-                  {t("templates.pushPreview")}: {htmlToPlainText(renderTemplate(arVal, "ar")) || "—"}
+                  {t("templates.pushPreview")}: {htmlToPlainText(renderTemplate(arVal, "ar")) || "-"}
                 </p>
               </div>
             </div>

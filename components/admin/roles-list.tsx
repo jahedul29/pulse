@@ -140,6 +140,7 @@ export function RolesList() {
         accessorFn: (role) => (role.is_system ? t("typeBuiltin") : t("typeCustom")),
         size: 150,
         header: t("colType"),
+        enableSorting: false,
         meta: {
           filter: "select",
           filterOptions: [
@@ -182,9 +183,10 @@ export function RolesList() {
         accessorFn: (role) => (role.created_at ? new Date(role.created_at).getTime() : 0),
         size: 160,
         header: t("colCreated"),
+        meta: { filter: "dateRange", filterLabel: t("colCreated") },
         cell: ({ row }) => (
           <span className="text-xs text-muted-foreground tabular">
-            {row.original.created_at ? fmtDateTimeParts(new Date(row.original.created_at).getTime(), locale).date : "—"}
+            {row.original.created_at ? fmtDateTimeParts(new Date(row.original.created_at).getTime(), locale).date : "-"}
           </span>
         ),
       },
@@ -193,7 +195,7 @@ export function RolesList() {
         enableSorting: false,
         size: 150,
         header: "",
-        meta: { headClassName: "text-end", cellClassName: "text-end" },
+        meta: { headClassName: "text-end", cellClassName: "text-end", noClip: true },
         cell: ({ row }) => {
           const role = row.original;
           return (
@@ -285,6 +287,8 @@ export function RolesList() {
                 clear: t("clear"),
                 clearFilters: tc("clearFilters"),
                 search: t("filterSearch"),
+                from: t("dateFrom"),
+                to: t("dateTo"),
               }}
               enableFreeze
               maxFreeze={2}

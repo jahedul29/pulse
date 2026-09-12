@@ -249,7 +249,7 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
                           checked={allOn}
                           indeterminate={someOn}
                           onCheckedChange={(checked) => toggleModule(group.permissions, checked === true)}
-                          aria-label={`${group.name} — ${t("selectAll")}`}
+                          aria-label={`${group.name} - ${t("selectAll")}`}
                         />
                         {t("selectAll")}
                       </Label>

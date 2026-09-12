@@ -19,7 +19,7 @@ export function AnnualEditor({ specialist }: { specialist: Specialist }) {
   const config = useMemo(() => annualConfigFor(specialist.role), [specialist.role]);
 
   // Date-dependent parts render only after mount so the first (server-matched) render is
-  // date-independent — avoids an SSR/client hydration mismatch and lets the grid mount in a
+  // date-independent - avoids an SSR/client hydration mismatch and lets the grid mount in a
   // clean commit after hydration completes.
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
