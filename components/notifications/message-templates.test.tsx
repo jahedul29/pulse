@@ -1,8 +1,47 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import mockMessages from "../../messages/en.json";
 import { MessageTemplates } from "./message-templates";
-import { fetchTemplateDetail } from "../../lib/notifications/api";
+
+const template = {
+  id: 1,
+  code: "AUTH_OTP",
+  name: "OTP message",
+  channel_id: 1,
+  subject: { EN: "Your code" },
+  body: { EN: "<p>Your code is {code}.</p>" },
+  is_active: true,
+};
+
+const createMock = jest.fn();
+
+jest.mock("../../lib/notifications/queries", () => ({
+  useAllTemplates: () => ({ data: [template], isPending: false, isError: false, refetch: jest.fn() }),
+  useTemplate: () => ({ data: template, isPending: false, isError: false, refetch: jest.fn() }),
+  useChannels: () => ({ data: [{ id: 1, code: "IN_APP", name: "In-app inbox", is_active: true }] }),
+  useChannelSearch: () => ({
+    data: { pages: [{ data: [{ id: 1, code: "IN_APP", name: "In-app inbox", is_active: true }], meta: { current_page: 1, last_page: 1 } }] },
+    isPending: false,
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    fetchNextPage: jest.fn(),
+  }),
+  useCreateTemplate: () => ({ mutateAsync: createMock, isPending: false }),
+  useUpdateTemplate: () => ({ mutateAsync: jest.fn(), isPending: false }),
+  useDeleteTemplate: () => ({ mutateAsync: jest.fn(), isPending: false }),
+}));
+
+jest.mock("../ui/rich-text-editor", () => ({
+  RichTextEditor: ({
+    ariaLabel,
+    value,
+    onChange,
+  }: {
+    ariaLabel?: string;
+    value: string;
+    onChange: (next: string) => void;
+  }) => <textarea aria-label={ariaLabel} value={value} onChange={(event) => onChange(event.target.value)} />,
+}));
 
 jest.mock("next-intl", () => {
   const messages = mockMessages as Record<string, Record<string, unknown>>;
@@ -13,47 +52,36 @@ jest.mock("next-intl", () => {
     useTranslations: (ns: string) => (key: string, vars?: Record<string, unknown>) => {
       const value = resolve(ns, key);
       let str = typeof value === "string" ? value : key;
-      if (vars) {
-        for (const [varName, varValue] of Object.entries(vars)) str = str.replace(`{${varName}}`, String(varValue));
-      }
+      if (vars) for (const [name, val] of Object.entries(vars)) str = str.replace(`{${name}}`, String(val));
       return str;
     },
   };
 });
 
-jest.mock("../../lib/notifications/api", () => {
-  const actual = jest.requireActual("../../lib/notifications/api");
-  return { ...actual, fetchTemplateDetail: jest.fn() };
-});
-
-jest.mock("../ui/rich-text-editor", () => ({
-  RichTextEditor: ({
-    ariaLabel,
-    value,
-    onChange,
-  }: {
-    ariaLabel?: string;
-    value: string;
-    onChange: (v: string) => void;
-  }) => <textarea aria-label={ariaLabel} value={value} onChange={(event) => onChange(event.target.value)} />,
-}));
-
-const detailMock = fetchTemplateDetail as jest.Mock;
-
 describe("MessageTemplates", () => {
-  afterEach(() => detailMock.mockReset());
+  afterEach(() => createMock.mockReset());
 
-  it("lists seeded templates and opens the side-by-side EN/AR editor", async () => {
+  it("lists templates and opens the EN/AR editor", async () => {
     render(<MessageTemplates />);
 
     expect(await screen.findByText("AUTH_OTP")).toBeInTheDocument();
-
     await userEvent.click(screen.getByRole("button", { name: "New template" }));
 
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByLabelText("English copy")).toBeInTheDocument();
-    expect(screen.getByLabelText("Arabic copy")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create template" })).toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("English copy")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Arabic copy")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Subject (English)")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Create template" })).toBeInTheDocument();
+  });
+
+  it("opens a read-only detail drawer on row click", async () => {
+    render(<MessageTemplates />);
+
+    await userEvent.click(await screen.findByRole("link", { name: "AUTH_OTP" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("AUTH_OTP")).toBeInTheDocument();
+    expect(within(dialog).getAllByText(/Your code/).length).toBeGreaterThan(0);
+    expect(within(dialog).getByRole("button", { name: "Edit" })).toBeInTheDocument();
   });
 
   it("blocks create and shows required errors on empty submit", async () => {
@@ -64,38 +92,8 @@ describe("MessageTemplates", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "Create template" }));
 
     expect(await within(dialog).findByText("A message code is required.")).toBeInTheDocument();
+    expect(within(dialog).getByText("An English subject is required.")).toBeInTheDocument();
     expect(within(dialog).getByText("English copy is required.")).toBeInTheDocument();
-    expect(within(dialog).getByText("Arabic copy is required.")).toBeInTheDocument();
-  });
-
-  it("loads edit data from the API seam and populates the editor", async () => {
-    detailMock.mockResolvedValue({
-      code: "AUTH_OTP",
-      category: "auth",
-      en: "Your code is {code}.",
-      ar: "رمزك هو {code}.",
-      updatedAt: 1,
-    });
-    render(<MessageTemplates />);
-
-    await userEvent.click(await screen.findByText("AUTH_OTP"));
-
-    const dialog = await screen.findByRole("dialog");
-    expect(detailMock).toHaveBeenCalledWith("AUTH_OTP");
-    const en = within(dialog).getByLabelText("English copy") as HTMLTextAreaElement;
-    await waitFor(() => expect(en.value).toContain("Your code is"));
-    expect(within(dialog).getByRole("button", { name: "Save" })).toBeInTheDocument();
-  });
-
-  it("shows an error + retry when the edit fetch fails", async () => {
-    detailMock.mockRejectedValue(new Error("boom"));
-    render(<MessageTemplates />);
-
-    await userEvent.click(await screen.findByText("AUTH_OTP"));
-
-    const dialog = await screen.findByRole("dialog");
-    expect(await within(dialog).findByText("Couldn't load this template. Try again.")).toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Try again" })).toBeInTheDocument();
-    expect(within(dialog).queryByLabelText("English copy")).not.toBeInTheDocument();
+    expect(createMock).not.toHaveBeenCalled();
   });
 });

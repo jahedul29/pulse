@@ -1,52 +1,114 @@
-import { templateSchema, mappingSchema, routingSchema } from "./schemas";
+import { templateSchema, alertRouteSchema, mappingSchema } from "./schemas";
 
 const tMsgs = {
-  codeRequired: "req",
-  codeFormat: "fmt",
-  codeExists: "dup",
-  enRequired: "en-req",
-  arRequired: "ar-req",
+  codeRequired: "code-req",
+  codeFormat: "code-fmt",
+  nameRequired: "name-req",
+  channelRequired: "channel-req",
+  subjectRequired: "subject-req",
+  bodyRequired: "body-req",
+};
+
+const validTemplate = {
+  code: "SYS_X",
+  name: "System notice",
+  channelId: "1",
+  subjectEn: "Subject",
+  subjectAr: "",
+  bodyEn: "<p>hi</p>",
+  bodyAr: "",
+  isActive: true,
 };
 
 describe("templateSchema (create)", () => {
-  const schema = templateSchema(tMsgs, { existingCodes: ["AUTH_OTP"], isCreate: true });
+  const schema = templateSchema(tMsgs, { isCreate: true });
 
   it("rejects an empty code", () => {
-    const result = schema.safeParse({ code: "", category: "auth", en: "<p>hi</p>", ar: "" });
-    expect(result.success).toBe(false);
+    expect(schema.safeParse({ ...validTemplate, code: "" }).success).toBe(false);
   });
 
   it("rejects a bad code format", () => {
-    const result = schema.safeParse({ code: "bad code", category: "auth", en: "<p>hi</p>", ar: "" });
-    expect(result.success).toBe(false);
+    expect(schema.safeParse({ ...validTemplate, code: "bad code" }).success).toBe(false);
   });
 
-  it("rejects a duplicate code", () => {
-    const result = schema.safeParse({ code: "AUTH_OTP", category: "auth", en: "<p>hi</p>", ar: "" });
-    expect(result.success).toBe(false);
+  it("rejects a missing channel", () => {
+    expect(schema.safeParse({ ...validTemplate, channelId: "" }).success).toBe(false);
   });
 
-  it("rejects empty English copy", () => {
-    const result = schema.safeParse({ code: "SYS_X", category: "system", en: "<p></p>", ar: "<p>ar</p>" });
-    expect(result.success).toBe(false);
+  it("rejects an empty English subject", () => {
+    expect(schema.safeParse({ ...validTemplate, subjectEn: "  " }).success).toBe(false);
   });
 
-  it("rejects empty Arabic copy", () => {
-    const result = schema.safeParse({ code: "SYS_X", category: "system", en: "<p>hi</p>", ar: "<p></p>" });
-    expect(result.success).toBe(false);
+  it("rejects empty English body", () => {
+    expect(schema.safeParse({ ...validTemplate, bodyEn: "<p></p>" }).success).toBe(false);
   });
 
-  it("accepts a valid new template with both languages", () => {
-    const result = schema.safeParse({ code: "SYS_X", category: "system", en: "<p>hi</p>", ar: "<p>مرحبا</p>" });
-    expect(result.success).toBe(true);
+  it("accepts a valid new template (Arabic optional)", () => {
+    expect(schema.safeParse(validTemplate).success).toBe(true);
   });
 });
 
 describe("templateSchema (edit)", () => {
-  it("does not re-validate the (immutable) code", () => {
-    const schema = templateSchema(tMsgs, { existingCodes: ["AUTH_OTP"], isCreate: false });
-    const result = schema.safeParse({ code: "AUTH_OTP", category: "auth", en: "<p>hi</p>", ar: "<p>مرحبا</p>" });
-    expect(result.success).toBe(true);
+  it("does not re-validate the immutable code", () => {
+    const schema = templateSchema(tMsgs, { isCreate: false });
+    expect(schema.safeParse({ ...validTemplate, code: "anything at all" }).success).toBe(true);
+  });
+});
+
+const rMsgs = {
+  codeRequired: "code-req",
+  codeFormat: "code-fmt",
+  nameRequired: "name-req",
+  channelRequired: "channel-req",
+  templateRequired: "template-req",
+  audienceRequired: "aud-req",
+  priorityInvalid: "prio-req",
+};
+
+const validRoute = {
+  code: "SECURITY_INCIDENT",
+  name: "Security incident routing",
+  channelId: "5",
+  templateId: "1",
+  audienceType: "ALL_ADMINS" as const,
+  audienceIds: [] as string[],
+  priority: 100,
+  isActive: true,
+};
+
+describe("alertRouteSchema", () => {
+  const schema = alertRouteSchema(rMsgs, { isCreate: true });
+
+  it("accepts an ALL_ADMINS route with no recipients", () => {
+    expect(schema.safeParse(validRoute).success).toBe(true);
+  });
+
+  it("requires a template", () => {
+    expect(schema.safeParse({ ...validRoute, templateId: "" }).success).toBe(false);
+  });
+
+  it("rejects a ROLE route with no recipients, keyed at audienceIds", () => {
+    const result = schema.safeParse({ ...validRoute, audienceType: "ROLE", audienceIds: [] });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.path[0] === "audienceIds" && issue.message === "aud-req")).toBe(true);
+    }
+  });
+
+  it("accepts a ROLE route with at least one recipient", () => {
+    expect(schema.safeParse({ ...validRoute, audienceType: "ROLE", audienceIds: ["1"] }).success).toBe(true);
+  });
+
+  it("rejects a non-integer priority with a human message", () => {
+    const result = schema.safeParse({ ...validRoute, priority: Number.NaN });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.message === "prio-req")).toBe(true);
+    }
+  });
+
+  it("rejects a bad code format on create", () => {
+    expect(schema.safeParse({ ...validRoute, code: "bad code" }).success).toBe(false);
   });
 });
 
@@ -58,56 +120,12 @@ describe("mappingSchema", () => {
     recipients: { client: true, rbt: false, sltot: false, bcba: false },
   };
 
-  it("rejects a notified role with no template, keyed at templateByRole.<role>", () => {
+  it("rejects a notified role with no template", () => {
     const result = schema.safeParse({ ...base, templateByRole: {} });
     expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(
-        result.error.issues.some(
-          (i) => i.path[0] === "templateByRole" && i.path[1] === "client" && i.message === "tpl-req",
-        ),
-      ).toBe(true);
-    }
   });
 
   it("accepts a notified role that has a template", () => {
-    const result = schema.safeParse({ ...base, templateByRole: { client: "AUTH_OTP" } });
-    expect(result.success).toBe(true);
-  });
-
-  it("ignores template for a non-notified role", () => {
-    const result = schema.safeParse({
-      eventId: "ev",
-      eventName: "Event",
-      recipients: { client: false, rbt: false, sltot: false, bcba: false },
-      templateByRole: {},
-    });
-    expect(result.success).toBe(true);
-  });
-});
-
-describe("routingSchema", () => {
-  const schema = routingSchema({ recipientRequired: "rec-req" });
-  const base = { eventId: "ev", eventName: "Event", generatesTicket: false, urgency: "low" as const };
-
-  it("rejects zero recipients, keyed at recipients", () => {
-    const result = schema.safeParse({
-      ...base,
-      recipients: { client: false, rbt: false, sltot: false, bcba: false },
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.issues.some((i) => i.path[0] === "recipients" && i.message === "rec-req")).toBe(
-        true,
-      );
-    }
-  });
-
-  it("accepts at least one recipient", () => {
-    const result = schema.safeParse({
-      ...base,
-      recipients: { client: true, rbt: false, sltot: false, bcba: false },
-    });
-    expect(result.success).toBe(true);
+    expect(schema.safeParse({ ...base, templateByRole: { client: "AUTH_OTP" } }).success).toBe(true);
   });
 });

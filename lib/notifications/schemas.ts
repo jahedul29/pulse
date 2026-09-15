@@ -1,45 +1,74 @@
 import { z } from "zod";
 import { htmlToPlainText } from "./variables";
-import { MESSAGE_CATEGORIES, RECIPIENT_ROLES, URGENCIES } from "./types";
-import type { MessageCategory, RecipientRole, Urgency } from "./types";
+import { AUDIENCE_TYPES, type AudienceType } from "./dto";
+import { RECIPIENT_ROLES } from "./types";
+import type { RecipientRole } from "./types";
 
-const CATEGORY = MESSAGE_CATEGORIES as [MessageCategory, ...MessageCategory[]];
-const URGENCY = URGENCIES as [Urgency, ...Urgency[]];
+const AUDIENCE = AUDIENCE_TYPES as [AudienceType, ...AudienceType[]];
 
 const nonEmptyHtml = (html: string) => htmlToPlainText(html).trim().length > 0;
 
 export type TemplateMessages = {
   codeRequired: string;
   codeFormat: string;
-  codeExists: string;
-  enRequired: string;
-  arRequired: string;
+  nameRequired: string;
+  channelRequired: string;
+  subjectRequired: string;
+  bodyRequired: string;
 };
 
-export function templateSchema(
-  msgs: TemplateMessages,
-  opts: { existingCodes: string[]; isCreate: boolean },
-) {
+export function templateSchema(msgs: TemplateMessages, opts: { isCreate: boolean }) {
   const code = opts.isCreate
-    ? z
-        .string()
-        .trim()
-        .min(1, msgs.codeRequired)
-        .regex(/^[A-Z0-9_]+$/, msgs.codeFormat)
-        .refine((codeValue) => !opts.existingCodes.includes(codeValue), msgs.codeExists)
+    ? z.string().trim().min(1, msgs.codeRequired).regex(/^[A-Z0-9_]+$/, msgs.codeFormat)
     : z.string();
   return z.object({
     code,
-    category: z.enum(CATEGORY),
-    en: z.string().refine(nonEmptyHtml, msgs.enRequired),
-    ar: z.string().refine(nonEmptyHtml, msgs.arRequired),
+    name: z.string().trim().min(1, msgs.nameRequired),
+    channelId: z.string().min(1, msgs.channelRequired),
+    subjectEn: z.string().trim().min(1, msgs.subjectRequired),
+    subjectAr: z.string().trim(),
+    bodyEn: z.string().refine(nonEmptyHtml, msgs.bodyRequired),
+    bodyAr: z.string(),
+    isActive: z.boolean(),
   });
 }
 export type TemplateForm = z.infer<ReturnType<typeof templateSchema>>;
 
+export type AlertRouteMessages = {
+  codeRequired: string;
+  codeFormat: string;
+  nameRequired: string;
+  channelRequired: string;
+  templateRequired: string;
+  audienceRequired: string;
+  priorityInvalid: string;
+};
+
+export function alertRouteSchema(msgs: AlertRouteMessages, opts: { isCreate: boolean }) {
+  const code = opts.isCreate
+    ? z.string().trim().min(1, msgs.codeRequired).regex(/^[A-Z0-9_]+$/, msgs.codeFormat)
+    : z.string();
+  return z
+    .object({
+      code,
+      name: z.string().trim().min(1, msgs.nameRequired),
+      channelId: z.string().min(1, msgs.channelRequired),
+      templateId: z.string().min(1, msgs.templateRequired),
+      audienceType: z.enum(AUDIENCE),
+      audienceIds: z.array(z.string()),
+      priority: z.number({ error: msgs.priorityInvalid }).int(msgs.priorityInvalid).min(0, msgs.priorityInvalid),
+      isActive: z.boolean(),
+    })
+    .refine(
+      (value) => value.audienceType === "ALL_ADMINS" || value.audienceIds.length > 0,
+      { message: msgs.audienceRequired, path: ["audienceIds"] },
+    );
+}
+export type AlertRouteForm = z.infer<ReturnType<typeof alertRouteSchema>>;
+
 const recipients = z.object(
   RECIPIENT_ROLES.reduce(
-    (acc, role) => ({ ...acc, [role]: z.boolean() }),
+    (accumulator, role) => ({ ...accumulator, [role]: z.boolean() }),
     {} as Record<RecipientRole, z.ZodBoolean>,
   ),
 );
@@ -52,9 +81,9 @@ export function mappingSchema(msgs: { templateRequired: string }) {
       recipients,
       templateByRole: z.record(z.string(), z.string().optional()),
     })
-    .superRefine((val, ctx) => {
+    .superRefine((value, ctx) => {
       for (const role of RECIPIENT_ROLES) {
-        if (val.recipients[role] && !val.templateByRole[role]) {
+        if (value.recipients[role] && !value.templateByRole[role]) {
           ctx.addIssue({
             code: "custom",
             message: msgs.templateRequired,
@@ -65,19 +94,3 @@ export function mappingSchema(msgs: { templateRequired: string }) {
     });
 }
 export type MappingForm = z.infer<ReturnType<typeof mappingSchema>>;
-
-export function routingSchema(msgs: { recipientRequired: string }) {
-  return z
-    .object({
-      eventId: z.string(),
-      eventName: z.string(),
-      recipients,
-      generatesTicket: z.boolean(),
-      urgency: z.enum(URGENCY),
-    })
-    .refine((val) => RECIPIENT_ROLES.some((role) => val.recipients[role]), {
-      message: msgs.recipientRequired,
-      path: ["recipients"],
-    });
-}
-export type RoutingForm = z.infer<ReturnType<typeof routingSchema>>;

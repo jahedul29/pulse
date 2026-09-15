@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Sheet,
   SheetBody,
@@ -16,70 +14,69 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { DataTable, toolbarIconButtonClass } from "@/components/common/data-table";
+import { DataTable, type ServerTableState } from "@/components/common/data-table";
 import { StatusBadge } from "@/components/common/status-badge";
 import { ProfileCell } from "@/components/common/profile-cell";
+import { Chip } from "@/components/common/chip";
 import { DetailList } from "@/components/common/detail-list";
 import { fmtDateTimeParts } from "@/lib/format";
-import { exportCsv } from "@/lib/export/csv";
-import { useNotificationStore } from "@/lib/notifications/store";
-import { fetchNotificationLog } from "@/lib/notifications/api";
 import { htmlToPlainText } from "@/lib/notifications/variables";
 import { useRetained } from "@/lib/use-retained";
-import { statusTone } from "@/lib/notifications/tones";
-import {
-  DELIVERY_STATUSES,
-  MESSAGE_CATEGORIES,
-  RECIPIENT_ROLES,
-} from "@/lib/notifications/types";
-import type { NotificationLogEntry } from "@/lib/notifications/types";
+import { useDeliveries, useDelivery } from "@/lib/notifications/queries";
+import { ChannelFilter } from "@/components/notifications/channel-select";
+import { CampaignFilter } from "@/components/notifications/campaign-filter";
+import { AdminUserFilter } from "@/components/admin/admin-user-filter";
+import { deliveriesStateToParams } from "@/lib/notifications/list-params";
+import { DELIVERY_STATUS_CODES, deliveryStatusTone, localizedText } from "@/lib/notifications/dto";
+import type { NotificationDeliveryDto } from "@/lib/notifications/dto";
+import { useAllAdminUsers } from "@/lib/user-management/queries";
+
+function shortId(value: string | null): string {
+  if (!value) return "-";
+  return value.length > 10 ? `${value.slice(0, 8)}…` : value;
+}
 
 export function NotificationLog() {
   const t = useTranslations("notifications");
   const tc = useTranslations("common");
   const locale = useLocale();
 
-  const templatesState = useNotificationStore((state) => state.templates);
+  const [server, setServer] = useState<ServerTableState | null>(null);
+  const params = useMemo(() => deliveriesStateToParams(server), [server]);
+  const deliveriesQuery = useDeliveries(params);
+  const rows = useMemo(() => deliveriesQuery.data?.data ?? [], [deliveriesQuery.data]);
+  const total = deliveriesQuery.data?.meta?.total ?? rows.length;
+  const onServerStateChange = useCallback((state: ServerTableState) => setServer(state), []);
 
-  const [rows, setRows] = useState<NotificationLogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [selected, setSelected] = useState<NotificationLogEntry | null>(null);
+  const usersQuery = useAllAdminUsers();
+  const recipient = useMemo(() => {
+    const map = new Map((usersQuery.data ?? []).map((user) => [user.id, user]));
+    return (id: string | null) => (id ? map.get(id) ?? null : null);
+  }, [usersQuery.data]);
+
+  const [selected, setSelected] = useState<NotificationDeliveryDto | null>(null);
   const shown = useRetained(selected);
+  const detailQuery = useDelivery(selected?.id ?? null);
 
-  useEffect(() => {
-    let active = true;
-    fetchNotificationLog()
-      .then((result) => {
-        if (!active) return;
-        setRows(result);
-        setLoading(false);
-      })
-      .catch(() => {
-        if (!active) return;
-        setError(true);
-        setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const template = useMemo(
-    () => (code: string) => templatesState.find((tpl) => tpl.code === code) ?? null,
-    [templatesState],
+  const recipientName = useCallback(
+    (id: string | null) => recipient(id)?.name ?? recipient(id)?.email ?? shortId(id),
+    [recipient],
   );
 
-  const columns = useMemo<ColumnDef<NotificationLogEntry, unknown>[]>(
+  const columns = useMemo<ColumnDef<NotificationDeliveryDto, unknown>[]>(
     () => [
       {
         id: "timestamp",
-        accessorFn: (entry) => entry.createdAt,
+        accessorFn: (entry) => {
+          const stamp = entry.sent_at ?? entry.created_at;
+          return stamp ? Date.parse(stamp) : 0;
+        },
         size: 168,
         header: t("log.colTimestamp"),
-        meta: { filter: "dateRange", filterLabel: t("log.colTimestamp") },
         cell: ({ row }) => {
-          const { date, time } = fmtDateTimeParts(row.original.createdAt, locale);
+          const stamp = row.original.sent_at ?? row.original.created_at;
+          if (!stamp) return <span className="text-xs text-muted-foreground">-</span>;
+          const { date, time } = fmtDateTimeParts(Date.parse(stamp), locale);
           return (
             <span className="text-xs whitespace-nowrap tabular">
               {date} {time}
@@ -89,40 +86,63 @@ export function NotificationLog() {
       },
       {
         id: "recipient",
-        accessorFn: (entry) => entry.recipientRole,
+        accessorFn: (entry) => entry.admin_account_id ?? "",
         size: 220,
         header: t("log.colRecipient"),
+        enableSorting: false,
         meta: {
           filter: "select",
-          filterOptions: RECIPIENT_ROLES.map((role) => ({ value: role, label: t(`roles.${role}`) })),
           filterLabel: t("log.colRecipient"),
+          renderFilter: ({ value, setValue, searchLabel }) => (
+            <AdminUserFilter value={value} onChange={setValue} searchLabel={searchLabel} emptyLabel={tc("noResults")} />
+          ),
         },
-        cell: ({ row }) => (
-          <ProfileCell name={row.original.recipientName} subtitle={t(`roles.${row.original.recipientRole}`)} />
-        ),
+        cell: ({ row }) => <ProfileCell name={recipientName(row.original.admin_account_id)} />,
       },
       {
-        id: "category",
-        accessorFn: (entry) => entry.category,
+        id: "channel",
+        accessorFn: (entry) => String(entry.channel_id ?? ""),
         size: 140,
-        header: t("log.colCategory"),
+        header: t("log.colChannel"),
+        enableSorting: false,
         meta: {
           filter: "select",
-          filterOptions: MESSAGE_CATEGORIES.map((category) => ({ value: category, label: t(`categories.${category}`) })),
-          filterLabel: t("log.colCategory"),
+          filterLabel: t("log.colChannel"),
+          renderFilter: ({ value, setValue, searchLabel }) => (
+            <ChannelFilter value={value} onChange={setValue} searchLabel={searchLabel} emptyLabel={tc("noResults")} />
+          ),
         },
-        cell: ({ row }) => (
-          <StatusBadge tone="neutral" equalWidth={false} className="min-w-[8.5rem]">
-            {t(`categories.${row.original.category}`)}
-          </StatusBadge>
-        ),
+        cell: ({ row }) => <Chip>{row.original.channel?.name ?? `#${row.original.channel_id ?? "-"}`}</Chip>,
       },
       {
         id: "template",
-        accessorFn: (entry) => entry.templateCode,
-        size: 200,
+        accessorFn: (entry) => entry.template?.code ?? "",
+        size: 180,
         header: t("log.colTemplate"),
-        cell: ({ row }) => <span className="text-xs">{row.original.templateCode}</span>,
+        enableSorting: false,
+        cell: ({ row }) => <span className="block truncate text-xs">{row.original.template?.code ?? "-"}</span>,
+      },
+      {
+        id: "campaign",
+        accessorFn: (entry) => entry.campaign?.name ?? entry.campaign_id ?? "",
+        size: 180,
+        header: t("log.colCampaign"),
+        enableSorting: false,
+        meta: {
+          filter: "select",
+          filterLabel: t("log.colCampaign"),
+          renderFilter: ({ value, setValue, searchLabel }) => (
+            <CampaignFilter value={value} onChange={setValue} searchLabel={searchLabel} emptyLabel={tc("noResults")} />
+          ),
+        },
+        cell: ({ row }) => {
+          const label = row.original.campaign?.name ?? (row.original.campaign_id ? shortId(row.original.campaign_id) : null);
+          return label ? (
+            <span className="block truncate text-xs">{label}</span>
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          );
+        },
       },
       {
         id: "status",
@@ -131,41 +151,28 @@ export function NotificationLog() {
         header: t("log.colStatus"),
         meta: {
           filter: "select",
-          filterOptions: DELIVERY_STATUSES.map((status) => ({ value: status, label: t(`status.${status}`) })),
+          filterOptions: DELIVERY_STATUS_CODES.map((status) => ({ value: status, label: t(`deliveryStatus.${status}`) })),
           filterLabel: t("log.colStatus"),
         },
         cell: ({ row }) => (
-          <StatusBadge tone={statusTone(row.original.status)} equalWidth={false} className="min-w-[5.5rem]">
-            {t(`status.${row.original.status}`)}
+          <StatusBadge tone={deliveryStatusTone(row.original.status)} equalWidth={false} className="min-w-[5.5rem]">
+            {t(`deliveryStatus.${row.original.status}`)}
           </StatusBadge>
         ),
       },
+      {
+        id: "error",
+        accessorFn: (entry) => entry.error_message ?? "",
+        size: 220,
+        header: t("log.colError"),
+        enableSorting: false,
+        cell: ({ row }) => (
+          <span className="line-clamp-2 text-xs text-muted-foreground">{row.original.error_message ?? "-"}</span>
+        ),
+      },
     ],
-    [t, locale],
+    [t, tc, locale, recipientName],
   );
-
-  const onExport = (exportRows: NotificationLogEntry[]) => {
-    const headers = [
-      t("log.colTimestamp"),
-      t("log.colRecipient"),
-      t("log.colRole"),
-      t("log.colCategory"),
-      t("log.colTemplate"),
-      t("log.colStatus"),
-    ];
-    const csvRows = exportRows.map((entry) => {
-      const { date, time } = fmtDateTimeParts(entry.createdAt, locale);
-      return [
-        `${date} ${time}`,
-        entry.recipientName,
-        t(`roles.${entry.recipientRole}`),
-        t(`categories.${entry.category}`),
-        entry.templateCode,
-        t(`status.${entry.status}`),
-      ];
-    });
-    exportCsv("notification-log.csv", headers, csvRows);
-  };
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -175,9 +182,14 @@ export function NotificationLog() {
           <CardDescription>{t("log.subtitle")}</CardDescription>
         </CardHeader>
         <CardContent>
-          {error ? (
-            <p className="py-16 text-center text-sm text-muted-foreground">{t("log.loadError")}</p>
-          ) : loading ? (
+          {deliveriesQuery.isError ? (
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
+              <p className="text-sm text-muted-foreground">{t("log.loadError")}</p>
+              <Button variant="outline" size="sm" onClick={() => deliveriesQuery.refetch()}>
+                {tc("retry")}
+              </Button>
+            </div>
+          ) : deliveriesQuery.isPending ? (
             <div className="flex flex-col gap-2">
               {Array.from({ length: 6 }).map((_, i) => (
                 <Skeleton key={i} className="h-11 w-full" />
@@ -188,41 +200,22 @@ export function NotificationLog() {
               columns={columns}
               data={rows}
               pageSize={10}
+              manualServer
+              rowCount={total}
+              onServerStateChange={onServerStateChange}
               searchPlaceholder={t("log.search")}
               emptyLabel={t("log.empty")}
               itemsLabel={t("log.items")}
               onRowClick={(entry) => setSelected(entry)}
-              rowAriaLabel={(entry) => `${entry.recipientName} ${entry.templateCode}`}
-              getSearchText={(entry) => `${entry.recipientName} ${entry.templateCode} ${entry.category} ${entry.status}`}
+              rowAriaLabel={(entry) => `${recipientName(entry.admin_account_id)} ${entry.template?.code ?? ""}`}
               filterLabels={{
                 filter: t("log.filter"),
                 clear: t("log.clear"),
                 clearFilters: tc("clearFilters"),
                 search: t("log.filterSearch"),
-                from: t("log.dateFrom"),
-                to: t("log.dateTo"),
               }}
               enableFreeze
               maxFreeze={2}
-              toolbar={(visibleRows) => (
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        variant="outline"
-                        size="lg"
-                        onClick={() => onExport(visibleRows)}
-                        aria-label={t("log.export")}
-                        className={toolbarIconButtonClass}
-                      />
-                    }
-                  >
-                    <Download className="size-4" />
-                    <span className="hidden sm:inline">{t("log.export")}</span>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("log.export")}</TooltipContent>
-                </Tooltip>
-              )}
             />
           )}
         </CardContent>
@@ -232,47 +225,73 @@ export function NotificationLog() {
         {shown && (
           <SheetContent>
             <SheetHeader>
-              <SheetTitle>{shown.recipientName}</SheetTitle>
+              <SheetTitle>{recipientName(shown.admin_account_id)}</SheetTitle>
               <div className="flex flex-wrap items-center gap-2 pt-1">
-                <StatusBadge tone={statusTone(shown.status)} equalWidth={false}>
-                  {t(`status.${shown.status}`)}
+                <StatusBadge tone={deliveryStatusTone(shown.status)} equalWidth={false}>
+                  {t(`deliveryStatus.${shown.status}`)}
                 </StatusBadge>
-                <StatusBadge tone="neutral" equalWidth={false}>
-                  {t(`categories.${shown.category}`)}
-                </StatusBadge>
+                <Chip>{shown.channel?.name ?? `#${shown.channel_id ?? "-"}`}</Chip>
               </div>
             </SheetHeader>
             <SheetBody className="flex flex-col gap-4">
-              <DetailList
-                items={[
-                  { label: t("log.colRole"), value: t(`roles.${shown.recipientRole}`) },
-                  { label: t("log.colTemplate"), value: shown.templateCode },
-                  {
-                    label: t("log.colTimestamp"),
-                    value: (() => {
-                      const { date, time } = fmtDateTimeParts(shown.createdAt, locale);
-                      return `${date} ${time}`;
-                    })(),
-                  },
-                ]}
-              />
-              {(() => {
-                const tpl = template(shown.templateCode);
-                if (!tpl) return null;
-                return (
-                  <div className="flex flex-col gap-2">
-                    <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                      {t("log.messageBody")}
-                    </h4>
-                    <div className="rounded-lg border bg-muted/30 p-3 text-sm">
-                      {htmlToPlainText(tpl.en)}
-                    </div>
-                    <div dir="rtl" className="rounded-lg border bg-muted/30 p-3 text-sm">
-                      {htmlToPlainText(tpl.ar)}
-                    </div>
-                  </div>
-                );
-              })()}
+              {detailQuery.isError ? (
+                <div className="flex flex-col items-center gap-3 py-16 text-center">
+                  <p className="text-sm text-muted-foreground">{t("log.detailLoadError")}</p>
+                  <Button variant="outline" size="sm" onClick={() => detailQuery.refetch()}>
+                    {tc("retry")}
+                  </Button>
+                </div>
+              ) : detailQuery.isPending ? (
+                <div className="flex flex-col gap-4">
+                  <Skeleton className="h-40 w-full" />
+                  <Skeleton className="h-24 w-full" />
+                </div>
+              ) : (
+                (() => {
+                  const record = detailQuery.data;
+                  const stamp = record.sent_at ?? record.created_at;
+                  return (
+                    <>
+                      <DetailList
+                        items={[
+                          { label: t("log.colRecipient"), value: recipientName(record.admin_account_id) },
+                          { label: t("log.colChannel"), value: record.channel?.name ?? `#${record.channel_id ?? "-"}` },
+                          { label: t("log.colTemplate"), value: record.template?.name ?? record.template?.code ?? "-" },
+                          {
+                            label: t("log.colCampaign"),
+                            value: record.campaign?.name ?? (record.campaign_id ? shortId(record.campaign_id) : "-"),
+                          },
+                          {
+                            label: t("log.colTimestamp"),
+                            value: stamp
+                              ? (() => {
+                                  const { date, time } = fmtDateTimeParts(Date.parse(stamp), locale);
+                                  return `${date} ${time}`;
+                                })()
+                              : "-",
+                          },
+                          ...(record.error_message ? [{ label: t("log.colError"), value: record.error_message }] : []),
+                        ]}
+                      />
+                      {record.template && (
+                        <div className="flex flex-col gap-2">
+                          <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                            {t("log.messageBody")}
+                          </h4>
+                          <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+                            {htmlToPlainText(localizedText(record.template.body, "en"))}
+                          </div>
+                          {record.template.body?.AR && (
+                            <div dir="rtl" className="rounded-lg border bg-muted/30 p-3 text-sm">
+                              {htmlToPlainText(record.template.body.AR)}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()
+              )}
             </SheetBody>
           </SheetContent>
         )}
