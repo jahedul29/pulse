@@ -39,6 +39,7 @@ import { DetailList } from "@/components/common/detail-list";
 import { Field } from "@/components/ui/field";
 import { InviteAdminDialog } from "@/components/admin/invite-admin-dialog";
 import { fmtRelative, fmtDateTime } from "@/lib/format";
+import { useLanguageLabel } from "@/lib/i18n/language";
 import { stepIndex } from "@/lib/paging";
 import { useRecordDetail } from "@/lib/use-record-detail";
 import { useAuthStore } from "@/lib/auth/store";
@@ -71,6 +72,7 @@ const STATUS_FILTER: AdminUserStatus[] = ["pending", "active", "suspended", "dea
 export function UserManagement() {
   const t = useTranslations("userManagement");
   const tc = useTranslations("common");
+  const languageLabel = useLanguageLabel();
   const locale = useLocale();
 
   const selfEmail = useAuthStore((state) => state.session?.email?.toLowerCase() ?? "");
@@ -610,10 +612,12 @@ export function UserManagement() {
                     <DetailList
                       items={[
                         { label: t("invitedByLabel"), value: detail.invitedBy || "-" },
-                        { label: t("invitedAtLabel"), value: fmtDateTime(detail.invitedAt, locale) },
-                        ...(detail.activatedAt != null
-                          ? [{ label: t("activatedAtLabel"), value: fmtDateTime(detail.activatedAt, locale) }]
-                          : []),
+                        { label: t("createdAtLabel"), value: fmtDateTime(detail.invitedAt, locale) },
+                        {
+                          label: t("activatedAtLabel"),
+                          value: detail.activatedAt != null ? fmtDateTime(detail.activatedAt, locale) : "-",
+                        },
+                        { label: t("preferredLanguageLabel"), value: languageLabel(detail.preferredLanguage) },
                       ]}
                     />
                   </section>

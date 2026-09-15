@@ -29,6 +29,11 @@ export async function listAdminUsers(params: ListParams): Promise<Paginated<Admi
   return { data: data.map(userDtoToRow), meta };
 }
 
+export async function listAllAdminUsers(): Promise<AdminUserRow[]> {
+  const users = await listAll<UserDto>(USERS, { relations: ["staff", "roles"] });
+  return users.map(userDtoToRow);
+}
+
 export async function fetchPendingInvitationMap(): Promise<Record<string, string>> {
   const invitations = await listAll<InvitationDto>(INVITATIONS, { relations: ["staff"] });
   const map: Record<string, string> = {};
