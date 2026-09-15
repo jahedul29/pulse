@@ -40,6 +40,8 @@ export interface ChangeLogEntry {
   id: string;
   createdAt: number;
   actionId: string | null;
+  actionCode: string | null;
+  actionTarget: string | null;
   actorName: string;
   schema?: string;
   table: string;

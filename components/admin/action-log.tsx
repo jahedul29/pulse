@@ -26,6 +26,7 @@ import { useRetained } from "@/lib/use-retained";
 import { StatusBadge } from "@/components/common/status-badge";
 import { ProfileCell } from "@/components/common/profile-cell";
 import { DetailList } from "@/components/common/detail-list";
+import { AdminUserFilter } from "@/components/admin/admin-user-filter";
 import { useAdminActions } from "@/lib/admin-actions/queries";
 import { getAdminAction } from "@/lib/admin-actions/audit-api";
 import { actionServerStateToParams } from "@/lib/admin-actions/list-params";
@@ -89,7 +90,6 @@ export function ActionLog() {
         accessorFn: (action) => action.createdAt,
         size: 168,
         header: t("colTimestamp"),
-        meta: { filter: "dateRange", filterLabel: t("colTimestamp") },
         cell: ({ row }) => {
           const { date, time } = fmtDateTimeParts(row.original.createdAt, locale);
           return (
@@ -105,6 +105,13 @@ export function ActionLog() {
         size: 180,
         header: t("colActor"),
         enableSorting: false,
+        meta: {
+          filter: "select",
+          filterLabel: t("colActor"),
+          renderFilter: ({ value, setValue, searchLabel }) => (
+            <AdminUserFilter value={value} onChange={setValue} searchLabel={searchLabel} emptyLabel={tc("noResults")} />
+          ),
+        },
         cell: ({ row }) => <ProfileCell name={row.original.actorName} />,
       },
       {
@@ -112,18 +119,16 @@ export function ActionLog() {
         accessorFn: (action) => action.actionName,
         size: 210,
         header: t("colActionCode"),
-        meta: { filter: "text", filterLabel: t("colActionCode") },
-        cell: ({ row }) => <span className="text-sm font-medium">{row.original.actionName}</span>,
+        cell: ({ row }) => <span className="block truncate text-sm font-medium">{row.original.actionName}</span>,
       },
       {
         id: "target",
         accessorFn: (action) => `${action.targetType ?? ""} ${action.summary}`,
         size: 280,
         header: t("colTarget"),
-        meta: { filter: "text", filterLabel: t("colTarget") },
         cell: ({ row }) => (
           <div className="flex min-w-0 flex-col">
-            <span className="font-medium">{row.original.targetType || "-"}</span>
+            <span className="truncate font-medium">{row.original.targetType || "-"}</span>
             <span className="truncate text-xs text-muted-foreground">{row.original.summary}</span>
           </div>
         ),
@@ -134,7 +139,7 @@ export function ActionLog() {
         size: 180,
         header: t("colService"),
         enableSorting: false,
-        cell: ({ row }) => <span className="text-sm">{row.original.service}</span>,
+        cell: ({ row }) => <span className="block truncate text-sm">{row.original.service}</span>,
       },
       {
         id: "result",
@@ -171,7 +176,7 @@ export function ActionLog() {
         ),
       },
     ],
-    [t, locale, resultLabel, severityLabel],
+    [t, tc, locale, resultLabel, severityLabel],
   );
 
   return (

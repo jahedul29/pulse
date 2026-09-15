@@ -3,17 +3,6 @@ import type { ListParams } from "@/lib/api/list-query";
 
 type Filters = Record<string, string | number | string[]>;
 
-function toIso(epoch: number): string {
-  return new Date(epoch).toISOString();
-}
-
-function applyDateRange(value: unknown, filters: Filters) {
-  if (!Array.isArray(value)) return;
-  const [min, max] = value as [number?, number?];
-  if (min != null) filters.created_at_from = toIso(min);
-  if (max != null) filters.created_at_to = toIso(max);
-}
-
 function finish(
   state: ServerTableState,
   sort: Record<string, "asc" | "desc">,
@@ -36,8 +25,7 @@ const ACTION_SORT: Record<string, string> = {
 const ACTION_FILTER: Record<string, string> = {
   result: "result",
   severity: "severity",
-  actionCode: "action_code",
-  target: "target_type",
+  actor: "admin_account_id",
 };
 
 function applyFilter(value: unknown, field: string, filters: Filters) {
@@ -56,7 +44,6 @@ export function actionServerStateToParams(state: ServerTableState | null): ListP
   for (const columnFilter of state.columnFilters) {
     const field = ACTION_FILTER[columnFilter.id];
     if (field) applyFilter(columnFilter.value, field, filters);
-    if (columnFilter.id === "timestamp") applyDateRange(columnFilter.value, filters);
   }
   return finish(state, sort, filters);
 }
@@ -66,7 +53,11 @@ const CHANGE_SORT: Record<string, string> = {
   schema: "schema_name",
   table: "table_name",
 };
-const CHANGE_FILTER: Record<string, string> = { operation: "operation", table: "table_name" };
+const CHANGE_FILTER: Record<string, string> = {
+  operation: "operation",
+  who: "actor_admin_id",
+  action: "admin_action_log_id",
+};
 
 export function changeServerStateToParams(
   state: ServerTableState | null,
@@ -91,7 +82,6 @@ export function changeServerStateToParams(
   for (const columnFilter of state.columnFilters) {
     const field = CHANGE_FILTER[columnFilter.id];
     if (field) applyFilter(columnFilter.value, field, filters);
-    if (columnFilter.id === "timestamp") applyDateRange(columnFilter.value, filters);
   }
   return finish(state, sort, filters);
 }

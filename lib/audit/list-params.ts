@@ -2,11 +2,11 @@ import type { ServerTableState } from "@/components/common/data-table";
 import type { ListParams } from "@/lib/api/list-query";
 
 const SORT_FIELD: Record<string, string> = { timestamp: "created_at", result: "result", method: "method" };
-const FILTER_FIELD: Record<string, string> = { result: "result", method: "method" };
-
-function toIso(epoch: number): string {
-  return new Date(epoch).toISOString();
-}
+const FILTER_FIELD: Record<string, string> = {
+  result: "result",
+  method: "method",
+  admin: "admin_account_id",
+};
 
 export function serverStateToParams(state: ServerTableState | null): ListParams {
   if (!state) return { page: 1, perPage: 10, sort: { created_at: "desc" } };
@@ -22,11 +22,6 @@ export function serverStateToParams(state: ServerTableState | null): ListParams 
     const field = FILTER_FIELD[columnFilter.id];
     if (field && Array.isArray(columnFilter.value) && columnFilter.value.length) {
       filters[field] = columnFilter.value as string[];
-    }
-    if (columnFilter.id === "timestamp" && Array.isArray(columnFilter.value)) {
-      const [min, max] = columnFilter.value as [number?, number?];
-      if (min != null) filters.created_at_from = toIso(min);
-      if (max != null) filters.created_at_to = toIso(max);
     }
   }
 

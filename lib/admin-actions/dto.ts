@@ -32,6 +32,7 @@ export interface ChangeLogDto {
   actor_admin_id?: string | null;
   actor?: AdminAccountRef | null;
   admin_action_log_id?: string | null;
+  admin_action_log?: AdminActionLogDto | null;
   created_at?: string | null;
 }
 
@@ -140,10 +141,13 @@ function cellValue(value: unknown): string | null {
 }
 
 export function changeDtoToRow(dto: ChangeLogDto): ChangeLogEntry {
+  const action = dto.admin_action_log ?? null;
   return {
     id: dto.id,
     createdAt: toEpoch(dto.created_at),
     actionId: dto.admin_action_log_id ?? null,
+    actionCode: action?.action_code ?? null,
+    actionTarget: action ? entityLabel(action) : null,
     actorName: accountName(dto.actor) ?? "System",
     schema: dto.schema_name ?? "",
     table: dto.table_name,
