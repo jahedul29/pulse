@@ -11,20 +11,22 @@ export function policySchema(msgs: PolicyMessages) {
   const num = () => z.number({ error: msgs.mustBeNumber });
   const min = (minimum: number) => num().int(msgs.mustBeInteger).min(minimum, msgs.atLeast(minimum));
   return z.object({
-    lockoutThreshold: min(1),
-    lockoutDurationMins: min(1),
-    sessionLifetimeMins: min(1),
-    tokenLifetimeMins: min(1),
-    passwordMinLength: num().int(msgs.mustBeInteger).min(6, msgs.passwordFloor).max(128, msgs.passwordFloor),
-    passwordHistoryCount: min(0),
-    reauthWindowMins: min(0),
-    inviteExpiryDays: min(1),
-    passwordRequireUpper: z.boolean(),
-    passwordRequireNumber: z.boolean(),
-    passwordRequireSymbol: z.boolean(),
-    mfaRequired: z.boolean(),
+    max_failed_attempts: min(1),
+    lockout_duration_minutes: min(1),
+    access_token_ttl_minutes: min(1),
+    refresh_token_ttl_days: min(1),
+    password_min_length: num().int(msgs.mustBeInteger).min(6, msgs.passwordFloor).max(128, msgs.passwordFloor),
+    password_history_check_count: min(0),
+    password_max_age_days: min(0),
+    sensitive_action_reauth_minutes: min(0),
+    password_require_uppercase: z.boolean(),
+    password_require_lowercase: z.boolean(),
+    password_require_number: z.boolean(),
+    password_require_symbol: z.boolean(),
+    mfa_required: z.boolean(),
   });
 }
+export type PolicyForm = z.infer<ReturnType<typeof policySchema>>;
 
 export function reasonSchema(msgs: { reasonRequired: string }) {
   return z.object({ reason: z.string().trim().min(1, msgs.reasonRequired) });

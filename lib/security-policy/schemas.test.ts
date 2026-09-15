@@ -1,19 +1,19 @@
-import { policySchema, reasonSchema } from "./schemas";
-import type { SecurityPolicy } from "./types";
+import { policySchema, reasonSchema, type PolicyForm } from "./schemas";
 
-const valid: SecurityPolicy = {
-  lockoutThreshold: 5,
-  lockoutDurationMins: 15,
-  sessionLifetimeMins: 60,
-  tokenLifetimeMins: 30,
-  passwordMinLength: 12,
-  passwordRequireUpper: true,
-  passwordRequireNumber: true,
-  passwordRequireSymbol: false,
-  passwordHistoryCount: 3,
-  mfaRequired: true,
-  reauthWindowMins: 10,
-  inviteExpiryDays: 7,
+const valid: PolicyForm = {
+  max_failed_attempts: 5,
+  lockout_duration_minutes: 15,
+  access_token_ttl_minutes: 60,
+  refresh_token_ttl_days: 14,
+  password_min_length: 12,
+  password_history_check_count: 3,
+  password_max_age_days: 90,
+  sensitive_action_reauth_minutes: 10,
+  password_require_uppercase: true,
+  password_require_lowercase: true,
+  password_require_number: true,
+  password_require_symbol: false,
+  mfa_required: true,
 };
 
 describe("policySchema", () => {
@@ -29,29 +29,29 @@ describe("policySchema", () => {
   });
 
   it("reports a human message for an empty (NaN) number field", () => {
-    const result = schema.safeParse({ ...valid, lockoutThreshold: Number.NaN });
+    const result = schema.safeParse({ ...valid, max_failed_attempts: Number.NaN });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues.some((i) => i.message === "not-a-number")).toBe(true);
+      expect(result.error.issues.some((issue) => issue.message === "not-a-number")).toBe(true);
     }
   });
 
   it("rejects a lockout threshold below 1", () => {
-    expect(schema.safeParse({ ...valid, lockoutThreshold: 0 }).success).toBe(false);
+    expect(schema.safeParse({ ...valid, max_failed_attempts: 0 }).success).toBe(false);
   });
 
   it("rejects a too-short password minimum", () => {
-    expect(schema.safeParse({ ...valid, passwordMinLength: 4 }).success).toBe(false);
+    expect(schema.safeParse({ ...valid, password_min_length: 4 }).success).toBe(false);
   });
 
-  it("rejects an invitation expiry below 1 day", () => {
-    expect(schema.safeParse({ ...valid, inviteExpiryDays: 0 }).success).toBe(false);
+  it("allows a password max age of 0 (never expires)", () => {
+    expect(schema.safeParse({ ...valid, password_max_age_days: 0 }).success).toBe(true);
   });
 
   it("reports a translated message for a non-integer value", () => {
-    const result = schema.safeParse({ ...valid, sessionLifetimeMins: 1.5 });
+    const result = schema.safeParse({ ...valid, access_token_ttl_minutes: 1.5 });
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error.issues.some((i) => i.message === "not-an-integer")).toBe(true);
+    if (!result.success) expect(result.error.issues.some((issue) => issue.message === "not-an-integer")).toBe(true);
   });
 });
 
