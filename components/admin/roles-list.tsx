@@ -183,7 +183,6 @@ export function RolesList() {
         accessorFn: (role) => (role.created_at ? new Date(role.created_at).getTime() : 0),
         size: 160,
         header: t("colCreated"),
-        meta: { filter: "dateRange", filterLabel: t("colCreated") },
         cell: ({ row }) => (
           <span className="text-xs text-muted-foreground tabular">
             {row.original.created_at ? fmtDateTimeParts(new Date(row.original.created_at).getTime(), locale).date : "-"}

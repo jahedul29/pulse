@@ -1,4 +1,10 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { Paginated } from "@/lib/api/client";
@@ -10,6 +16,7 @@ import {
   fetchLinkedStaffIds,
   fetchPendingInvitationMap,
   listAdminUsers,
+  listAllAdminUsers,
   revokeInvitation,
   sendInvitation,
   updateUserStatus,
@@ -32,6 +39,31 @@ export function useAdminUsers(params: ListParams) {
     queryFn: () => listAdminUsers(params),
     placeholderData: keepPreviousData,
     enabled: authed,
+  });
+}
+
+export function useAllAdminUsers(enabled = true) {
+  const authed = useAuthed();
+  return useQuery({
+    queryKey: ["admin-users-all"],
+    queryFn: listAllAdminUsers,
+    enabled: authed && enabled,
+  });
+}
+
+export function useAdminUserSearch(search: string, enabled: boolean) {
+  const authed = useAuthed();
+  return useInfiniteQuery({
+    queryKey: ["admin-user-search", search],
+    queryFn: ({ pageParam }) => listAdminUsers({ page: pageParam, perPage: 10, search: search || undefined }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      const meta = lastPage.meta;
+      if (!meta) return undefined;
+      return meta.current_page < meta.last_page ? meta.current_page + 1 : undefined;
+    },
+    enabled: authed && enabled,
+    placeholderData: keepPreviousData,
   });
 }
 

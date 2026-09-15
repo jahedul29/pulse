@@ -26,12 +26,18 @@ import { ProfileCell } from "@/components/common/profile-cell";
 import { StatusBadge } from "@/components/common/status-badge";
 import { DetailList } from "@/components/common/detail-list";
 import { DiffViewer } from "@/components/common/diff-viewer";
+import { AdminUserFilter } from "@/components/admin/admin-user-filter";
+import { AdminActionFilter } from "@/components/admin/admin-action-filter";
 import { useChangeLog } from "@/lib/admin-actions/queries";
 import { getChangeLog } from "@/lib/admin-actions/audit-api";
 import { changeServerStateToParams } from "@/lib/admin-actions/list-params";
 import type { ChangeLogEntry } from "@/lib/admin-actions/types";
 
 const OPS: string[] = ["INSERT", "UPDATE", "DELETE"];
+
+function shortId(value: string): string {
+  return value.length > 10 ? `${value.slice(0, 8)}…` : value;
+}
 
 export function ChangeLog() {
   const t = useTranslations("changeLog");
@@ -83,7 +89,6 @@ export function ChangeLog() {
         accessorFn: (entry) => entry.createdAt,
         size: 168,
         header: t("colTimestamp"),
-        meta: { filter: "dateRange", filterLabel: t("colTimestamp") },
         cell: ({ row }) => {
           const { date, time } = fmtDateTimeParts(row.original.createdAt, locale);
           return (
@@ -105,8 +110,7 @@ export function ChangeLog() {
         accessorFn: (entry) => entry.table,
         size: 170,
         header: t("colTable"),
-        meta: { filter: "text", filterLabel: t("colTable") },
-        cell: ({ row }) => <span className="text-xs">{row.original.table}</span>,
+        cell: ({ row }) => <span className="block truncate text-xs">{row.original.table}</span>,
       },
       {
         id: "record",
@@ -137,25 +141,48 @@ export function ChangeLog() {
         id: "who",
         accessorFn: (entry) => entry.actorName,
         size: 170,
-        header: t("colWho"),
+        header: t("colActor"),
         enableSorting: false,
+        meta: {
+          filter: "select",
+          filterLabel: t("colActor"),
+          renderFilter: ({ value, setValue, searchLabel }) => (
+            <AdminUserFilter value={value} onChange={setValue} searchLabel={searchLabel} emptyLabel={tc("noResults")} />
+          ),
+        },
         cell: ({ row }) => <ProfileCell name={row.original.actorName} />,
       },
       {
         id: "action",
-        accessorFn: (entry) => entry.actionId ?? "",
-        size: 120,
+        accessorFn: (entry) => entry.actionCode ?? "",
+        size: 200,
         header: t("colAction"),
         enableSorting: false,
+        meta: {
+          filter: "select",
+          filterLabel: t("colAction"),
+          renderFilter: ({ value, setValue, searchLabel }) => (
+            <AdminActionFilter value={value} onChange={setValue} searchLabel={searchLabel} emptyLabel={tc("noResults")} />
+          ),
+        },
         cell: ({ row }) =>
-          row.original.actionId ? (
-            <span className="block truncate text-xs text-muted-foreground tabular">{row.original.actionId}</span>
+          row.original.actionCode ? (
+            <div className="flex min-w-0 flex-col">
+              <span className="truncate text-xs font-medium">{row.original.actionCode}</span>
+              {row.original.actionTarget && (
+                <span className="truncate text-xs text-muted-foreground">{row.original.actionTarget}</span>
+              )}
+            </div>
+          ) : row.original.actionId ? (
+            <span className="block truncate text-xs text-muted-foreground tabular">
+              {shortId(row.original.actionId)}
+            </span>
           ) : (
             <span className="text-muted-foreground">{t("noAction")}</span>
           ),
       },
     ],
-    [t, locale, opLabel],
+    [t, tc, locale, opLabel],
   );
 
   return (
@@ -282,10 +309,16 @@ export function ChangeLog() {
                           </StatusBadge>
                         ),
                       },
-                      { label: t("colWho"), value: <ProfileCell name={detail.actorName} /> },
+                      { label: t("colActor"), value: <ProfileCell name={detail.actorName} /> },
                       {
                         label: t("linkedAction"),
-                        value: detail.actionId ?? t("noAction"),
+                        value: detail.actionCode
+                          ? detail.actionTarget
+                            ? `${detail.actionCode} · ${detail.actionTarget}`
+                            : detail.actionCode
+                          : detail.actionId
+                            ? detail.actionId
+                            : t("noAction"),
                       },
                       {
                         label: t("colTimestamp"),

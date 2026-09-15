@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DataTable, type ServerTableState } from "@/components/common/data-table";
 import { StatusBadge } from "@/components/common/status-badge";
 import { ProfileCell } from "@/components/common/profile-cell";
+import { AdminUserFilter } from "@/components/admin/admin-user-filter";
 import { maskIdentifier } from "@/lib/audit/mask";
 import { auditTone } from "@/lib/audit/tone";
 import { useLoginAudit } from "@/lib/audit/queries";
@@ -90,6 +91,13 @@ export function LoginAuditLog() {
         size: 200,
         header: t("colAdmin"),
         enableSorting: false,
+        meta: {
+          filter: "select",
+          filterLabel: t("colAdmin"),
+          renderFilter: ({ value, setValue, searchLabel }) => (
+            <AdminUserFilter value={value} onChange={setValue} searchLabel={searchLabel} emptyLabel={tc("noResults")} />
+          ),
+        },
         cell: ({ row }) =>
           row.original.adminName ? (
             <ProfileCell name={row.original.adminName} />
@@ -140,7 +148,6 @@ export function LoginAuditLog() {
         accessorFn: (entry) => entry.createdAt,
         size: 172,
         header: t("colTimestamp"),
-        meta: { filter: "dateRange", filterLabel: t("colTimestamp") },
         cell: ({ row }) => (
           <span className="text-xs whitespace-nowrap tabular">
             {fmtStamp(row.original.createdAt, locale)}
@@ -148,7 +155,7 @@ export function LoginAuditLog() {
         ),
       },
     ],
-    [t, locale, resultLabel, methodLabel],
+    [t, tc, locale, resultLabel, methodLabel],
   );
 
   return (

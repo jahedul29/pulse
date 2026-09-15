@@ -27,13 +27,8 @@ describe("login-audit serverStateToParams", () => {
     expect(params.filters).toEqual({ result: ["SUCCESS", "SERVER_ERROR"] });
   });
 
-  it("maps the timestamp date range to ISO from/to filters", () => {
-    const min = Date.parse("2026-09-01T00:00:00Z");
-    const max = Date.parse("2026-09-10T00:00:00Z");
-    const params = serverStateToParams(state({ columnFilters: [{ id: "timestamp", value: [min, max] }] }));
-    expect(params.filters).toEqual({
-      created_at_from: new Date(min).toISOString(),
-      created_at_to: new Date(max).toISOString(),
-    });
+  it("maps the admin multi-select to filters.admin_account_id (array)", () => {
+    const params = serverStateToParams(state({ columnFilters: [{ id: "admin", value: ["u1", "u2"] }] }));
+    expect(params.filters).toEqual({ admin_account_id: ["u1", "u2"] });
   });
 });

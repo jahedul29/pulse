@@ -30,11 +30,13 @@ export function getAdminAction(id: string): Promise<AdminAction> {
 
 export async function listChangeLog(params: ListParams): Promise<Paginated<ChangeLogEntry>> {
   const { data, meta } = await apiList<ChangeLogDto>(CHANGE_LOGS, {
-    query: buildListQuery(params),
+    query: { ...buildListQuery(params), relations: ["actor", "adminActionLog"] },
   });
   return { data: data.map(changeDtoToRow), meta };
 }
 
 export function getChangeLog(id: string): Promise<ChangeLogEntry> {
-  return apiData<ChangeLogDto>(`${CHANGE_LOGS}/${encodeURIComponent(id)}`).then(changeDtoToDetail);
+  return apiData<ChangeLogDto>(`${CHANGE_LOGS}/${encodeURIComponent(id)}`, {
+    query: { relations: ["actor", "adminActionLog"] },
+  }).then(changeDtoToDetail);
 }

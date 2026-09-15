@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
@@ -19,13 +19,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogBody,
   DialogContent,
@@ -34,6 +27,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,17 +45,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { SwitchField } from "@/components/common/switch-field";
 import { StatusBadge } from "@/components/common/status-badge";
+import { Chip } from "@/components/common/chip";
+import { DetailList } from "@/components/common/detail-list";
+import { ChannelSelect, ChannelFilter } from "@/components/notifications/channel-select";
 import { DataTable, toolbarIconButtonClass } from "@/components/common/data-table";
 import { fmtDateTimeParts } from "@/lib/format";
-import { useNotificationStore } from "@/lib/notifications/store";
-import { fetchTemplates, fetchTemplateDetail } from "@/lib/notifications/api";
-import { useRecordDetail } from "@/lib/use-record-detail";
+import { useRetained } from "@/lib/use-retained";
+import { apiErrorMessage } from "@/lib/api/error-message";
 import { MERGE_VARIABLES, htmlToPlainText, renderTemplate } from "@/lib/notifications/variables";
 import { sanitizeTemplateHtml } from "@/lib/notifications/sanitize";
 import { templateSchema, type TemplateForm } from "@/lib/notifications/schemas";
-import { MESSAGE_CATEGORIES } from "@/lib/notifications/types";
-import type { MessageCategory, MessageTemplate } from "@/lib/notifications/types";
+import { localizedText } from "@/lib/notifications/dto";
+import {
+  useAllTemplates,
+  useChannels,
+  useCreateTemplate,
+  useDeleteTemplate,
+  useTemplate,
+  useUpdateTemplate,
+} from "@/lib/notifications/queries";
+import type { NotificationTemplateDto } from "@/lib/notifications/dto";
 
 function VarInserter({ label, onInsert }: { label: string; onInsert: (token: string) => void }) {
   const t = useTranslations("notifications");
@@ -89,27 +101,46 @@ function VarInserter({ label, onInsert }: { label: string; onInsert: (token: str
   );
 }
 
+function hasMergeVariable(html: string): boolean {
+  return MERGE_VARIABLES.some((variable) => html.includes(`{${variable.token}}`));
+}
+
+const EMPTY_FORM: TemplateForm = {
+  code: "",
+  name: "",
+  channelId: "",
+  subjectEn: "",
+  subjectAr: "",
+  bodyEn: "",
+  bodyAr: "",
+  isActive: true,
+};
+
 export function MessageTemplates() {
   const t = useTranslations("notifications");
   const tc = useTranslations("common");
+  const te = useTranslations("apiErrors");
   const locale = useLocale();
 
-  const templatesState = useNotificationStore((state) => state.templates);
-  const upsertTemplate = useNotificationStore((state) => state.upsertTemplate);
-  const deleteTemplate = useNotificationStore((state) => state.deleteTemplate);
+  const templatesQuery = useAllTemplates();
+  const channelsQuery = useChannels();
+  const templates = useMemo(() => templatesQuery.data ?? [], [templatesQuery.data]);
+  const channels = useMemo(() => channelsQuery.data ?? [], [channelsQuery.data]);
+  const channelName = useMemo(() => {
+    const map = new Map(channels.map((channel) => [channel.id, channel.name || channel.code]));
+    return (id: number | null | undefined) => (id == null ? "-" : map.get(id) ?? `#${id}`);
+  }, [channels]);
 
-  const [rows, setRows] = useState<MessageTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const createTemplate = useCreateTemplate();
+  const updateTemplate = useUpdateTemplate();
+  const deleteTemplate = useDeleteTemplate();
 
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
-  const [editingCode, setEditingCode] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState<MessageTemplate | null>(null);
-
-  const detail = useRecordDetail(
-    dialogMode === "edit" ? editingCode : null,
-    fetchTemplateDetail,
-  );
+  const [editing, setEditing] = useState<NotificationTemplateDto | null>(null);
+  const [deleting, setDeleting] = useState<NotificationTemplateDto | null>(null);
+  const [detail, setDetail] = useState<NotificationTemplateDto | null>(null);
+  const shownDetail = useRetained(detail);
+  const detailQuery = useTemplate(detail?.id ?? null);
 
   const schema = useMemo(
     () =>
@@ -117,30 +148,24 @@ export function MessageTemplates() {
         {
           codeRequired: t("templates.codeRequired"),
           codeFormat: t("templates.codeFormat"),
-          codeExists: t("templates.codeExists"),
-          enRequired: t("templates.enRequired"),
-          arRequired: t("templates.arRequired"),
+          nameRequired: t("templates.nameRequired"),
+          channelRequired: t("templates.channelRequired"),
+          subjectRequired: t("templates.subjectRequired"),
+          bodyRequired: t("templates.bodyRequired"),
         },
-        { existingCodes: templatesState.map((x) => x.code), isCreate: dialogMode === "create" },
+        { isCreate: dialogMode === "create" },
       ),
-    [t, templatesState, dialogMode],
+    [t, dialogMode],
   );
 
   const form = useForm<TemplateForm>({
     resolver: zodResolver(schema),
     mode: "onSubmit",
-    defaultValues: { code: "", category: "validation", en: "", ar: "" },
+    defaultValues: EMPTY_FORM,
   });
   const { reset, register, control, handleSubmit, formState } = form;
-  const enVal = useWatch({ control, name: "en" });
-  const arVal = useWatch({ control, name: "ar" });
-
-  useEffect(() => {
-    if (dialogMode === "edit" && detail.data) {
-      const data = detail.data;
-      reset({ code: data.code, category: data.category, en: data.en, ar: data.ar });
-    }
-  }, [dialogMode, detail.data, reset]);
+  const bodyEnVal = useWatch({ control, name: "bodyEn" });
+  const bodyArVal = useWatch({ control, name: "bodyAr" });
 
   const editorLabels = {
     bold: t("editor.bold"),
@@ -150,34 +175,27 @@ export function MessageTemplates() {
     alignRight: t("editor.alignRight"),
   };
 
-  useEffect(() => {
-    let active = true;
-    fetchTemplates()
-      .then((result) => {
-        if (!active) return;
-        setRows(result);
-        setLoading(false);
-      })
-      .catch(() => {
-        if (!active) return;
-        setError(true);
-        setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [templatesState]);
+  const defaultChannelId = useMemo(() => (channels.length ? String(channels[0].id) : ""), [channels]);
 
   const openCreate = () => {
-    reset({ code: "", category: "validation", en: "", ar: "" });
-    setEditingCode(null);
+    reset({ ...EMPTY_FORM, channelId: defaultChannelId });
+    setEditing(null);
     setDialogMode("create");
   };
 
   const openEdit = useCallback(
-    (tpl: MessageTemplate) => {
-      reset({ code: tpl.code, category: tpl.category, en: "", ar: "" });
-      setEditingCode(tpl.code);
+    (template: NotificationTemplateDto) => {
+      reset({
+        code: template.code,
+        name: template.name,
+        channelId: String(template.channel_id),
+        subjectEn: template.subject?.EN ?? "",
+        subjectAr: template.subject?.AR ?? "",
+        bodyEn: template.body?.EN ?? "",
+        bodyAr: template.body?.AR ?? "",
+        isActive: template.is_active,
+      });
+      setEditing(template);
       setDialogMode("edit");
     },
     [reset],
@@ -185,93 +203,133 @@ export function MessageTemplates() {
 
   const closeDialog = () => setDialogMode(null);
 
-  const onSubmit = (values: TemplateForm) => {
-    const finalCode = dialogMode === "edit" && editingCode ? editingCode : values.code;
-    upsertTemplate({
-      code: finalCode,
-      category: values.category,
-      en: values.en,
-      ar: values.ar,
-    });
-    toast.success(
-      dialogMode === "edit" ? t("templates.updatedToast") : t("templates.createdToast", { code: finalCode }),
-    );
-    closeDialog();
+  const onSubmit = async (values: TemplateForm) => {
+    if (createTemplate.isPending || updateTemplate.isPending) return;
+    const subject = {
+      EN: values.subjectEn.trim(),
+      ...(values.subjectAr.trim() ? { AR: values.subjectAr.trim() } : {}),
+    };
+    const body = {
+      EN: values.bodyEn,
+      ...(htmlToPlainText(values.bodyAr).trim() ? { AR: values.bodyAr } : {}),
+    };
+    try {
+      if (dialogMode === "edit" && editing) {
+        await updateTemplate.mutateAsync({
+          id: editing.id,
+          body: { name: values.name, channel_id: Number(values.channelId), subject, body, is_active: values.isActive },
+        });
+        toast.success(t("templates.updatedToast"));
+      } else {
+        await createTemplate.mutateAsync({
+          code: values.code,
+          name: values.name,
+          channel_id: Number(values.channelId),
+          subject,
+          body,
+          is_active: values.isActive,
+        });
+        toast.success(t("templates.createdToast", { code: values.code }));
+      }
+      closeDialog();
+    } catch (error) {
+      toast.error(apiErrorMessage(error, te));
+    }
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleting) return;
-    deleteTemplate(deleting.code);
-    toast.success(t("templates.deletedToast", { code: deleting.code }));
-    setDeleting(null);
+    const target = deleting;
+    try {
+      await deleteTemplate.mutateAsync(target.id);
+      toast.success(t("templates.deletedToast", { code: target.code }));
+      setDeleting(null);
+    } catch (error) {
+      toast.error(apiErrorMessage(error, te));
+    }
   };
 
-  const columns = useMemo<ColumnDef<MessageTemplate, unknown>[]>(
+  const columns = useMemo<ColumnDef<NotificationTemplateDto, unknown>[]>(
     () => [
       {
         id: "code",
         accessorFn: (template) => template.code,
-        size: 220,
+        size: 150,
         header: t("templates.colCode"),
-        cell: ({ row }) => <span className="font-medium">{row.original.code}</span>,
+        cell: ({ row }) => <span className="block truncate font-medium">{row.original.code}</span>,
       },
       {
-        id: "category",
-        accessorFn: (template) => template.category,
-        size: 150,
-        header: t("templates.colCategory"),
+        id: "name",
+        accessorFn: (template) => template.name,
+        size: 200,
+        header: t("templates.colName"),
+        cell: ({ row }) => <span className="text-sm">{row.original.name}</span>,
+      },
+      {
+        id: "channel",
+        accessorFn: (template) => String(template.channel_id),
+        size: 120,
+        header: t("templates.colChannel"),
         meta: {
           filter: "select",
-          filterOptions: MESSAGE_CATEGORIES.map((category) => ({ value: category, label: t(`categories.${category}`) })),
-          filterLabel: t("templates.colCategory"),
+          filterLabel: t("templates.colChannel"),
+          renderFilter: ({ value, setValue, searchLabel }) => (
+            <ChannelFilter value={value} onChange={setValue} searchLabel={searchLabel} emptyLabel={tc("noResults")} />
+          ),
         },
-        cell: ({ row }) => (
-          <StatusBadge tone="neutral" equalWidth={false} className="min-w-[8.5rem]">
-            {t(`categories.${row.original.category}`)}
-          </StatusBadge>
-        ),
+        cell: ({ row }) => <Chip>{channelName(row.original.channel_id)}</Chip>,
       },
       {
         id: "en",
-        accessorFn: (template) => template.en,
-        size: 300,
+        accessorFn: (template) => localizedText(template.body, "en"),
+        size: 280,
         header: t("templates.colEn"),
+        enableSorting: false,
         cell: ({ row }) => (
           <span className="line-clamp-2 text-xs text-muted-foreground">
-            {htmlToPlainText(row.original.en)}
+            {htmlToPlainText(row.original.body?.EN ?? "")}
           </span>
         ),
       },
       {
         id: "ar",
-        accessorFn: (template) => template.ar,
-        size: 300,
+        accessorFn: (template) => localizedText(template.body, "ar"),
+        size: 280,
         header: t("templates.colAr"),
+        enableSorting: false,
         cell: ({ row }) => (
           <span dir="rtl" className="line-clamp-2 text-xs text-muted-foreground">
-            {htmlToPlainText(row.original.ar)}
+            {htmlToPlainText(row.original.body?.AR ?? "")}
           </span>
         ),
       },
       {
-        id: "updated",
-        accessorFn: (template) => template.updatedAt,
-        size: 130,
-        header: t("templates.colUpdated"),
+        id: "active",
+        accessorFn: (template) => (template.is_active ? "1" : "0"),
+        size: 100,
+        header: t("templates.colActive"),
+        meta: {
+          filter: "select",
+          filterOptions: [
+            { value: "1", label: t("templates.active") },
+            { value: "0", label: t("templates.inactive") },
+          ],
+          filterLabel: t("templates.colActive"),
+        },
         cell: ({ row }) => (
-          <span className="text-xs text-muted-foreground tabular">
-            {fmtDateTimeParts(row.original.updatedAt, locale).date}
-          </span>
+          <StatusBadge tone={row.original.is_active ? "success" : "neutral"} equalWidth={false} className="min-w-[5.5rem]">
+            {row.original.is_active ? t("templates.active") : t("templates.inactive")}
+          </StatusBadge>
         ),
       },
       {
         id: "actions",
         enableSorting: false,
-        size: 110,
+        size: 88,
         header: "",
-        meta: { headClassName: "text-end", cellClassName: "text-end" },
+        meta: { headClassName: "text-end", cellClassName: "text-end", noClip: true },
         cell: ({ row }) => {
-          const tpl = row.original;
+          const template = row.original;
           return (
             <div className="flex items-center justify-end gap-1">
               <Tooltip>
@@ -282,7 +340,7 @@ export function MessageTemplates() {
                       variant="ghost"
                       onClick={(event) => {
                         event.stopPropagation();
-                        openEdit(tpl);
+                        openEdit(template);
                       }}
                       aria-label={t("templates.edit")}
                     />
@@ -300,7 +358,7 @@ export function MessageTemplates() {
                       variant="ghost"
                       onClick={(event) => {
                         event.stopPropagation();
-                        setDeleting(tpl);
+                        setDeleting(template);
                       }}
                       aria-label={t("templates.delete")}
                       className="hover:bg-danger/10 hover:text-danger"
@@ -316,7 +374,7 @@ export function MessageTemplates() {
         },
       },
     ],
-    [t, locale, openEdit],
+    [t, tc, channelName, openEdit],
   );
 
   return (
@@ -327,9 +385,14 @@ export function MessageTemplates() {
           <CardDescription>{t("templates.subtitle")}</CardDescription>
         </CardHeader>
         <CardContent>
-          {error ? (
-            <p className="py-16 text-center text-sm text-muted-foreground">{t("templates.loadError")}</p>
-          ) : loading ? (
+          {templatesQuery.isError ? (
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
+              <p className="text-sm text-muted-foreground">{t("templates.loadError")}</p>
+              <Button variant="outline" size="sm" onClick={() => templatesQuery.refetch()}>
+                {tc("retry")}
+              </Button>
+            </div>
+          ) : templatesQuery.isPending ? (
             <div className="flex flex-col gap-2">
               {Array.from({ length: 6 }).map((_, i) => (
                 <Skeleton key={i} className="h-11 w-full" />
@@ -338,14 +401,18 @@ export function MessageTemplates() {
           ) : (
             <DataTable
               columns={columns}
-              data={rows}
+              data={templates}
               pageSize={10}
               searchPlaceholder={t("templates.search")}
               emptyLabel={t("templates.empty")}
               itemsLabel={t("templates.items")}
-              onRowClick={(template) => openEdit(template)}
+              onRowClick={(template) => setDetail(template)}
               rowAriaLabel={(template) => template.code}
-              getSearchText={(template) => `${template.code} ${template.en} ${template.ar}`}
+              getSearchText={(template) =>
+                `${template.code} ${template.name} ${htmlToPlainText(template.body?.EN ?? "")} ${htmlToPlainText(
+                  template.body?.AR ?? "",
+                )}`
+              }
               filterLabels={{
                 filter: t("templates.filter"),
                 clear: t("templates.clear"),
@@ -386,165 +453,181 @@ export function MessageTemplates() {
             <DialogDescription>{t("templates.editDesc")}</DialogDescription>
           </DialogHeader>
           <Form onSubmit={handleSubmit(onSubmit)}>
-          <DialogBody className="flex flex-col gap-4">
-            {dialogMode === "edit" && detail.loading ? (
-              <div className="flex flex-col gap-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Skeleton className="h-14 w-full" />
-                  <Skeleton className="h-14 w-full" />
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Skeleton className="h-44 w-full" />
-                  <Skeleton className="h-44 w-full" />
-                </div>
+            <DialogBody className="flex flex-col gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  label={t("templates.codeLabel")}
+                  htmlFor="tpl-code"
+                  error={formState.errors.code?.message}
+                  reserveMessage={false}
+                >
+                  <Input
+                    id="tpl-code"
+                    {...register("code")}
+                    placeholder={t("templates.codePlaceholder")}
+                    disabled={dialogMode === "edit"}
+                    autoFocus={dialogMode === "create"}
+                  />
+                </Field>
+                <Field
+                  label={t("templates.nameLabel")}
+                  htmlFor="tpl-name"
+                  error={formState.errors.name?.message}
+                  reserveMessage={false}
+                >
+                  <Input id="tpl-name" {...register("name")} placeholder={t("templates.namePlaceholder")} />
+                </Field>
               </div>
-            ) : dialogMode === "edit" && detail.error ? (
-              <div className="flex flex-col items-center gap-3 py-12 text-center">
-                <p className="text-sm text-muted-foreground">{t("templates.editLoadError")}</p>
-                <Button variant="outline" size="sm" onClick={detail.reload}>
-                  {tc("retry")}
-                </Button>
-              </div>
-            ) : (
-              <>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field
-                label={t("templates.codeLabel")}
-                htmlFor="tpl-code"
-                error={formState.errors.code?.message}
-                reserveMessage={false}
-              >
-                <Input
-                  id="tpl-code"
-                  {...register("code")}
-                  placeholder={t("templates.codePlaceholder")}
-                  disabled={dialogMode === "edit"}
-                  autoFocus={dialogMode === "create"}
-                />
-              </Field>
-              <Field label={t("templates.categoryLabel")} reserveMessage={false}>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  label={t("templates.channelLabel")}
+                  htmlFor="tpl-channel"
+                  error={formState.errors.channelId?.message}
+                  reserveMessage={false}
+                >
+                  <Controller
+                    control={control}
+                    name="channelId"
+                    render={({ field }) => (
+                      <ChannelSelect
+                        id="tpl-channel"
+                        ariaLabel={t("templates.channelLabel")}
+                        value={field.value}
+                        onChange={field.onChange}
+                        selectedLabel={field.value ? channelName(Number(field.value)) : undefined}
+                        placeholder={t("templates.channelPlaceholder")}
+                        searchPlaceholder={tc("search")}
+                        emptyLabel={tc("noResults")}
+                      />
+                    )}
+                  />
+                </Field>
                 <Controller
                   control={control}
-                  name="category"
+                  name="isActive"
                   render={({ field }) => (
-                    <Select
-                      value={field.value}
-                      onValueChange={(value) => field.onChange((value ?? "validation") as MessageCategory)}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue>{(value) => (value ? t(`categories.${value}`) : "")}</SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MESSAGE_CATEGORIES.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {t(`categories.${category}`)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </Field>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between gap-2">
-                  <Label>{t("templates.enLabel")}</Label>
-                  <span className="text-xs text-muted-foreground tabular">
-                    {t("templates.chars", { count: htmlToPlainText(enVal).length })}
-                  </span>
-                </div>
-                <Controller
-                  control={control}
-                  name="en"
-                  render={({ field }) => (
-                    <RichTextEditor
-                      value={field.value}
-                      onChange={field.onChange}
-                      ariaLabel={t("templates.enLabel")}
-                      labels={editorLabels}
-                      extraTools={(editor) => (
-                        <VarInserter
-                          label={t("templates.insertVariable")}
-                          onInsert={(tok) => editor.chain().focus().insertContent(`{${tok}}`).run()}
-                        />
-                      )}
+                    <SwitchField
+                      label={t("templates.statusLabel")}
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      checkedLabel={t("templates.active")}
+                      uncheckedLabel={t("templates.inactive")}
                     />
                   )}
                 />
-                {formState.errors.en && <FieldError>{formState.errors.en.message}</FieldError>}
-                <div className="rounded-lg border bg-muted/30 p-2 text-sm">
-                  {htmlToPlainText(enVal) ? (
-                    <div dangerouslySetInnerHTML={{ __html: sanitizeTemplateHtml(renderTemplate(enVal, "en")) }} />
-                  ) : (
-                    <span className="text-muted-foreground">{t("templates.previewEmpty")}</span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t("templates.pushPreview")}: {htmlToPlainText(renderTemplate(enVal, "en")) || "-"}
-                </p>
               </div>
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between gap-2">
-                  <Label>{t("templates.arLabel")}</Label>
-                  <span className="text-xs text-muted-foreground tabular">
-                    {t("templates.chars", { count: htmlToPlainText(arVal).length })}
-                  </span>
-                </div>
-                <Controller
-                  control={control}
-                  name="ar"
-                  render={({ field }) => (
-                    <RichTextEditor
-                      value={field.value}
-                      onChange={field.onChange}
-                      dir="rtl"
-                      ariaLabel={t("templates.arLabel")}
-                      labels={editorLabels}
-                      extraTools={(editor) => (
-                        <VarInserter
-                          label={t("templates.insertVariable")}
-                          onInsert={(tok) => editor.chain().focus().insertContent(`{${tok}}`).run()}
-                        />
-                      )}
-                    />
-                  )}
-                />
-                {formState.errors.ar && <FieldError>{formState.errors.ar.message}</FieldError>}
-                <div dir="rtl" className="rounded-lg border bg-muted/30 p-2 text-sm">
-                  {htmlToPlainText(arVal) ? (
-                    <div dangerouslySetInnerHTML={{ __html: sanitizeTemplateHtml(renderTemplate(arVal, "ar")) }} />
-                  ) : (
-                    <span className="text-muted-foreground">{t("templates.previewEmpty")}</span>
-                  )}
-                </div>
-                <p dir="rtl" className="text-xs text-muted-foreground">
-                  {t("templates.pushPreview")}: {htmlToPlainText(renderTemplate(arVal, "ar")) || "-"}
-                </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  label={t("templates.subjectEnLabel")}
+                  htmlFor="tpl-subject-en"
+                  error={formState.errors.subjectEn?.message}
+                  reserveMessage={false}
+                >
+                  <Input id="tpl-subject-en" {...register("subjectEn")} placeholder={t("templates.subjectPlaceholder")} />
+                </Field>
+                <Field label={t("templates.subjectArLabel")} htmlFor="tpl-subject-ar" reserveMessage={false}>
+                  <Input id="tpl-subject-ar" dir="rtl" {...register("subjectAr")} />
+                </Field>
               </div>
-            </div>
-              </>
-            )}
-          </DialogBody>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>{t("templates.enLabel")}</Label>
+                    <span className="text-xs text-muted-foreground tabular">
+                      {t("templates.chars", { count: htmlToPlainText(bodyEnVal).length })}
+                    </span>
+                  </div>
+                  <Controller
+                    control={control}
+                    name="bodyEn"
+                    render={({ field }) => (
+                      <RichTextEditor
+                        value={field.value}
+                        onChange={field.onChange}
+                        ariaLabel={t("templates.enLabel")}
+                        labels={editorLabels}
+                        extraTools={(editor) => (
+                          <VarInserter
+                            label={t("templates.insertVariable")}
+                            onInsert={(token) => editor.chain().focus().insertContent(`{${token}}`).run()}
+                          />
+                        )}
+                      />
+                    )}
+                  />
+                  {formState.errors.bodyEn && <FieldError>{formState.errors.bodyEn.message}</FieldError>}
+                  {hasMergeVariable(bodyEnVal) && (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs text-muted-foreground">{t("templates.preview")}</span>
+                      <div
+                        className="rounded-lg border border-dashed bg-muted/20 p-2 text-sm"
+                        dangerouslySetInnerHTML={{ __html: sanitizeTemplateHtml(renderTemplate(bodyEnVal, "en")) }}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>{t("templates.arLabel")}</Label>
+                    <span className="text-xs text-muted-foreground tabular">
+                      {t("templates.chars", { count: htmlToPlainText(bodyArVal).length })}
+                    </span>
+                  </div>
+                  <Controller
+                    control={control}
+                    name="bodyAr"
+                    render={({ field }) => (
+                      <RichTextEditor
+                        value={field.value}
+                        onChange={field.onChange}
+                        dir="rtl"
+                        ariaLabel={t("templates.arLabel")}
+                        labels={editorLabels}
+                        extraTools={(editor) => (
+                          <VarInserter
+                            label={t("templates.insertVariable")}
+                            onInsert={(token) => editor.chain().focus().insertContent(`{${token}}`).run()}
+                          />
+                        )}
+                      />
+                    )}
+                  />
+                  {hasMergeVariable(bodyArVal) && (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs text-muted-foreground">{t("templates.preview")}</span>
+                      <div
+                        dir="rtl"
+                        className="rounded-lg border border-dashed bg-muted/20 p-2 text-sm"
+                        dangerouslySetInnerHTML={{ __html: sanitizeTemplateHtml(renderTemplate(bodyArVal, "ar")) }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </DialogBody>
           </Form>
           <DialogFooter layout="split">
             <Button variant="outline" size="lg" onClick={closeDialog}>
               {tc("cancel")}
             </Button>
-            {(dialogMode === "create" || (!detail.loading && !detail.error)) && (
-              <Button
-                size="lg"
-                onClick={handleSubmit(onSubmit)}
-                disabled={dialogMode === "edit" && !formState.isDirty}
-              >
-                {dialogMode === "edit" ? tc("save") : t("templates.create")}
-              </Button>
-            )}
+            <Button
+              size="lg"
+              onClick={handleSubmit(onSubmit)}
+              loading={createTemplate.isPending || updateTemplate.isPending}
+              disabled={dialogMode === "edit" && !formState.isDirty}
+            >
+              {dialogMode === "edit" ? tc("save") : t("templates.create")}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={deleting != null} onOpenChange={(open) => !open && setDeleting(null)}>
+      <AlertDialog
+        open={deleting != null}
+        onOpenChange={(open) => {
+          if (!open && !deleteTemplate.isPending) setDeleting(null);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("templates.deleteTitle")}</AlertDialogTitle>
@@ -553,9 +636,10 @@ export function MessageTemplates() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter layout="split">
-            <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteTemplate.isPending}>{tc("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
+              loading={deleteTemplate.isPending}
               className="bg-danger text-danger-foreground hover:bg-danger/90"
             >
               {t("templates.deleteConfirm")}
@@ -563,6 +647,114 @@ export function MessageTemplates() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Sheet open={detail != null} onOpenChange={(open) => !open && setDetail(null)}>
+        {shownDetail && (
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>{shownDetail.name}</SheetTitle>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <Chip>{channelName(shownDetail.channel_id)}</Chip>
+                <StatusBadge tone={shownDetail.is_active ? "success" : "neutral"} equalWidth={false}>
+                  {shownDetail.is_active ? t("templates.active") : t("templates.inactive")}
+                </StatusBadge>
+              </div>
+            </SheetHeader>
+            <SheetBody className="flex flex-col gap-4">
+              {detailQuery.isError ? (
+                <div className="flex flex-col items-center gap-3 py-16 text-center">
+                  <p className="text-sm text-muted-foreground">{t("templates.detailLoadError")}</p>
+                  <Button variant="outline" size="sm" onClick={() => detailQuery.refetch()}>
+                    {tc("retry")}
+                  </Button>
+                </div>
+              ) : detailQuery.isPending ? (
+                <div className="flex flex-col gap-4">
+                  <Skeleton className="h-24 w-full" />
+                  <Skeleton className="h-28 w-full" />
+                  <Skeleton className="h-28 w-full" />
+                </div>
+              ) : (
+                (() => {
+                  const record = detailQuery.data;
+                  const notSet = <span className="text-muted-foreground italic">{t("templates.notSet")}</span>;
+                  return (
+                    <>
+                      <DetailList
+                        items={[
+                          { label: t("templates.colCode"), value: record.code },
+                          { label: t("templates.colName"), value: record.name },
+                          { label: t("templates.channelLabel"), value: channelName(record.channel_id) },
+                          {
+                            label: t("templates.colActive"),
+                            value: record.is_active ? t("templates.active") : t("templates.inactive"),
+                          },
+                          { label: t("templates.subjectEnLabel"), value: record.subject?.EN || notSet },
+                          { label: t("templates.subjectArLabel"), value: record.subject?.AR || notSet },
+                          {
+                            label: t("templates.colCreated"),
+                            value: record.created_at
+                              ? (() => {
+                                  const { date, time } = fmtDateTimeParts(Date.parse(record.created_at), locale);
+                                  return `${date} ${time}`;
+                                })()
+                              : notSet,
+                          },
+                        ]}
+                      />
+                      <div className="flex flex-col gap-2">
+                        <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                          {t("templates.enLabel")}
+                        </h4>
+                        <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+                          {htmlToPlainText(record.body?.EN ?? "") ? (
+                            <div
+                              dangerouslySetInnerHTML={{
+                                __html: sanitizeTemplateHtml(renderTemplate(record.body?.EN ?? "", "en")),
+                              }}
+                            />
+                          ) : (
+                            notSet
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                          {t("templates.arLabel")}
+                        </h4>
+                        <div dir="rtl" className="rounded-lg border bg-muted/30 p-3 text-sm">
+                          {htmlToPlainText(record.body?.AR ?? "") ? (
+                            <div
+                              dangerouslySetInnerHTML={{
+                                __html: sanitizeTemplateHtml(renderTemplate(record.body?.AR ?? "", "ar")),
+                              }}
+                            />
+                          ) : (
+                            notSet
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()
+              )}
+            </SheetBody>
+            <SheetFooter>
+              <Button
+                size="lg"
+                disabled={detailQuery.isPending || detailQuery.isError}
+                onClick={() => {
+                  const target = detailQuery.data ?? shownDetail;
+                  setDetail(null);
+                  openEdit(target);
+                }}
+              >
+                {t("templates.edit")}
+              </Button>
+            </SheetFooter>
+          </SheetContent>
+        )}
+      </Sheet>
     </div>
   );
 }

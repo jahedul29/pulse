@@ -21,18 +21,15 @@ describe("actionServerStateToParams", () => {
     expect(params.filters).toEqual({ result: ["SUCCESS"], severity: ["CRITICAL"] });
   });
 
-  it("maps action-code + target text filters and their sorts", () => {
+  it("maps the actor filter to admin_account_id + target sort", () => {
     const params = actionServerStateToParams(
       state({
         sorting: [{ id: "target", desc: false }],
-        columnFilters: [
-          { id: "actionCode", value: "ROLE_" },
-          { id: "target", value: "ADMIN_ACCOUNT" },
-        ],
+        columnFilters: [{ id: "actor", value: ["u1", "u2"] }],
       }),
     );
     expect(params.sort).toEqual({ target_type: "asc" });
-    expect(params.filters).toEqual({ action_code: "ROLE_", target_type: "ADMIN_ACCOUNT" });
+    expect(params.filters).toEqual({ admin_account_id: ["u1", "u2"] });
   });
 
   it("sorts by action_code", () => {
@@ -63,12 +60,12 @@ describe("changeServerStateToParams", () => {
     });
   });
 
-  it("merges operation/table filters with the deep-link action id", () => {
+  it("merges operation + actor filters with the deep-link action id", () => {
     const params = changeServerStateToParams(
       state({
         columnFilters: [
           { id: "operation", value: ["UPDATE"] },
-          { id: "table", value: "admin_accounts" },
+          { id: "who", value: ["u1", "u2"] },
         ],
       }),
       "A-9",
@@ -76,7 +73,14 @@ describe("changeServerStateToParams", () => {
     expect(params.filters).toEqual({
       admin_action_log_id: "A-9",
       operation: ["UPDATE"],
-      table_name: "admin_accounts",
+      actor_admin_id: ["u1", "u2"],
     });
+  });
+
+  it("maps the action filter to admin_action_log_id", () => {
+    const params = changeServerStateToParams(
+      state({ columnFilters: [{ id: "action", value: ["A-1", "A-2"] }] }),
+    );
+    expect(params.filters).toEqual({ admin_action_log_id: ["A-1", "A-2"] });
   });
 });
