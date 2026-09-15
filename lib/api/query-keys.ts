@@ -13,4 +13,11 @@ export const queryKeys = {
   changeLog: (query?: unknown) => ["change-log", query ?? {}] as const,
   policyVersions: () => ["policy-versions"] as const,
   currentPolicy: () => ["current-policy"] as const,
+  notificationTemplates: () => ["notification-templates"] as const,
+  notificationTemplate: (id: number | string) => ["notification-template", String(id)] as const,
+  notificationChannels: () => ["notification-channels"] as const,
+  notificationDeliveries: (query?: unknown) => ["notification-deliveries", query ?? {}] as const,
+  notificationDelivery: (id: string) => ["notification-delivery", id] as const,
+  alertRoutes: (query?: unknown) => ["alert-routes", query ?? {}] as const,
+  alertRoute: (id: number | string) => ["alert-route", String(id)] as const,
 } as const;

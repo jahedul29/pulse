@@ -100,6 +100,7 @@ import {
 import { StatusBadge } from "@/components/common/status-badge";
 import { Chip } from "@/components/common/chip";
 import { MultiSelect, type MultiSelectOption } from "@/components/common/multi-select";
+import { AsyncSelect, type AsyncOptionsResult } from "@/components/common/async-select";
 import { IconInput } from "@/components/ui/icon-input";
 import { ProfileCell } from "@/components/common/profile-cell";
 import { exportCsv } from "@/lib/export/csv";
@@ -591,6 +592,37 @@ function MultiSelectDemo() {
         placeholder="Select roles"
         searchPlaceholder="Search roles"
         emptyLabel="No matching roles."
+      />
+    </div>
+  );
+}
+
+const DEMO_CHANNELS = [
+  { value: "1", label: "In-app inbox" },
+  { value: "2", label: "Email" },
+  { value: "3", label: "Push notification" },
+  { value: "4", label: "SMS" },
+  { value: "5", label: "Webhook" },
+];
+
+function useDemoChannelOptions(search: string, enabled: boolean): AsyncOptionsResult {
+  const term = enabled ? search.trim().toLowerCase() : "";
+  const options = DEMO_CHANNELS.filter((option) => option.label.toLowerCase().includes(term));
+  return { options, isPending: false, hasNextPage: false, isFetchingNextPage: false, fetchNextPage: () => {} };
+}
+
+function SearchableSelectDemo() {
+  const [value, setValue] = useState("1");
+  return (
+    <div className="w-full max-w-sm">
+      <AsyncSelect
+        useOptions={useDemoChannelOptions}
+        value={value}
+        onChange={setValue}
+        placeholder="Select a channel"
+        searchPlaceholder="Search"
+        emptyLabel="No matches."
+        ariaLabel="Channel"
       />
     </div>
   );
@@ -1477,6 +1509,9 @@ export default function DesignSystemPage() {
                 </Sub>
                 <Sub label="Multi-select">
                   <MultiSelectDemo />
+                </Sub>
+                <Sub label="Searchable select">
+                  <SearchableSelectDemo />
                 </Sub>
               </CardContent>
             </Card>

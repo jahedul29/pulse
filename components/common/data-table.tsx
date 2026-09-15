@@ -57,6 +57,11 @@ declare module "@tanstack/react-table" {
     filter?: "text" | "select" | "range" | "dateRange";
     filterOptions?: { value: string; label: string }[];
     filterLabel?: string;
+    renderFilter?: (context: {
+      value: string[];
+      setValue: (next: string[] | undefined) => void;
+      searchLabel?: string;
+    }) => ReactNode;
     noClip?: boolean;
   }
 }
@@ -361,7 +366,14 @@ function ColumnFilter<TData>({
         )}
         {kind === "range" && <RangeFilter column={column} labels={labels} />}
         {kind === "dateRange" && <DateRangeFilter column={column} labels={labels} />}
-        {kind === "select" && <SelectFilter column={column} searchLabel={labels.search} />}
+        {kind === "select" &&
+          (column.columnDef.meta?.renderFilter
+            ? column.columnDef.meta.renderFilter({
+                value: (value as string[] | undefined) ?? [],
+                setValue: (next) => column.setFilterValue(next && next.length ? next : undefined),
+                searchLabel: labels.search,
+              })
+            : <SelectFilter column={column} searchLabel={labels.search} />)}
         {active && (
           <button
             type="button"
