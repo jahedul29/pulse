@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { apiErrorMessage } from "@/lib/api/error-message";
-import { useInvitableStaff, useLinkedStaffIds, useSendInvitation } from "@/lib/user-management/queries";
+import { useInvitableStaff, useSendInvitation } from "@/lib/user-management/queries";
 import { useRoles } from "@/lib/rbac/queries";
 import { fetchCurrentPolicy } from "@/lib/security-policy/api";
 import { inviteSchema, type InviteForm } from "@/lib/user-management/schemas";
@@ -56,8 +56,6 @@ export function InviteAdminDialog({
     () =>
       inviteSchema({
         staffRequired: t("staffRequired"),
-        emailRequired: t("emailRequired"),
-        emailInvalid: t("emailInvalid"),
         roleRequired: t("roleRequired"),
       }),
     [t],
@@ -107,11 +105,7 @@ export function InviteAdminDialog({
   };
 
   const staffQueryResult = useInvitableStaff(debouncedQuery, open);
-  const linkedStaffQuery = useLinkedStaffIds(open);
-  const shownStaff = useMemo(() => {
-    const linked = new Set(linkedStaffQuery.data ?? []);
-    return (staffQueryResult.data ?? []).filter((staffMember) => !linked.has(staffMember.id));
-  }, [staffQueryResult.data, linkedStaffQuery.data]);
+  const shownStaff = useMemo(() => staffQueryResult.data ?? [], [staffQueryResult.data]);
 
   const pickStaff = (staffMember: StaffRecord) => {
     setPicked(staffMember);
@@ -122,7 +116,7 @@ export function InviteAdminDialog({
 
   const onSubmit = async (values: InviteForm) => {
     try {
-      await sendInvite.mutateAsync(values.staffId);
+      await sendInvite.mutateAsync({ staffId: values.staffId, roleIds: values.roleIds });
       toast.success(t("sentToast", { email: values.email.trim() }));
       handleOpenChange(false);
     } catch (error) {
@@ -212,19 +206,15 @@ export function InviteAdminDialog({
               </Popover>
             </Field>
 
-            <Field
-              label={t("emailLabel")}
-              htmlFor="invite-email"
-              error={formState.errors.email?.message}
-              reserveMessage={false}
-            >
+            <Field label={t("emailLabel")} htmlFor="invite-email" reserveMessage={false}>
               <IconInput
                 id="invite-email"
                 type="email"
                 leading={<Mail className="size-4" />}
                 {...register("email")}
+                readOnly
+                className="bg-muted/50 read-only:focus-visible:border-input read-only:focus-visible:ring-0"
                 placeholder={t("emailPlaceholder")}
-                aria-invalid={formState.errors.email ? true : undefined}
               />
             </Field>
 
@@ -243,8 +233,6 @@ export function InviteAdminDialog({
                 emptyLabel={t("rolesEmpty")}
               />
             </Field>
-
-            <p className="text-xs text-muted-foreground">{t("inviteInterimNote")}</p>
           </DialogBody>
         </Form>
         <DialogFooter layout="split">

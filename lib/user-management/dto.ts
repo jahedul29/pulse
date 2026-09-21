@@ -27,6 +27,8 @@ export interface UserDto {
   preferred_language?: string | null;
   status: UserStatusWire;
   status_reason?: string | null;
+  is_locked?: boolean;
+  locked_until?: string | null;
   invited_by_admin_id?: string | null;
   activated_at?: string | null;
   last_login_at?: string | null;
@@ -43,14 +45,24 @@ export interface PermissionRefDto {
   is_sensitive?: boolean;
 }
 
+export interface InvitedByDto {
+  id: string;
+  email?: string | null;
+  staff?: { id: number; first_name?: string | null; last_name?: string | null } | null;
+}
+
 export interface InvitationDto {
   id: string;
   staff_id: number;
   email?: string | null;
   invited_by_admin_id?: string | null;
+  invited_by?: InvitedByDto | null;
   status: string;
+  proposed_role_ids?: number[];
   expires_at?: string | null;
   accepted_at?: string | null;
+  last_sent_at?: string | null;
+  invitable_again_at?: string | null;
   created_at?: string | null;
   staff?: StaffDto | null;
 }
@@ -58,6 +70,15 @@ export interface InvitationDto {
 export interface UserDetailDto extends UserDto {
   permissions?: PermissionRefDto[];
   latest_invitation?: InvitationDto | null;
+}
+
+export interface UserDeviceDto {
+  id: string;
+  device_name?: string | null;
+  issued_at?: string | null;
+  expires_at?: string | null;
+  last_used_at?: string | null;
+  revoked_at?: string | null;
 }
 
 export interface StoreUserBody {
@@ -104,6 +125,7 @@ export function normalizeInvitationStatus(wire: string): AdminUserStatus {
   const value = (wire ?? "").toLowerCase();
   if (value.includes("accept")) return "active";
   if (value.includes("revok") || value.includes("cancel")) return "revoked";
+  if (value.includes("expir")) return "expired";
   return "pending";
 }
 
@@ -133,8 +155,12 @@ function rolesFromDto(roles: RoleRefDto[] | undefined): RoleRef[] {
   return (roles ?? []).map((role) => ({ id: String(role.id), name: role.name }));
 }
 
-function withDerived(user: AdminUser): AdminUserRow {
-  return { ...user, effectiveStatus: user.status as EffectiveStatus, resendReady: false };
+function withDerived(user: AdminUser, isLocked = false): AdminUserRow {
+  return {
+    ...user,
+    effectiveStatus: isLocked ? "locked" : (user.status as EffectiveStatus),
+    resendReady: false,
+  };
 }
 
 export function userDtoToRow(dto: UserDto): AdminUserRow {
@@ -148,7 +174,7 @@ export function userDtoToRow(dto: UserDto): AdminUserRow {
     email: dto.email,
     initials: initialsOf(name),
     status: normalizeStatus(dto.status),
-    lockedUntil: null,
+    lockedUntil: toEpoch(dto.locked_until),
     lastLogin: toEpoch(dto.last_login_at),
     roleIds: roles.map((role) => role.id),
     roles,
@@ -161,7 +187,13 @@ export function userDtoToRow(dto: UserDto): AdminUserRow {
     lastStatusChangeBy: null,
     registeredDevices: 0,
     lastInviteSentAt: null,
-  });
+  }, Boolean(dto.is_locked));
+}
+
+function inviterName(inviter: InvitedByDto | null | undefined): string | null {
+  if (!inviter) return null;
+  const full = `${inviter.staff?.first_name ?? ""} ${inviter.staff?.last_name ?? ""}`.trim();
+  return full || inviter.email || null;
 }
 
 export function invitationDtoToRow(dto: InvitationDto): AdminUserRow {
@@ -176,17 +208,21 @@ export function invitationDtoToRow(dto: InvitationDto): AdminUserRow {
     status: normalizeInvitationStatus(dto.status),
     lockedUntil: null,
     lastLogin: null,
-    roleIds: [],
+    roleIds: (dto.proposed_role_ids ?? []).map(String),
     roles: [],
     invitedBy: dto.invited_by_admin_id ?? "",
+    invitedByName: inviterName(dto.invited_by),
+    invitedByEmail: dto.invited_by?.email ?? null,
     invitationId: dto.id,
+    invitableAgainAt: dto.invitable_again_at ? toEpoch(dto.invitable_again_at) : null,
+    invitationExpiresAt: toEpoch(dto.expires_at),
     preferredLanguage: null,
     invitedAt: createdAt,
     activatedAt: toEpoch(dto.accepted_at),
     lastStatusChangeAt: null,
     lastStatusChangeBy: null,
     registeredDevices: 0,
-    lastInviteSentAt: createdAt,
+    lastInviteSentAt: toEpoch(dto.last_sent_at) ?? createdAt,
   });
 }
 

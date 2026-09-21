@@ -4,6 +4,7 @@ import { ADMIN_IDENTITY } from "@/lib/api/config";
 import { buildListQuery, listAll, type ListParams } from "@/lib/api/list-query";
 import type { StaffRecord } from "@/lib/staff/types";
 import {
+  invitationDtoToRow,
   normalizeInvitationStatus,
   staffDtoToRecord,
   toWireStatus,
@@ -12,6 +13,7 @@ import {
   type StaffDto,
   type UpdateUserBody,
   type UserDetailDto,
+  type UserDeviceDto,
   type UserDto,
 } from "./dto";
 import type { AdminUserRow, AdminUserStatus } from "./types";
@@ -34,15 +36,25 @@ export async function listAllAdminUsers(): Promise<AdminUserRow[]> {
   return users.map(userDtoToRow);
 }
 
-export async function fetchPendingInvitationMap(): Promise<Record<string, string>> {
-  const invitations = await listAll<InvitationDto>(INVITATIONS, { relations: ["staff"] });
-  const map: Record<string, string> = {};
-  for (const invitation of invitations) {
-    if (normalizeInvitationStatus(invitation.status) === "pending") {
-      map[String(invitation.staff_id)] = invitation.id;
-    }
-  }
-  return map;
+export async function fetchPendingInvitations(): Promise<AdminUserRow[]> {
+  const invitations = await listAll<InvitationDto>(INVITATIONS, { relations: ["staff", "invitedBy"] });
+  return invitations
+    .filter((invitation) => {
+      const status = normalizeInvitationStatus(invitation.status);
+      return status === "pending" || status === "expired";
+    })
+    .map(invitationDtoToRow)
+    .sort((first, second) => second.invitedAt - first.invitedAt);
+}
+
+export function fetchUserDevices(id: string): Promise<UserDeviceDto[]> {
+  return apiData<UserDeviceDto[]>(`${USERS}/${encodeURIComponent(id)}/devices`);
+}
+
+export function fetchInvitation(id: string): Promise<AdminUserRow> {
+  return apiData<InvitationDto>(`${INVITATIONS}/${encodeURIComponent(id)}`, {
+    query: { relations: ["staff", "invitedBy"] },
+  }).then(invitationDtoToRow);
 }
 
 export function fetchAdminUserDetail(id: string): Promise<UserDetailDto> {
@@ -61,8 +73,16 @@ export async function updateUserStatus(
   return userDtoToRow(dto);
 }
 
-export function sendInvitation(staffId: string): Promise<InvitationDto> {
-  return apiData<InvitationDto>(INVITATIONS, { method: "POST", body: { staff_id: Number(staffId) } });
+export function sendInvitation(staffId: string, roleIds: string[] = []): Promise<InvitationDto> {
+  const body: { staff_id: number; role_ids?: number[] } = { staff_id: Number(staffId) };
+  if (roleIds.length > 0) body.role_ids = roleIds.map(Number);
+  return apiData<InvitationDto>(INVITATIONS, { method: "POST", body });
+}
+
+export function resendInvitation(invitationId: string): Promise<InvitationDto> {
+  return apiData<InvitationDto>(`${INVITATIONS}/${encodeURIComponent(invitationId)}/resend`, {
+    method: "POST",
+  });
 }
 
 export function revokeInvitation(invitationId: string): Promise<unknown> {
@@ -78,23 +98,9 @@ export function assignUserRoles(id: string, roleIds: string[]): Promise<unknown>
 
 export async function fetchInvitableStaff(search?: string): Promise<StaffRecord[]> {
   const staff = await apiList<StaffDto>(STAFF, {
-    query: { search: search?.trim() || undefined, per_page: 50 },
+    query: { search: search?.trim() || undefined, per_page: 50, "filters[invitable]": true },
   });
   return staff.data
     .map(staffDtoToRecord)
-    .filter((staffMember) => !staffMember.terminated)
     .sort((staffA, staffB) => staffA.name.localeCompare(staffB.name));
-}
-
-export async function fetchLinkedStaffIds(): Promise<string[]> {
-  const [users, invitations] = await Promise.all([
-    listAll<UserDto>(USERS),
-    listAll<InvitationDto>(INVITATIONS),
-  ]);
-  const linked = new Set<string>();
-  for (const user of users) linked.add(String(user.staff_id));
-  for (const invitation of invitations) {
-    if (normalizeInvitationStatus(invitation.status) !== "revoked") linked.add(String(invitation.staff_id));
-  }
-  return [...linked];
 }

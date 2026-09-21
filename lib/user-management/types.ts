@@ -1,4 +1,4 @@
-export type AdminUserStatus = "pending" | "active" | "suspended" | "deactivated" | "revoked";
+export type AdminUserStatus = "pending" | "active" | "suspended" | "deactivated" | "revoked" | "expired";
 
 export type EffectiveStatus = AdminUserStatus | "locked";
 
@@ -19,7 +19,11 @@ export interface AdminUser {
   roleIds: string[];
   roles?: RoleRef[];
   invitedBy: string;
+  invitedByName?: string | null;
+  invitedByEmail?: string | null;
   invitationId?: string | null;
+  invitableAgainAt?: number | null;
+  invitationExpiresAt?: number | null;
   preferredLanguage?: string | null;
   invitedAt: number;
   activatedAt: number | null;

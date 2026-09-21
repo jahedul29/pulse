@@ -31,4 +31,22 @@ describe("user-management serverStateToParams", () => {
     );
     expect(params.filters).toEqual({ status: ["ACTIVE", "SUSPENDED"], "roles.id": ["3", "7"] });
   });
+
+  it("maps a lastLogin date range to last_login_at_from / _to ISO", () => {
+    const min = Date.parse("2026-09-01T00:00:00.000Z");
+    const max = Date.parse("2026-09-20T00:00:00.000Z");
+    const params = serverStateToParams(state({ columnFilters: [{ id: "lastLogin", value: [min, max] }] }));
+    expect(params.filters).toEqual({
+      last_login_at_from: new Date(min).toISOString(),
+      last_login_at_to: new Date(max).toISOString(),
+    });
+  });
+
+  it("maps the created column to created_at sort and date range", () => {
+    const min = Date.parse("2026-01-01T00:00:00.000Z");
+    const sorted = serverStateToParams(state({ sorting: [{ id: "created", desc: true }] }));
+    expect(sorted.sort).toEqual({ created_at: "desc" });
+    const filtered = serverStateToParams(state({ columnFilters: [{ id: "created", value: [min, undefined] }] }));
+    expect(filtered.filters).toEqual({ created_at_from: new Date(min).toISOString() });
+  });
 });
