@@ -23,9 +23,16 @@ export interface RoleDto {
   name: string;
   description?: string;
   is_system: boolean;
+  is_active?: boolean;
   permissions?: PermissionDto[];
   created_at?: string;
   updated_at?: string;
+}
+
+export interface GrantedRoleDto extends RoleDto {
+  granted_by_admin_id?: string | null;
+  granted_at?: string | null;
+  expires_at?: string | null;
 }
 
 export interface AdminAccountAssignmentDto {
@@ -45,6 +52,7 @@ export interface StoreRoleBody {
 export interface UpdateRoleBody {
   name?: string;
   description?: string;
+  is_active?: boolean;
 }
 
 export function resourceName(permission: PermissionDto): string {

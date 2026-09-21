@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Check, ChevronsUpDown, Lock, Plus, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { StatusBadge } from "@/components/common/status-badge";
 import { ProfileCell } from "@/components/common/profile-cell";
+import { fmtDateTimeParts } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { autoFocusSearch } from "@/lib/pointer";
 import { apiErrorMessage } from "@/lib/api/error-message";
@@ -57,6 +58,7 @@ export function AdminAccess() {
   const t = useTranslations("rbac");
   const tc = useTranslations("common");
   const ta = useTranslations("apiErrors");
+  const locale = useLocale();
 
   const [pickedAdmin, setPickedAdmin] = useState<AdminUserRow | null>(null);
   const adminId = pickedAdmin?.id ?? "";
@@ -72,6 +74,11 @@ export function AdminAccess() {
     if (!pickedAdmin) return rows;
     return [pickedAdmin, ...rows.filter((admin) => admin.id !== pickedAdmin.id)];
   }, [adminsQuery.data, pickedAdmin, adminSearch]);
+
+  const adminNameById = useMemo(
+    () => new Map((adminsQuery.data?.data ?? []).map((admin) => [admin.id, admin.name])),
+    [adminsQuery.data],
+  );
 
   const accessQuery = useAdminAccess(adminId || null);
   const grantedRoles = useMemo(() => accessQuery.data?.roles ?? [], [accessQuery.data]);
@@ -326,7 +333,19 @@ export function AdminAccess() {
                 <ul className="flex flex-col gap-2">
                   {grantedRoles.map((role) => (
                     <li key={role.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border p-3">
-                      <span className="font-medium">{role.name}</span>
+                      <span className="flex min-w-0 flex-col">
+                        <span className="font-medium">{role.name}</span>
+                        {role.granted_at && (
+                          <span className="text-xs text-muted-foreground">
+                            {t("grantedOn", {
+                              date: fmtDateTimeParts(Date.parse(role.granted_at), locale).date,
+                            })}
+                            {role.granted_by_admin_id && adminNameById.get(role.granted_by_admin_id)
+                              ? ` ${t("grantedBy", { name: adminNameById.get(role.granted_by_admin_id) as string })}`
+                              : ""}
+                          </span>
+                        )}
+                      </span>
                       {role.is_system ? (
                         <StatusBadge tone="neutral" equalWidth={false}>
                           <Lock className="me-1 size-3" />
@@ -335,6 +354,15 @@ export function AdminAccess() {
                       ) : (
                         <StatusBadge tone="warning" equalWidth={false}>
                           {t("typeCustom")}
+                        </StatusBadge>
+                      )}
+                      {role.expires_at ? (
+                        <StatusBadge tone="warning" equalWidth={false}>
+                          {t("expiresOn", { date: fmtDateTimeParts(Date.parse(role.expires_at), locale).date })}
+                        </StatusBadge>
+                      ) : (
+                        <StatusBadge tone="neutral" equalWidth={false}>
+                          {t("permanent")}
                         </StatusBadge>
                       )}
                       <Button
