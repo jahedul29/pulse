@@ -146,6 +146,7 @@ export interface ApiEnvelope<T> {
   status: number;
   meta?: PaginationMeta;
   links?: Record<string, unknown>;
+  info?: unknown;
 }
 
 export interface Paginated<T> {
@@ -161,7 +162,7 @@ export async function apiData<T>(path: string, options?: ApiFetchOptions): Promi
 export async function apiList<T>(
   path: string,
   options?: ApiFetchOptions,
-): Promise<{ data: T[]; meta?: PaginationMeta; links?: Record<string, unknown> }> {
+): Promise<{ data: T[]; meta?: PaginationMeta; links?: Record<string, unknown>; info?: unknown }> {
   const env = await apiFetch<ApiEnvelope<T[]>>(path, options);
-  return { data: env.data ?? [], meta: env.meta, links: env.links };
+  return { data: env.data ?? [], meta: env.meta, links: env.links, info: env.info };
 }

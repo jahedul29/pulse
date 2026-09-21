@@ -20,6 +20,7 @@ import {
   listCampaigns,
   listChannels,
   listDeliveries,
+  listLiveAlerts,
   listTemplates,
   getAlertRoute,
   updateAlertRoute,
@@ -146,6 +147,16 @@ export function useDeliveries(params: ListParams) {
   return useQuery({
     queryKey: queryKeys.notificationDeliveries(params),
     queryFn: () => listDeliveries(params),
+    placeholderData: keepPreviousData,
+    enabled: authed,
+  });
+}
+
+export function useLiveAlerts(params: ListParams) {
+  const authed = useAuthed();
+  return useQuery({
+    queryKey: queryKeys.liveAlerts(params),
+    queryFn: () => listLiveAlerts(params),
     placeholderData: keepPreviousData,
     enabled: authed,
   });

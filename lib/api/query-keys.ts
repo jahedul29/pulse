@@ -18,6 +18,7 @@ export const queryKeys = {
   notificationChannels: () => ["notification-channels"] as const,
   notificationDeliveries: (query?: unknown) => ["notification-deliveries", query ?? {}] as const,
   notificationDelivery: (id: string) => ["notification-delivery", id] as const,
+  liveAlerts: (query?: unknown) => ["live-alerts", query ?? {}] as const,
   alertRoutes: (query?: unknown) => ["alert-routes", query ?? {}] as const,
   alertRoute: (id: number | string) => ["alert-route", String(id)] as const,
 } as const;

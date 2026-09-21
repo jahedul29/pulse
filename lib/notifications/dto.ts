@@ -43,14 +43,25 @@ export interface NotificationDeliveryDto {
   template_id: number | null;
   channel_id: number | null;
   campaign_id: string | null;
+  alert_route_id: string | null;
   admin_account_id: string | null;
   status: DeliveryStatusCode;
+  title: string | null;
+  body: string | null;
+  severity: string | null;
+  severity_color: string | null;
   error_message: string | null;
   sent_at: string | null;
   created_at: string | null;
   channel?: NotificationChannelDto | null;
   template?: NotificationTemplateDto | null;
   campaign?: NotificationCampaignDto | null;
+  admin_account?: {
+    id: string;
+    email?: string | null;
+    staff_id?: number | null;
+    staff?: { first_name?: string | null; last_name?: string | null; nickname?: string | null } | null;
+  } | null;
 }
 
 export type AudienceFilter = { role_ids?: number[]; user_ids?: string[] } | unknown[] | null;
@@ -64,6 +75,8 @@ export interface NotificationAlertRouteDto {
   audience_type: AudienceType;
   audience_filter: AudienceFilter;
   priority: number;
+  severity?: string | null;
+  severity_color?: string | null;
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
@@ -129,4 +142,26 @@ export function deliveryStatusTone(status: DeliveryStatusCode): Tone {
   if (status === "SENT") return "success";
   if (status === "FAILED") return "danger";
   return "warning";
+}
+
+export type DeliverySeverityCode = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+export const SEVERITY_ORDER: DeliverySeverityCode[] = ["CRITICAL", "HIGH", "MEDIUM", "LOW"];
+
+export function severityTone(severity: string | null | undefined): Tone {
+  if (severity === "CRITICAL" || severity === "HIGH") return "danger";
+  if (severity === "MEDIUM") return "warning";
+  if (severity === "LOW") return "success";
+  return "neutral";
+}
+
+export function shortId(value: string | null): string {
+  if (!value) return "-";
+  return value.length > 10 ? `${value.slice(0, 8)}…` : value;
+}
+
+export function recipientName(entry: NotificationDeliveryDto): string {
+  const account = entry.admin_account;
+  const staff = account?.staff;
+  const full = staff ? `${staff.first_name ?? ""} ${staff.last_name ?? ""}`.trim() : "";
+  return full || account?.email || shortId(entry.admin_account_id);
 }

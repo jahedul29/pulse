@@ -10,11 +10,16 @@ const delivery = {
   campaign_id: null,
   admin_account_id: "u1",
   status: "SENT" as const,
+  title: "Session missed",
+  body: "The session was missed by the client.",
+  severity: "LOW",
+  severity_color: "severity.low",
   error_message: null,
   sent_at: "2026-09-10T15:35:51.000000Z",
   created_at: "2026-09-10T15:35:51.000000Z",
   channel: { id: 1, code: "IN_APP", name: "In-app inbox", is_active: true },
   template: { id: 1, code: "EDR_SESSION_MISSED", name: "Missed", channel_id: 1, subject: { EN: "s" }, body: { EN: "<p>body</p>" }, is_active: true },
+  admin_account: { id: "u1", email: "layla@abapro.health", staff: { first_name: "Layla", last_name: "Haddad" } },
 };
 
 jest.mock("../../lib/notifications/queries", () => ({
@@ -30,7 +35,13 @@ jest.mock("../../lib/notifications/queries", () => ({
 }));
 
 jest.mock("../../lib/user-management/queries", () => ({
-  useAllAdminUsers: () => ({ data: [{ id: "u1", name: "Layla Haddad", email: "layla@abapro.health" }] }),
+  useAdminUserSearch: () => ({
+    data: { pages: [{ data: [], meta: { current_page: 1, last_page: 1 } }] },
+    isPending: false,
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    fetchNextPage: jest.fn(),
+  }),
 }));
 
 jest.mock("next-intl", () => {
@@ -58,6 +69,6 @@ describe("NotificationLog", () => {
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getAllByText("Layla Haddad").length).toBeGreaterThan(0);
     expect(within(dialog).getByText("Missed")).toBeInTheDocument();
-    expect(within(dialog).getByText("body")).toBeInTheDocument();
+    expect(within(dialog).getByText("The session was missed by the client.")).toBeInTheDocument();
   });
 });

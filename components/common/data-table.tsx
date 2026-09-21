@@ -55,7 +55,7 @@ declare module "@tanstack/react-table" {
     headClassName?: string;
     cellClassName?: string;
     filter?: "text" | "select" | "range" | "dateRange";
-    filterOptions?: { value: string; label: string }[];
+    filterOptions?: { value: string; label: string; count?: number }[];
     filterLabel?: string;
     renderFilter?: (context: {
       value: string[];
@@ -187,7 +187,7 @@ function SelectFilter<TData>({
 }) {
   const [query, setQuery] = useState("");
   const value = (column.getFilterValue() as string[] | undefined) ?? [];
-  const options =
+  const options: { value: string; label: string; count?: number }[] =
     column.columnDef.meta?.filterOptions ??
     [...column.getFacetedUniqueValues().keys()]
       .filter((facetValue) => facetValue != null && facetValue !== "")
@@ -226,7 +226,12 @@ function SelectFilter<TData>({
               checked={value.includes(option.value)}
               onCheckedChange={() => toggle(option.value)}
             />
-            <span className="truncate">{option.label}</span>
+            <span className="flex-1 truncate">{option.label}</span>
+            {option.count != null && (
+              <span className="shrink-0 rounded-full bg-border-strong/50 px-1.5 text-xs font-medium text-foreground tabular">
+                {option.count}
+              </span>
+            )}
           </label>
         ))}
         {shown.length === 0 && (
