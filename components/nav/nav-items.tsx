@@ -9,7 +9,7 @@ import {
   ListChecks,
   Lock,
   MessageSquareText,
-  Route,
+  // Route,
   ScrollText,
   Shield,
   ShieldCheck,
@@ -44,7 +44,8 @@ const RBAC_ITEMS: NavGroupItem[] = [
 
 const NOTIFICATION_ITEMS: NavGroupItem[] = [
   { href: "/admin/notifications/templates", key: "notifTemplates", icon: MessageSquareText },
-  { href: "/admin/notifications/mapping", key: "edrMapping", icon: Route },
+  // TODO: restore EDR mapping nav item when the feature is integrated
+  // { href: "/admin/notifications/mapping", key: "edrMapping", icon: Route },
   { href: "/admin/notifications/log", key: "notifLog", icon: ListChecks },
   { href: "/admin/notifications/routing", key: "alertRouting", icon: SlidersHorizontal },
   { href: "/admin/notifications/alerts", key: "liveAlerts", icon: Siren },

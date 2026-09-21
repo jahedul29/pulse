@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Menu, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Menu } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -130,6 +130,7 @@ export function Topbar() {
       </div>
 
       <div className="flex shrink-0 items-center gap-3">
+        {/* TODO: restore global search when search is wired to a backend
         <label className="relative hidden items-center md:flex">
           <Search className="pointer-events-none absolute start-2.5 size-4 text-muted-foreground" />
           <input
@@ -138,6 +139,7 @@ export function Topbar() {
             className="h-9 w-56 rounded-lg border bg-card pe-3 ps-8 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           />
         </label>
+        */}
         <LocaleSwitcher />
         <ProfileMenu />
       </div>
