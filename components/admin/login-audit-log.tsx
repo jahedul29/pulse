@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { fmtDateTimeParts } from "@/lib/format";
+import { downloadCsvText } from "@/lib/export/csv";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,6 +16,8 @@ import { AdminUserFilter } from "@/components/admin/admin-user-filter";
 import { maskIdentifier } from "@/lib/audit/mask";
 import { auditTone } from "@/lib/audit/tone";
 import { useLoginAudit } from "@/lib/audit/queries";
+import { exportLoginAuditCsv } from "@/lib/audit/audit-api";
+import { CsvExportButton } from "@/components/admin/csv-export-button";
 import { serverStateToParams } from "@/lib/audit/list-params";
 import type { LoginAuditEntry } from "@/lib/audit/types";
 
@@ -61,6 +64,11 @@ export function LoginAuditLog() {
   const rows = useMemo(() => auditQuery.data?.data ?? [], [auditQuery.data]);
   const total = auditQuery.data?.meta?.total ?? rows.length;
   const onServerStateChange = useCallback((state: ServerTableState) => setServer(state), []);
+
+  const onExport = useCallback(async () => {
+    const csv = await exportLoginAuditCsv(params);
+    downloadCsvText("login-audit-logs.csv", csv);
+  }, [params]);
 
   const flagged = useMemo(() => {
     const set = new Set<string>();
@@ -191,6 +199,7 @@ export function LoginAuditLog() {
               emptyLabel={t("empty")}
               itemsLabel={t("items")}
               getSearchText={(entry) => `${shownIdentifier(entry)} ${entry.adminName ?? ""}`}
+              toolbar={<CsvExportButton onExport={onExport} />}
               filterLabels={{
                 filter: t("filter"),
                 clear: t("clear"),

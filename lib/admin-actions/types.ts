@@ -1,6 +1,5 @@
 export type ActionResult = "success" | "failure" | "partial";
 export type ActionSeverity = "info" | "warning" | "critical";
-export type TicketType = "edr" | "tt";
 
 export interface ActionInput {
   label: string;
@@ -23,8 +22,6 @@ export interface AdminAction {
   correlationId?: string;
   adminEmail?: string;
   device?: string;
-  ticketType: TicketType | null;
-  ticketId: string | null;
   inputs: ActionInput[];
 }
 

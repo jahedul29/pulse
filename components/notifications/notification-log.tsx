@@ -20,21 +20,21 @@ import { ProfileCell } from "@/components/common/profile-cell";
 import { Chip } from "@/components/common/chip";
 import { DetailList } from "@/components/common/detail-list";
 import { fmtDateTimeParts } from "@/lib/format";
-import { htmlToPlainText } from "@/lib/notifications/variables";
 import { useRetained } from "@/lib/use-retained";
 import { useDeliveries, useDelivery } from "@/lib/notifications/queries";
 import { ChannelFilter } from "@/components/notifications/channel-select";
 import { CampaignFilter } from "@/components/notifications/campaign-filter";
 import { AdminUserFilter } from "@/components/admin/admin-user-filter";
 import { deliveriesStateToParams } from "@/lib/notifications/list-params";
-import { DELIVERY_STATUS_CODES, deliveryStatusTone, localizedText } from "@/lib/notifications/dto";
+import {
+  DELIVERY_STATUS_CODES,
+  SEVERITY_ORDER,
+  deliveryStatusTone,
+  recipientName,
+  severityTone,
+  shortId,
+} from "@/lib/notifications/dto";
 import type { NotificationDeliveryDto } from "@/lib/notifications/dto";
-import { useAllAdminUsers } from "@/lib/user-management/queries";
-
-function shortId(value: string | null): string {
-  if (!value) return "-";
-  return value.length > 10 ? `${value.slice(0, 8)}…` : value;
-}
 
 export function NotificationLog() {
   const t = useTranslations("notifications");
@@ -48,20 +48,9 @@ export function NotificationLog() {
   const total = deliveriesQuery.data?.meta?.total ?? rows.length;
   const onServerStateChange = useCallback((state: ServerTableState) => setServer(state), []);
 
-  const usersQuery = useAllAdminUsers();
-  const recipient = useMemo(() => {
-    const map = new Map((usersQuery.data ?? []).map((user) => [user.id, user]));
-    return (id: string | null) => (id ? map.get(id) ?? null : null);
-  }, [usersQuery.data]);
-
   const [selected, setSelected] = useState<NotificationDeliveryDto | null>(null);
   const shown = useRetained(selected);
   const detailQuery = useDelivery(selected?.id ?? null);
-
-  const recipientName = useCallback(
-    (id: string | null) => recipient(id)?.name ?? recipient(id)?.email ?? shortId(id),
-    [recipient],
-  );
 
   const columns = useMemo<ColumnDef<NotificationDeliveryDto, unknown>[]>(
     () => [
@@ -97,7 +86,7 @@ export function NotificationLog() {
             <AdminUserFilter value={value} onChange={setValue} searchLabel={searchLabel} emptyLabel={tc("noResults")} />
           ),
         },
-        cell: ({ row }) => <ProfileCell name={recipientName(row.original.admin_account_id)} />,
+        cell: ({ row }) => <ProfileCell name={recipientName(row.original)} />,
       },
       {
         id: "channel",
@@ -145,6 +134,28 @@ export function NotificationLog() {
         },
       },
       {
+        id: "severity",
+        accessorFn: (entry) => entry.severity ?? "",
+        size: 120,
+        header: t("log.colSeverity"),
+        meta: {
+          filter: "select",
+          filterOptions: SEVERITY_ORDER.map((severity) => ({
+            value: severity,
+            label: t(`deliverySeverity.${severity}`),
+          })),
+          filterLabel: t("log.colSeverity"),
+        },
+        cell: ({ row }) =>
+          row.original.severity ? (
+            <StatusBadge tone={severityTone(row.original.severity)} equalWidth={false} className="min-w-[5rem]">
+              {t(`deliverySeverity.${row.original.severity}`)}
+            </StatusBadge>
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          ),
+      },
+      {
         id: "status",
         accessorFn: (entry) => entry.status,
         size: 130,
@@ -160,18 +171,8 @@ export function NotificationLog() {
           </StatusBadge>
         ),
       },
-      {
-        id: "error",
-        accessorFn: (entry) => entry.error_message ?? "",
-        size: 220,
-        header: t("log.colError"),
-        enableSorting: false,
-        cell: ({ row }) => (
-          <span className="line-clamp-2 text-xs text-muted-foreground">{row.original.error_message ?? "-"}</span>
-        ),
-      },
     ],
-    [t, tc, locale, recipientName],
+    [t, tc, locale],
   );
 
   return (
@@ -207,7 +208,7 @@ export function NotificationLog() {
               emptyLabel={t("log.empty")}
               itemsLabel={t("log.items")}
               onRowClick={(entry) => setSelected(entry)}
-              rowAriaLabel={(entry) => `${recipientName(entry.admin_account_id)} ${entry.template?.code ?? ""}`}
+              rowAriaLabel={(entry) => `${recipientName(entry)} ${entry.template?.code ?? ""}`}
               filterLabels={{
                 filter: t("log.filter"),
                 clear: t("log.clear"),
@@ -225,7 +226,7 @@ export function NotificationLog() {
         {shown && (
           <SheetContent>
             <SheetHeader>
-              <SheetTitle>{recipientName(shown.admin_account_id)}</SheetTitle>
+              <SheetTitle>{recipientName(shown)}</SheetTitle>
               <div className="flex flex-wrap items-center gap-2 pt-1">
                 <StatusBadge tone={deliveryStatusTone(shown.status)} equalWidth={false}>
                   {t(`deliveryStatus.${shown.status}`)}
@@ -249,43 +250,55 @@ export function NotificationLog() {
               ) : (
                 (() => {
                   const record = detailQuery.data;
-                  const stamp = record.sent_at ?? record.created_at;
+                  const fmtStamp = (value: string | null) =>
+                    value
+                      ? (() => {
+                          const { date, time } = fmtDateTimeParts(Date.parse(value), locale);
+                          return `${date} ${time}`;
+                        })()
+                      : "-";
                   return (
                     <>
                       <DetailList
                         items={[
-                          { label: t("log.colRecipient"), value: recipientName(record.admin_account_id) },
-                          { label: t("log.colChannel"), value: record.channel?.name ?? `#${record.channel_id ?? "-"}` },
+                          {
+                            label: t("log.colRecipient"),
+                            value: (
+                              <ProfileCell
+                                name={recipientName(record)}
+                                subtitle={record.admin_account?.email ?? undefined}
+                              />
+                            ),
+                          },
                           { label: t("log.colTemplate"), value: record.template?.name ?? record.template?.code ?? "-" },
                           {
                             label: t("log.colCampaign"),
                             value: record.campaign?.name ?? (record.campaign_id ? shortId(record.campaign_id) : "-"),
                           },
                           {
-                            label: t("log.colTimestamp"),
-                            value: stamp
-                              ? (() => {
-                                  const { date, time } = fmtDateTimeParts(Date.parse(stamp), locale);
-                                  return `${date} ${time}`;
-                                })()
-                              : "-",
+                            label: t("log.colSeverity"),
+                            value: record.severity ? (
+                              <StatusBadge tone={severityTone(record.severity)} equalWidth={false}>
+                                {t(`deliverySeverity.${record.severity}`)}
+                              </StatusBadge>
+                            ) : (
+                              "-"
+                            ),
                           },
+                          { label: t("log.colTimestamp"), value: fmtStamp(record.sent_at) },
+                          { label: t("log.colCreated"), value: fmtStamp(record.created_at) },
                           ...(record.error_message ? [{ label: t("log.colError"), value: record.error_message }] : []),
                         ]}
                       />
-                      {record.template && (
+                      {(record.title || record.body) && (
                         <div className="flex flex-col gap-2">
                           <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                             {t("log.messageBody")}
                           </h4>
-                          <div className="rounded-lg border bg-muted/30 p-3 text-sm">
-                            {htmlToPlainText(localizedText(record.template.body, "en"))}
+                          <div className="flex flex-col gap-1 rounded-lg border bg-muted/30 p-3 text-sm">
+                            {record.title && <span className="font-medium">{record.title}</span>}
+                            {record.body && <span className="text-muted-foreground">{record.body}</span>}
                           </div>
-                          {record.template.body?.AR && (
-                            <div dir="rtl" className="rounded-lg border bg-muted/30 p-3 text-sm">
-                              {htmlToPlainText(record.template.body.AR)}
-                            </div>
-                          )}
                         </div>
                       )}
                     </>

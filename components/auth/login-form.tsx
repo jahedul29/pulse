@@ -4,7 +4,7 @@ import { useCallback, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { LockKeyhole, Loader2, Mail, MailQuestion, PauseCircle, PowerOff } from "lucide-react";
+import { Loader2, Mail, MailQuestion, PauseCircle, PowerOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -167,12 +167,6 @@ export function LoginForm({ returnTo }: { returnTo?: string | null }) {
       title={t("title")}
       subtitle={t("subtitle")}
       animationKey={view}
-      footer={
-        <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-          <LockKeyhole className="size-3.5" />
-          {t("securedNote")}
-        </p>
-      }
     >
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         <Field

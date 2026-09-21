@@ -36,6 +36,11 @@ const mockRows: AdminUserRow[] = [
   row({ id: "u1", name: "Dana Okonkwo", status: "active", roles: [{ id: "3", name: "Administrator" }] }),
   row({ id: "u2", name: "Emma Novak", status: "active" }),
   row({ id: "u3", name: "Omar Haddad", status: "pending" }),
+  row({ id: "u4", name: "Lina Waitfor", status: "pending", invitableAgainAt: 9_999_999_999_999 }),
+];
+
+const pendingInvites: AdminUserRow[] = [
+  row({ id: "inv-9", name: "Pending Person", status: "pending", roleIds: ["3"] }),
 ];
 
 jest.mock("../../lib/rbac/queries", () => ({
@@ -44,13 +49,20 @@ jest.mock("../../lib/rbac/queries", () => ({
 
 jest.mock("../../lib/user-management/users-api", () => ({
   listAdminUsers: jest.fn(async () => ({ data: mockRows, meta: { total: mockRows.length } })),
-  fetchPendingInvitationMap: jest.fn(async () => ({})),
+  fetchPendingInvitations: jest.fn(async () => pendingInvites),
+  fetchInvitation: jest.fn(async (id: string) => ({
+    ...pendingInvites[0],
+    id,
+    invitationExpiresAt: Date.parse("2026-10-01T00:00:00.000Z"),
+  })),
   fetchAdminUserDetail: jest.fn(async () => ({})),
   updateUserStatus: jest.fn(),
   revokeInvitation: jest.fn(),
   sendInvitation: jest.fn(),
   assignUserRoles: jest.fn(),
   fetchInvitableStaff: jest.fn(async () => []),
+  fetchUserDevices: jest.fn(async () => []),
+  resendInvitation: jest.fn(),
 }));
 
 beforeAll(() => {
@@ -100,16 +112,55 @@ describe("UserManagement", () => {
     expect(screen.queryByRole("menuitem", { name: "Resend invite" })).not.toBeInTheDocument();
   });
 
-  it("shows Resend (disabled, pending backend) + Revoke for a pending account", async () => {
+  it("shows Resend (enabled) + Revoke for a pending account", async () => {
     renderWithClient(<UserManagement />);
     const row = (await screen.findByText("Omar Haddad")).closest("tr")!;
 
     await userEvent.click(within(row).getByRole("button", { name: "Account actions" }));
     const resend = await screen.findByRole("menuitem", { name: "Resend invite" });
     expect(resend).toBeInTheDocument();
-    expect(resend).toHaveAttribute("aria-disabled", "true");
+    expect(resend).not.toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("menuitem", { name: "Revoke invite" })).toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "Deactivate" })).not.toBeInTheDocument();
+  });
+
+  it("disables Resend while the invitable_again_at cooldown is active", async () => {
+    renderWithClient(<UserManagement />);
+    const row = (await screen.findByText("Lina Waitfor")).closest("tr")!;
+
+    await userEvent.click(within(row).getByRole("button", { name: "Account actions" }));
+    const resend = await screen.findByRole("menuitem", { name: "Resend invite" });
+    expect(resend).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("shows status actions in the account detail drawer footer", async () => {
+    renderWithClient(<UserManagement />);
+    await userEvent.click(await screen.findByRole("link", { name: "Dana Okonkwo" }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(await within(dialog).findByRole("button", { name: "Suspend" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Deactivate" })).toBeInTheDocument();
+  });
+
+  it("lists pending invitations in the Pending tab", async () => {
+    renderWithClient(<UserManagement />);
+    await screen.findByText("Dana Okonkwo");
+
+    await userEvent.click(screen.getByRole("tab", { name: /Pending invitations/i }));
+    expect(await screen.findByText("Pending Person")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Invited by" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Last sent" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Last login" })).not.toBeInTheDocument();
+  });
+
+  it("opens the invitation detail drawer on row click with invitation fields", async () => {
+    renderWithClient(<UserManagement />);
+    await screen.findByText("Dana Okonkwo");
+
+    await userEvent.click(screen.getByRole("tab", { name: /Pending invitations/i }));
+    await userEvent.click(await screen.findByRole("link", { name: "Pending Person" }));
+    expect(await screen.findByText("Invitable again")).toBeInTheDocument();
+    expect(screen.getAllByText("Last sent").length).toBeGreaterThan(0);
   });
 
   it("does not render the MFA column (no mfa key in the API)", async () => {

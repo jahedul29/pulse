@@ -39,11 +39,17 @@ describe("actionDtoToRow", () => {
     expect(row.actorName).toBe("Dana Okonkwo");
     expect(row.result).toBe("success");
     expect(row.severity).toBe("warning");
-    expect(row.ticketId).toBeNull();
   });
 
   it("falls back to System when no admin account", () => {
     expect(actionDtoToRow({ ...dto, admin_account: null }).actorName).toBe("System");
+  });
+
+  it("prefers action_label over action_code, falling back to code", () => {
+    expect(actionDtoToRow({ ...dto, action_label: "Suspended a user" }).actionName).toBe(
+      "Suspended a user",
+    );
+    expect(actionDtoToRow({ ...dto, action_label: null }).actionName).toBe("user.suspend");
   });
 });
 

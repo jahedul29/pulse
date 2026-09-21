@@ -32,12 +32,13 @@ describe("normalizeStatus / toWireStatus", () => {
   });
 });
 
-describe("normalizeInvitationStatus (interim, un-enumed)", () => {
-  it("maps accepted/revoked/other to app statuses", () => {
+describe("normalizeInvitationStatus", () => {
+  it("maps the BE invitation enum to app statuses", () => {
     expect(normalizeInvitationStatus("ACCEPTED")).toBe("active");
-    expect(normalizeInvitationStatus("revoked")).toBe("revoked");
+    expect(normalizeInvitationStatus("REVOKED")).toBe("revoked");
     expect(normalizeInvitationStatus("cancelled")).toBe("revoked");
-    expect(normalizeInvitationStatus("pending")).toBe("pending");
+    expect(normalizeInvitationStatus("EXPIRED")).toBe("expired");
+    expect(normalizeInvitationStatus("PENDING")).toBe("pending");
     expect(normalizeInvitationStatus("")).toBe("pending");
   });
 });
@@ -104,6 +105,23 @@ describe("userDtoToRow", () => {
     expect(row.name).toBe("dana@abapro.health");
     expect(row.lockedUntil).toBeNull();
     expect(row.registeredDevices).toBe(0);
+  });
+
+  it("maps is_locked to effectiveStatus locked and locked_until to epoch", () => {
+    const row = userDtoToRow({
+      ...dto,
+      is_locked: true,
+      locked_until: "2026-09-30T12:00:00Z",
+    });
+    expect(row.status).toBe("active");
+    expect(row.effectiveStatus).toBe("locked");
+    expect(row.lockedUntil).toBe(Date.parse("2026-09-30T12:00:00Z"));
+  });
+
+  it("keeps base status when not locked", () => {
+    const row = userDtoToRow({ ...dto, is_locked: false });
+    expect(row.effectiveStatus).toBe("active");
+    expect(row.lockedUntil).toBeNull();
   });
 });
 

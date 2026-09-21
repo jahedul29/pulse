@@ -67,9 +67,11 @@ import { alertRouteSchema, type AlertRouteForm } from "@/lib/notifications/schem
 import { alertRoutesStateToParams } from "@/lib/notifications/list-params";
 import {
   AUDIENCE_TYPES,
+  SEVERITY_ORDER,
   audienceCount,
   buildAudienceFilter,
   normalizeAudienceFilter,
+  severityTone,
 } from "@/lib/notifications/dto";
 import type { AudienceType, NotificationAlertRouteDto } from "@/lib/notifications/dto";
 import {
@@ -121,6 +123,27 @@ export function AlertRoutingEditor() {
   const userOptions = useMemo(
     () => (usersQuery.data ?? []).map((user) => ({ value: user.id, label: user.name || user.email })),
     [usersQuery.data],
+  );
+  const roleNameById = useMemo(
+    () => new Map(roleOptions.map((option) => [option.value, option.label])),
+    [roleOptions],
+  );
+  const userNameById = useMemo(
+    () => new Map(userOptions.map((option) => [option.value, option.label])),
+    [userOptions],
+  );
+  const audienceMembers = useCallback(
+    (route: NotificationAlertRouteDto): string[] => {
+      const { role_ids, user_ids } = normalizeAudienceFilter(route.audience_filter);
+      if (route.audience_type === "ROLE") {
+        return role_ids.map((id) => roleNameById.get(String(id)) ?? `#${id}`);
+      }
+      if (route.audience_type === "USER_IDS") {
+        return user_ids.map((id) => userNameById.get(id) ?? id);
+      }
+      return [];
+    },
+    [roleNameById, userNameById],
   );
 
   const channelName = useMemo(() => {
@@ -310,6 +333,28 @@ export function AlertRoutingEditor() {
         size: 110,
         header: t("routing.colPriority"),
         cell: ({ row }) => <span className="text-xs tabular">{row.original.priority}</span>,
+      },
+      {
+        id: "severity",
+        accessorFn: (route) => route.severity ?? "",
+        size: 120,
+        header: t("routing.colSeverity"),
+        meta: {
+          filter: "select",
+          filterOptions: SEVERITY_ORDER.map((severity) => ({
+            value: severity,
+            label: t(`deliverySeverity.${severity}`),
+          })),
+          filterLabel: t("routing.colSeverity"),
+        },
+        cell: ({ row }) =>
+          row.original.severity ? (
+            <StatusBadge tone={severityTone(row.original.severity)} equalWidth={false} className="min-w-[5rem]">
+              {t(`deliverySeverity.${row.original.severity}`)}
+            </StatusBadge>
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          ),
       },
       {
         id: "active",
@@ -681,23 +726,41 @@ export function AlertRoutingEditor() {
               ) : (
                 (() => {
                   const record = detailQuery.data;
+                  const members = audienceMembers(record);
                   return (
                     <DetailList
                       items={[
                         { label: t("routing.colCode"), value: record.code },
                         { label: t("routing.colName"), value: record.name },
-                        { label: t("routing.colChannel"), value: record.channel?.name ?? channelName(record.channel_id) },
                         {
                           label: t("routing.colTemplate"),
                           value:
                             record.template?.name ??
                             (record.template_id ? templateName(record.template_id) : t("routing.noTemplate")),
                         },
-                        { label: t("routing.colAudience"), value: audienceLabel(record) },
+                        {
+                          label: t("routing.colAudience"),
+                          value:
+                            record.audience_type === "ALL_ADMINS" || members.length === 0 ? (
+                              t(`routing.audienceType.${record.audience_type}`)
+                            ) : (
+                              <div className="flex flex-wrap gap-1.5">
+                                {members.map((name, index) => (
+                                  <Chip key={`${name}-${index}`}>{name}</Chip>
+                                ))}
+                              </div>
+                            ),
+                        },
                         { label: t("routing.colPriority"), value: String(record.priority) },
                         {
-                          label: t("routing.colActive"),
-                          value: record.is_active ? t("routing.active") : t("routing.inactive"),
+                          label: t("routing.colSeverity"),
+                          value: record.severity ? (
+                            <StatusBadge tone={severityTone(record.severity)} equalWidth={false}>
+                              {t(`deliverySeverity.${record.severity}`)}
+                            </StatusBadge>
+                          ) : (
+                            "-"
+                          ),
                         },
                         {
                           label: t("routing.colCreated"),

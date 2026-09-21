@@ -36,7 +36,11 @@
     "search": "Search",
     "noResults": "No results",
     "lang_EN": "English",
-    "lang_AR": "Arabic"
+    "lang_AR": "Arabic",
+    "export": "Export CSV",
+    "from": "From",
+    "to": "To",
+    "lang_RU": "Russian"
   },
   "pagination": {
     "range": "{start}–{end} of {total} {label}",
@@ -396,8 +400,8 @@
     "passwordPlaceholder": "Enter your password",
     "showPassword": "Show password",
     "hidePassword": "Hide password",
-    "rememberDevice": "Remember this device",
-    "rememberHelp": "Skip verification on this device for 30 days.",
+    "rememberDevice": "Remember me on this device",
+    "rememberHelp": "Keep me signed in on this device.",
     "signIn": "Sign In",
     "signingIn": "Signing in…",
     "signedIn": "Signed in",
@@ -447,7 +451,6 @@
     "welcomeBody": "Manage everything in one place.",
     "forgotPassword": "Forgot password?",
     "forgotHint": "Contact your IT administrator to reset access.",
-    "securedNote": "Secured with two-step verification",
     "lockedUntil": "This account is locked until {time}.",
     "unlocksIn": "Unlocks in {time}",
     "unlocksAtLabel": "Unlocks at",
@@ -464,7 +467,7 @@
     "loadError": "Couldn't load admin accounts. Try again.",
     "empty": "No admin accounts yet.",
     "items": "accounts",
-    "search": "Search by status",
+    "search": "Search by name, email, staff ID, status",
     "filterSearch": "Search",
     "inviteAdmin": "Invite admin",
     "noPermission": "You don't have permission to manage admin accounts.",
@@ -492,10 +495,9 @@
     "actionDeactivate": "Deactivate",
     "actionReactivate": "Reactivate",
     "actionUnlock": "Unlock",
-    "resendWait": "Please wait before resending",
     "selfBlock": "You can't do this to your own account",
     "changeFailed": "Couldn't apply the change. Reverted.",
-    "resentToast": "Invitation resent to {email}.",
+    "resentToast": "Invitation resent to {name}.",
     "suspendedToast": "{name} suspended",
     "reactivatedToast": "{name} reactivated",
     "unlockedToast": "{name}’s account unlocked",
@@ -543,14 +545,32 @@
     "inviteSubmit": "Send invite",
     "sentToast": "Invitation sent to {email}.",
     "staffRequired": "Select a staff member.",
-    "emailRequired": "Enter an email.",
-    "emailInvalid": "Enter a valid email.",
     "emailExists": "This email is already used by another admin account.",
     "roleRequired": "Select at least one role.",
-    "resendPendingBackend": "Resend is not available yet (pending backend).",
-    "inviteInterimNote": "Email and roles are collected but not sent yet - they apply once the backend supports them.",
     "createdAtLabel": "Created at",
-    "preferredLanguageLabel": "Preferred language"
+    "preferredLanguageLabel": "Preferred language",
+    "inviteLoading": "Invitation is still loading.",
+    "resendCooldown": "Available {time}",
+    "sectionDevices": "Registered devices",
+    "devicesLoadError": "Could not load devices.",
+    "noDevices": "No registered devices.",
+    "unknownDevice": "Unknown device",
+    "deviceLastUsed": "Last used {time}",
+    "deviceNeverUsed": "Never used",
+    "devicesUnavailable": "Registered devices are not available yet.",
+    "tabAccounts": "Admin accounts",
+    "tabPending": "Pending invitations ({count})",
+    "pendingEmpty": "No pending invitations.",
+    "pendingLoadError": "Could not load invitations.",
+    "colCreated": "Created",
+    "invitationExpiresLabel": "Expires",
+    "invitationLoadError": "Could not load the invitation.",
+    "colInvitedBy": "Invited by",
+    "colLastSent": "Last sent",
+    "lastSentLabel": "Last sent",
+    "invitableAgainLabel": "Invitable again",
+    "resendAvailableNow": "Available now",
+    "status_expired": "Expired"
   },
   "loginAudit": {
     "title": "Login audit log",
@@ -623,12 +643,10 @@
     "rolesSubtitle": "Every role on the platform - the four built-in tiers plus any custom roles your team created.",
     "colRole": "Role",
     "colType": "Type",
-    "colAccess": "Access",
     "colCreated": "Created",
     "typeBuiltin": "Built-in",
     "typeCustom": "Custom",
     "builtinHint": "Protected - can't be renamed or deleted",
-    "permCount": "{count} permissions",
     "sensitive": "Sensitive",
     "selectAll": "Select all",
     "matrixModulesSubtitle": "Toggle the permissions this role grants, grouped by module.",
@@ -744,7 +762,14 @@
     "selectPermission": "Choose a permission",
     "noPermissions": "No permissions found",
     "noAdmins": "No admins found",
-    "noRolesToAdd": "No roles available to add"
+    "noRolesToAdd": "No roles available to add",
+    "colActive": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "activeLabel": "Active",
+    "activeHint": "Inactive roles cannot be assigned to admins.",
+    "grantedOn": "Granted {date}",
+    "grantedBy": "by {name}"
   },
   "actionLog": {
     "title": "Admin action log",
@@ -1020,7 +1045,9 @@
       "colError": "Error",
       "messageBody": "Message",
       "detailLoadError": "Couldn't load this notification. Try again.",
-      "colCampaign": "Campaign"
+      "colCampaign": "Campaign",
+      "colSeverity": "Severity",
+      "colCreated": "Created"
     },
     "routing": {
       "title": "Alert routing",
@@ -1084,19 +1111,30 @@
       "notSet": "Not set",
       "templateRequired": "Choose a template.",
       "templatePlaceholder": "Select a template",
-      "activeHelp": "Route is live and sending alerts."
+      "activeHelp": "Route is live and sending alerts.",
+      "colSeverity": "Severity"
     },
     "alerts": {
       "title": "Live alerts",
-      "subtitle": "Active incidents grouped by severity, refreshed as events fire.",
+      "subtitle": "Live alerts by severity, newest first.",
       "loadError": "Couldn't load alerts. Try again.",
-      "emptyTitle": "All clear",
-      "empty": "No active incidents right now."
+      "empty": "No active incidents right now.",
+      "colSeverity": "Severity",
+      "colTitle": "Alert",
+      "search": "Search alerts",
+      "items": "alerts",
+      "detailLoadError": "Couldn't load this alert. Try again."
     },
     "deliveryStatus": {
       "PENDING": "Pending",
       "SENT": "Sent",
       "FAILED": "Failed"
+    },
+    "deliverySeverity": {
+      "CRITICAL": "Critical",
+      "HIGH": "High",
+      "MEDIUM": "Medium",
+      "LOW": "Low"
     }
   },
   "apiErrors": {

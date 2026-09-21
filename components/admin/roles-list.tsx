@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useController } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
+import { SwitchField } from "@/components/common/switch-field";
 import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -70,19 +71,20 @@ export function RolesList() {
   const form = useForm<RoleForm>({
     resolver: zodResolver(schema),
     mode: "onSubmit",
-    defaultValues: { name: "", description: "" },
+    defaultValues: { name: "", description: "", is_active: true },
   });
-  const { register, handleSubmit, reset, formState } = form;
+  const { register, handleSubmit, reset, formState, control } = form;
+  const activeField = useController({ control, name: "is_active" });
 
   const openCreate = () => {
-    reset({ name: "", description: "" });
+    reset({ name: "", description: "", is_active: true });
     setEditing(null);
     setDialogMode("create");
   };
 
   const openEdit = useCallback(
     (role: RoleDto) => {
-      reset({ name: role.name, description: role.description ?? "" });
+      reset({ name: role.name, description: role.description ?? "", is_active: role.is_active !== false });
       setEditing(role);
       setDialogMode("edit");
     },
@@ -95,7 +97,10 @@ export function RolesList() {
     if (createRole.isPending || updateRole.isPending) return;
     try {
       if (dialogMode === "edit" && editing) {
-        await updateRole.mutateAsync({ id: editing.id, body: { name: values.name, description: values.description } });
+        await updateRole.mutateAsync({
+          id: editing.id,
+          body: { name: values.name, description: values.description, is_active: values.is_active },
+        });
         toast.success(t("renamedToast"));
         closeDialog();
         return;
@@ -140,7 +145,6 @@ export function RolesList() {
         accessorFn: (role) => (role.is_system ? t("typeBuiltin") : t("typeCustom")),
         size: 150,
         header: t("colType"),
-        enableSorting: false,
         meta: {
           filter: "select",
           filterOptions: [
@@ -167,22 +171,36 @@ export function RolesList() {
           ),
       },
       {
-        id: "access",
-        accessorFn: (role) => role.permissions?.length ?? 0,
+        id: "active",
+        accessorFn: (role) => (role.is_active === false ? "0" : "1"),
         enableSorting: false,
-        size: 150,
-        header: t("colAccess"),
-        cell: ({ row }) => (
-          <span className="text-xs text-muted-foreground tabular">
-            {t("permCount", { count: row.original.permissions?.length ?? 0 })}
-          </span>
-        ),
+        size: 130,
+        header: t("colActive"),
+        meta: {
+          filter: "select",
+          filterOptions: [
+            { value: "1", label: t("active") },
+            { value: "0", label: t("inactive") },
+          ],
+          filterLabel: t("colActive"),
+        },
+        cell: ({ row }) =>
+          row.original.is_active === false ? (
+            <StatusBadge tone="neutral" equalWidth={false} className="min-w-[5.5rem]">
+              {t("inactive")}
+            </StatusBadge>
+          ) : (
+            <StatusBadge tone="success" equalWidth={false} className="min-w-[5.5rem]">
+              {t("active")}
+            </StatusBadge>
+          ),
       },
       {
         id: "created",
         accessorFn: (role) => (role.created_at ? new Date(role.created_at).getTime() : 0),
         size: 160,
         header: t("colCreated"),
+        meta: { filter: "dateRange", filterLabel: t("colCreated") },
         cell: ({ row }) => (
           <span className="text-xs text-muted-foreground tabular">
             {row.original.created_at ? fmtDateTimeParts(new Date(row.original.created_at).getTime(), locale).date : "-"}
@@ -334,6 +352,14 @@ export function RolesList() {
               <Field label={t("descLabel")} htmlFor="role-desc" reserveMessage={false}>
                 <Textarea id="role-desc" rows={3} {...register("description")} placeholder={t("descPlaceholder")} />
               </Field>
+              {dialogMode === "edit" && (
+                <SwitchField
+                  label={t("activeLabel")}
+                  checked={activeField.field.value}
+                  onCheckedChange={activeField.field.onChange}
+                  description={t("activeHint")}
+                />
+              )}
             </DialogBody>
           </Form>
           <DialogFooter layout="split">

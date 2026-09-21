@@ -29,8 +29,17 @@ describe("serverStateToParams", () => {
 
   it("maps known sort ids to server fields + direction", () => {
     expect(serverStateToParams(st({ sorting: [{ id: "role", desc: true }] })).sort).toEqual({ name: "desc" });
+    expect(serverStateToParams(st({ sorting: [{ id: "type", desc: false }] })).sort).toEqual({
+      is_system: "asc",
+    });
     expect(serverStateToParams(st({ sorting: [{ id: "created", desc: false }] })).sort).toEqual({
       created_at: "asc",
+    });
+  });
+
+  it("maps a single active filter to is_active", () => {
+    expect(serverStateToParams(st({ columnFilters: [{ id: "active", value: ["1"] }] })).filters).toEqual({
+      is_active: "1",
     });
   });
 

@@ -18,6 +18,7 @@ const TEMPLATES = `${ADMIN_IDENTITY}/notification-templates`;
 const CHANNELS = `${ADMIN_IDENTITY}/notification-channels`;
 const CAMPAIGNS = `${ADMIN_IDENTITY}/notification-campaigns`;
 const DELIVERIES = `${ADMIN_IDENTITY}/notification-deliveries`;
+const LIVE_ALERTS = `${ADMIN_IDENTITY}/notifications/live-alerts`;
 const ALERT_ROUTES = `${ADMIN_IDENTITY}/notification-alert-routes`;
 
 export type { ListParams };
@@ -66,7 +67,7 @@ export async function listCampaigns(params: ListParams = {}): Promise<Paginated<
 
 export async function listDeliveries(params: ListParams = {}): Promise<Paginated<NotificationDeliveryDto>> {
   const { data, meta } = await apiList<NotificationDeliveryDto>(DELIVERIES, {
-    query: { ...buildListQuery(params), relations: ["channel", "template", "campaign"] },
+    query: { ...buildListQuery(params), relations: ["template", "campaign"] },
   });
   return { data, meta };
 }
@@ -75,6 +76,18 @@ export function getDelivery(id: string): Promise<NotificationDeliveryDto> {
   return apiData<NotificationDeliveryDto>(`${DELIVERIES}/${encodeURIComponent(id)}`, {
     query: { relations: ["channel", "template", "campaign"] },
   });
+}
+
+export interface LiveAlertsPage extends Paginated<NotificationDeliveryDto> {
+  severityCounts: Record<string, number>;
+}
+
+export async function listLiveAlerts(params: ListParams = {}): Promise<LiveAlertsPage> {
+  const { data, meta, info } = await apiList<NotificationDeliveryDto>(LIVE_ALERTS, {
+    query: { ...buildListQuery(params), relations: ["template", "campaign"] },
+  });
+  const severityCounts = (info as { severity_counts?: Record<string, number> } | null)?.severity_counts ?? {};
+  return { data, meta, severityCounts };
 }
 
 export async function listAlertRoutes(params: ListParams = {}): Promise<Paginated<NotificationAlertRouteDto>> {

@@ -13,10 +13,11 @@ import {
   assignUserRoles,
   fetchAdminUserDetail,
   fetchInvitableStaff,
-  fetchLinkedStaffIds,
-  fetchPendingInvitationMap,
+  fetchPendingInvitations,
+  fetchUserDevices,
   listAdminUsers,
   listAllAdminUsers,
+  resendInvitation,
   revokeInvitation,
   sendInvitation,
   updateUserStatus,
@@ -25,8 +26,7 @@ import {
 import type { AdminUserRow, AdminUserStatus } from "./types";
 
 const ADMIN_USERS = ["admin-users"] as const;
-const INVITATION_MAP = ["invitation-map"] as const;
-const LINKED_STAFF = ["linked-staff-ids"] as const;
+const PENDING_INVITATIONS = ["pending-invitations"] as const;
 
 function useAuthed() {
   return useAuthStore((state) => Boolean(state.session?.accessToken ?? state.session?.token));
@@ -67,9 +67,13 @@ export function useAdminUserSearch(search: string, enabled: boolean) {
   });
 }
 
-export function usePendingInvitationMap() {
+export function usePendingInvitations() {
   const authed = useAuthed();
-  return useQuery({ queryKey: INVITATION_MAP, queryFn: fetchPendingInvitationMap, enabled: authed });
+  return useQuery({
+    queryKey: PENDING_INVITATIONS,
+    queryFn: fetchPendingInvitations,
+    enabled: authed,
+  });
 }
 
 export function useAdminUser(id: string | null) {
@@ -81,6 +85,15 @@ export function useAdminUser(id: string | null) {
   });
 }
 
+export function useUserDevices(id: string | null) {
+  const authed = useAuthed();
+  return useQuery({
+    queryKey: ["user-devices", id],
+    queryFn: () => fetchUserDevices(id as string),
+    enabled: authed && id != null,
+  });
+}
+
 export function useInvitableStaff(search: string, enabled = true) {
   const authed = useAuthed();
   return useQuery({
@@ -89,11 +102,6 @@ export function useInvitableStaff(search: string, enabled = true) {
     enabled: authed && enabled,
     placeholderData: keepPreviousData,
   });
-}
-
-export function useLinkedStaffIds(enabled = true) {
-  const authed = useAuthed();
-  return useQuery({ queryKey: LINKED_STAFF, queryFn: fetchLinkedStaffIds, enabled: authed && enabled });
 }
 
 type AdminUsersSnapshot = [readonly unknown[], Paginated<AdminUserRow> | undefined][];
@@ -147,7 +155,7 @@ export function useRevokeInvitation() {
     onError: (_error, _vars, snapshot) => restore(queryClient, snapshot),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ADMIN_USERS });
-      queryClient.invalidateQueries({ queryKey: INVITATION_MAP });
+      queryClient.invalidateQueries({ queryKey: PENDING_INVITATIONS });
     },
   });
 }
@@ -155,12 +163,23 @@ export function useRevokeInvitation() {
 export function useSendInvitation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (staffId: string) => sendInvitation(staffId),
+    mutationFn: ({ staffId, roleIds }: { staffId: string; roleIds?: string[] }) =>
+      sendInvitation(staffId, roleIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ADMIN_USERS });
-      queryClient.invalidateQueries({ queryKey: INVITATION_MAP });
-      queryClient.invalidateQueries({ queryKey: LINKED_STAFF });
+      queryClient.invalidateQueries({ queryKey: PENDING_INVITATIONS });
       queryClient.invalidateQueries({ queryKey: queryKeys.unlinkedStaff() });
+    },
+  });
+}
+
+export function useResendInvitation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (invitationId: string) => resendInvitation(invitationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ADMIN_USERS });
+      queryClient.invalidateQueries({ queryKey: PENDING_INVITATIONS });
     },
   });
 }

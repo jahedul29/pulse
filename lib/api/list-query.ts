@@ -22,6 +22,14 @@ export function buildListQuery(params: ListParams): Record<string, QueryValue | 
   return query;
 }
 
+export function csvExportQuery(params: ListParams): Record<string, QueryValue | QueryValue[]> {
+  const query = buildListQuery(params);
+  delete query.page;
+  delete query.per_page;
+  query.format = "csv";
+  return query;
+}
+
 export async function listAll<T>(
   path: string,
   query: Record<string, QueryValue | QueryValue[]> = {},

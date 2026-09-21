@@ -36,7 +36,11 @@
     "search": "بحث",
     "noResults": "لا نتائج",
     "lang_EN": "الإنجليزية",
-    "lang_AR": "العربية"
+    "lang_AR": "العربية",
+    "export": "تصدير CSV",
+    "from": "من",
+    "to": "إلى",
+    "lang_RU": "الروسية"
   },
   "pagination": {
     "range": "{start}–{end} من {total} {label}",
@@ -396,8 +400,8 @@
     "passwordPlaceholder": "أدخل كلمة المرور",
     "showPassword": "إظهار كلمة المرور",
     "hidePassword": "إخفاء كلمة المرور",
-    "rememberDevice": "تذكّر هذا الجهاز",
-    "rememberHelp": "تخطَّ التحقق على هذا الجهاز لمدة 30 يومًا.",
+    "rememberDevice": "تذكّرني على هذا الجهاز",
+    "rememberHelp": "إبقَ مسجّل الدخول على هذا الجهاز.",
     "signIn": "تسجيل الدخول",
     "signingIn": "جارٍ تسجيل الدخول…",
     "signedIn": "تم تسجيل الدخول",
@@ -447,7 +451,6 @@
     "welcomeBody": "أدر كل شيء من مكان واحد.",
     "forgotPassword": "هل نسيت كلمة المرور؟",
     "forgotHint": "تواصل مع مسؤول تقنية المعلومات لإعادة تعيين الوصول.",
-    "securedNote": "محمي بالتحقق بخطوتين",
     "lockedUntil": "هذا الحساب مقفل حتى {time}.",
     "unlocksIn": "يُفتح خلال {time}",
     "unlocksAtLabel": "يُفتح في",
@@ -464,7 +467,7 @@
     "loadError": "تعذّر تحميل حسابات المشرفين. حاول مرة أخرى.",
     "empty": "لا توجد حسابات مشرفين بعد.",
     "items": "حسابات",
-    "search": "ابحث بالحالة",
+    "search": "ابحث بالاسم أو البريد أو معرّف الموظف أو الحالة",
     "filterSearch": "بحث",
     "inviteAdmin": "دعوة مشرف",
     "noPermission": "ليس لديك صلاحية لإدارة حسابات المشرفين.",
@@ -492,10 +495,9 @@
     "actionDeactivate": "تعطيل",
     "actionReactivate": "إعادة تفعيل",
     "actionUnlock": "فتح القفل",
-    "resendWait": "يرجى الانتظار قبل إعادة الإرسال",
     "selfBlock": "لا يمكنك فعل ذلك بحسابك الخاص",
     "changeFailed": "تعذّر تطبيق التغيير. تم التراجع.",
-    "resentToast": "أُعيد إرسال الدعوة إلى {email}.",
+    "resentToast": "تمت إعادة إرسال الدعوة إلى {name}.",
     "suspendedToast": "تم إيقاف {name}",
     "reactivatedToast": "تم إعادة تفعيل {name}",
     "unlockedToast": "تم فتح حساب {name}",
@@ -543,14 +545,32 @@
     "inviteSubmit": "إرسال الدعوة",
     "sentToast": "أُرسلت الدعوة إلى {email}.",
     "staffRequired": "اختر موظفًا.",
-    "emailRequired": "أدخل بريدًا إلكترونيًا.",
-    "emailInvalid": "أدخل بريدًا إلكترونيًا صحيحًا.",
     "emailExists": "هذا البريد مستخدم بالفعل في حساب مشرف آخر.",
     "roleRequired": "اختر دورًا واحدًا على الأقل.",
-    "resendPendingBackend": "إعادة الإرسال غير متاحة بعد (بانتظار الخادم).",
-    "inviteInterimNote": "يتم جمع البريد الإلكتروني والأدوار لكن لا تُرسَل بعد - ستُطبَّق عند دعم الخادم لها.",
     "createdAtLabel": "تاريخ الإنشاء",
-    "preferredLanguageLabel": "اللغة المفضلة"
+    "preferredLanguageLabel": "اللغة المفضلة",
+    "inviteLoading": "الدعوة قيد التحميل.",
+    "resendCooldown": "متاح {time}",
+    "sectionDevices": "الأجهزة المسجّلة",
+    "devicesLoadError": "تعذّر تحميل الأجهزة.",
+    "noDevices": "لا توجد أجهزة مسجّلة.",
+    "unknownDevice": "جهاز غير معروف",
+    "deviceLastUsed": "آخر استخدام {time}",
+    "deviceNeverUsed": "لم يُستخدم قط",
+    "devicesUnavailable": "الأجهزة المسجّلة غير متاحة بعد.",
+    "tabAccounts": "حسابات المشرفين",
+    "tabPending": "دعوات معلّقة ({count})",
+    "pendingEmpty": "لا توجد دعوات معلّقة.",
+    "pendingLoadError": "تعذّر تحميل الدعوات.",
+    "colCreated": "تاريخ الإنشاء",
+    "invitationExpiresLabel": "تنتهي الصلاحية",
+    "invitationLoadError": "تعذّر تحميل الدعوة.",
+    "colInvitedBy": "دعا بواسطة",
+    "colLastSent": "آخر إرسال",
+    "lastSentLabel": "آخر إرسال",
+    "invitableAgainLabel": "يمكن إعادة الإرسال",
+    "resendAvailableNow": "متاح الآن",
+    "status_expired": "منتهية"
   },
   "loginAudit": {
     "title": "سجل تدقيق تسجيل الدخول",
@@ -623,12 +643,10 @@
     "rolesSubtitle": "جميع الأدوار على المنصة - المستويات الأربعة المدمجة بالإضافة إلى أي أدوار مخصّصة أنشأها فريقك.",
     "colRole": "الدور",
     "colType": "النوع",
-    "colAccess": "الصلاحيات",
     "colCreated": "أُنشئ",
     "typeBuiltin": "مدمج",
     "typeCustom": "مخصّص",
     "builtinHint": "محمي - لا يمكن إعادة تسميته أو حذفه",
-    "permCount": "{count} صلاحية",
     "sensitive": "حسّاس",
     "selectAll": "تحديد الكل",
     "matrixModulesSubtitle": "بدّل الصلاحيات التي يمنحها هذا الدور، مجمّعة حسب الوحدة.",
@@ -744,7 +762,14 @@
     "selectPermission": "اختر صلاحية",
     "noPermissions": "لا توجد صلاحيات",
     "noAdmins": "لا يوجد مشرفون",
-    "noRolesToAdd": "لا توجد أدوار متاحة للإضافة"
+    "noRolesToAdd": "لا توجد أدوار متاحة للإضافة",
+    "colActive": "الحالة",
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "activeLabel": "نشط",
+    "activeHint": "لا يمكن إسناد الأدوار غير النشطة إلى المشرفين.",
+    "grantedOn": "مُنح في {date}",
+    "grantedBy": "بواسطة {name}"
   },
   "actionLog": {
     "title": "سجل إجراءات المشرفين",
@@ -1020,7 +1045,9 @@
       "colError": "الخطأ",
       "messageBody": "الرسالة",
       "detailLoadError": "تعذّر تحميل هذا الإشعار. حاول مرة أخرى.",
-      "colCampaign": "الحملة"
+      "colCampaign": "الحملة",
+      "colSeverity": "الأهمية",
+      "colCreated": "تاريخ الإنشاء"
     },
     "routing": {
       "title": "توجيه التنبيهات",
@@ -1084,19 +1111,30 @@
       "notSet": "غير محدد",
       "templateRequired": "اختر قالبًا.",
       "templatePlaceholder": "اختر قالبًا",
-      "activeHelp": "التوجيه فعّال ويرسل التنبيهات."
+      "activeHelp": "التوجيه فعّال ويرسل التنبيهات.",
+      "colSeverity": "الأهمية"
     },
     "alerts": {
       "title": "التنبيهات المباشرة",
-      "subtitle": "الحوادث النشطة مجمّعة حسب الخطورة، تُحدَّث مع وقوع الأحداث.",
+      "subtitle": "التنبيهات المباشرة حسب الأهمية، الأحدث أولاً.",
       "loadError": "تعذّر تحميل التنبيهات. حاول مرة أخرى.",
-      "emptyTitle": "كل شيء على ما يرام",
-      "empty": "لا توجد حوادث نشطة حاليًا."
+      "empty": "لا توجد حوادث نشطة حاليًا.",
+      "colSeverity": "الخطورة",
+      "colTitle": "التنبيه",
+      "search": "ابحث في التنبيهات",
+      "items": "تنبيهات",
+      "detailLoadError": "تعذّر تحميل هذا التنبيه. حاول مرة أخرى."
     },
     "deliveryStatus": {
       "PENDING": "قيد الانتظار",
       "SENT": "أُرسلت",
       "FAILED": "فشلت"
+    },
+    "deliverySeverity": {
+      "CRITICAL": "حرج",
+      "HIGH": "عالٍ",
+      "MEDIUM": "متوسط",
+      "LOW": "منخفض"
     }
   },
   "apiErrors": {

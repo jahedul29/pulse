@@ -4,6 +4,7 @@ import { ADMIN_IDENTITY } from "@/lib/api/config";
 import { buildListQuery, listAll, type ListParams } from "@/lib/api/list-query";
 import type {
   AdminAccountAssignmentDto,
+  GrantedRoleDto,
   PermissionDto,
   PermissionModuleDto,
   RoleDto,
@@ -17,13 +18,13 @@ const MODULES = `${ADMIN_IDENTITY}/permission-modules`;
 const USERS = `${ADMIN_IDENTITY}/users`;
 
 export interface AdminAccess {
-  roles: RoleDto[];
+  roles: GrantedRoleDto[];
   permissions: PermissionDto[];
 }
 
 export async function getAdminAccess(userId: string): Promise<AdminAccess> {
   const user = await apiData<{
-    roles?: RoleDto[];
+    roles?: GrantedRoleDto[];
     permissions?: PermissionDto[];
     direct_permissions?: PermissionDto[];
   }>(`${USERS}/${encodeURIComponent(userId)}`, { query: { relations: ["roles", "permissions"] } });

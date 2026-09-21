@@ -6,6 +6,7 @@ export function roleSchema(msgs: RoleMessages) {
   return z.object({
     name: z.string().trim().min(1, msgs.nameRequired),
     description: z.string().trim(),
+    is_active: z.boolean(),
   });
 }
 export type RoleForm = z.infer<ReturnType<typeof roleSchema>>;

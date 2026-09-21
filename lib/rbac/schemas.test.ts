@@ -4,12 +4,12 @@ describe("roleSchema", () => {
   const schema = roleSchema({ nameRequired: "req" });
 
   it("rejects an empty name", () => {
-    expect(schema.safeParse({ name: "  ", description: "" }).success).toBe(false);
+    expect(schema.safeParse({ name: "  ", description: "", is_active: true }).success).toBe(false);
   });
 
   it("accepts any non-empty name (duplication is a backend check)", () => {
-    expect(schema.safeParse({ name: "admin", description: "" }).success).toBe(true);
-    expect(schema.safeParse({ name: "Auditor", description: "x" }).success).toBe(true);
+    expect(schema.safeParse({ name: "admin", description: "", is_active: true }).success).toBe(true);
+    expect(schema.safeParse({ name: "Auditor", description: "x", is_active: false }).success).toBe(true);
   });
 });
 
