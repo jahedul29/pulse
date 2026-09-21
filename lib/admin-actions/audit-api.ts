@@ -1,7 +1,7 @@
-import { apiData, apiList } from "@/lib/api/client";
+import { apiData, apiFetch, apiList } from "@/lib/api/client";
 import type { Paginated } from "@/lib/api/client";
 import { ADMIN_IDENTITY } from "@/lib/api/config";
-import { buildListQuery, type ListParams } from "@/lib/api/list-query";
+import { buildListQuery, csvExportQuery, type ListParams } from "@/lib/api/list-query";
 import {
   actionDtoToDetail,
   actionDtoToRow,
@@ -28,6 +28,10 @@ export function getAdminAction(id: string): Promise<AdminAction> {
   return apiData<AdminActionLogDto>(`${ADMIN_ACTIONS}/${encodeURIComponent(id)}`).then(actionDtoToDetail);
 }
 
+export function exportAdminActionsCsv(params: ListParams): Promise<string> {
+  return apiFetch<string>(ADMIN_ACTIONS, { query: csvExportQuery(params) });
+}
+
 export async function listChangeLog(params: ListParams): Promise<Paginated<ChangeLogEntry>> {
   const { data, meta } = await apiList<ChangeLogDto>(CHANGE_LOGS, {
     query: { ...buildListQuery(params), relations: ["actor", "adminActionLog"] },
@@ -39,4 +43,8 @@ export function getChangeLog(id: string): Promise<ChangeLogEntry> {
   return apiData<ChangeLogDto>(`${CHANGE_LOGS}/${encodeURIComponent(id)}`, {
     query: { relations: ["actor", "adminActionLog"] },
   }).then(changeDtoToDetail);
+}
+
+export function exportChangeLogCsv(params: ListParams): Promise<string> {
+  return apiFetch<string>(CHANGE_LOGS, { query: csvExportQuery(params) });
 }

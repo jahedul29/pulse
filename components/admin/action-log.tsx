@@ -7,6 +7,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 import { fmtDateTimeParts } from "@/lib/format";
+import { downloadCsvText } from "@/lib/export/csv";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,7 +29,8 @@ import { ProfileCell } from "@/components/common/profile-cell";
 import { DetailList } from "@/components/common/detail-list";
 import { AdminUserFilter } from "@/components/admin/admin-user-filter";
 import { useAdminActions } from "@/lib/admin-actions/queries";
-import { getAdminAction } from "@/lib/admin-actions/audit-api";
+import { getAdminAction, exportAdminActionsCsv } from "@/lib/admin-actions/audit-api";
+import { CsvExportButton } from "@/components/admin/csv-export-button";
 import { actionServerStateToParams } from "@/lib/admin-actions/list-params";
 import type { AdminAction } from "@/lib/admin-actions/types";
 
@@ -59,6 +61,11 @@ export function ActionLog() {
   const rows = useMemo(() => actionsQuery.data?.data ?? [], [actionsQuery.data]);
   const total = actionsQuery.data?.meta?.total ?? rows.length;
   const onServerStateChange = useCallback((state: ServerTableState) => setServer(state), []);
+
+  const onExport = useCallback(async () => {
+    const csv = await exportAdminActionsCsv(params);
+    downloadCsvText("admin-action-logs.csv", csv);
+  }, [params]);
 
   const [selectedId, setSelectedId] = useState<string | null>(openId);
   const index = selectedId ? rows.findIndex((action) => action.id === selectedId) : -1;
@@ -214,6 +221,7 @@ export function ActionLog() {
               onRowClick={(action) => setSelectedId(action.id)}
               rowAriaLabel={(action) => action.actionName}
               rowClassName={(action) => (action.id === selectedId ? "bg-accent" : undefined)}
+              toolbar={<CsvExportButton onExport={onExport} />}
               getSearchText={(action) =>
                 `${action.actionName} ${action.summary} ${action.actorName} ${action.service}`
               }
@@ -270,9 +278,6 @@ export function ActionLog() {
                 <StatusBadge tone={auditTone(selected.severity)} equalWidth={false}>
                   {severityLabel(selected.severity)}
                 </StatusBadge>
-                {selected.ticketId && (
-                  <span className="rounded-md border px-2 py-0.5 text-xs">{selected.ticketId}</span>
-                )}
               </div>
             </SheetHeader>
             <SheetBody ref={detailRef} className="flex flex-col gap-4">

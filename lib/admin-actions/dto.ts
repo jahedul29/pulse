@@ -8,6 +8,7 @@ export interface AdminActionLogDto {
   admin_account_id?: string | null;
   admin_account?: AdminAccountRef | null;
   action_code: string;
+  action_label?: string | null;
   target_service: string;
   target_type?: string | null;
   target_id?: string | null;
@@ -100,7 +101,7 @@ export function actionDtoToRow(dto: AdminActionLogDto): AdminAction {
     createdAt: toEpoch(dto.created_at),
     actorId: dto.admin_account_id ?? "",
     actorName: accountName(dto.admin_account) ?? "System",
-    actionName: dto.action_code,
+    actionName: dto.action_label || dto.action_code,
     service: dto.target_service,
     entity: entityLabel(dto),
     targetType: dto.target_type ?? "",
@@ -111,8 +112,6 @@ export function actionDtoToRow(dto: AdminActionLogDto): AdminAction {
     correlationId: dto.correlation_id ?? "",
     adminEmail: dto.admin_account?.email ?? "",
     device: dto.user_agent ? deviceLabelFromUA(dto.user_agent) : "",
-    ticketType: null,
-    ticketId: null,
     inputs: [],
   };
 }

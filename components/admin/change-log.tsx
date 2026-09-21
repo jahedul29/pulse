@@ -7,6 +7,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
 
 import { fmtDateTimeParts } from "@/lib/format";
+import { downloadCsvText } from "@/lib/export/csv";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,7 +30,8 @@ import { DiffViewer } from "@/components/common/diff-viewer";
 import { AdminUserFilter } from "@/components/admin/admin-user-filter";
 import { AdminActionFilter } from "@/components/admin/admin-action-filter";
 import { useChangeLog } from "@/lib/admin-actions/queries";
-import { getChangeLog } from "@/lib/admin-actions/audit-api";
+import { getChangeLog, exportChangeLogCsv } from "@/lib/admin-actions/audit-api";
+import { CsvExportButton } from "@/components/admin/csv-export-button";
 import { changeServerStateToParams } from "@/lib/admin-actions/list-params";
 import type { ChangeLogEntry } from "@/lib/admin-actions/types";
 
@@ -58,6 +60,11 @@ export function ChangeLog() {
   const rows = useMemo(() => changeQuery.data?.data ?? [], [changeQuery.data]);
   const total = changeQuery.data?.meta?.total ?? rows.length;
   const onServerStateChange = useCallback((state: ServerTableState) => setServer(state), []);
+
+  const onExport = useCallback(async () => {
+    const csv = await exportChangeLogCsv(params);
+    downloadCsvText("change-logs.csv", csv);
+  }, [params]);
 
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const active = selectedIndex == null ? null : (rows[selectedIndex] ?? null);
@@ -234,6 +241,7 @@ export function ChangeLog() {
               onRowClick={(entry) => openAt(rows.indexOf(entry))}
               rowAriaLabel={(entry) => `${entry.table} ${entry.recordId}`}
               rowClassName={(entry) => (active && entry.id === active.id ? "bg-accent" : undefined)}
+              toolbar={<CsvExportButton onExport={onExport} />}
               getSearchText={(entry) =>
                 `${entry.schema ?? ""} ${entry.table} ${entry.recordId} ${entry.actorName}`
               }
