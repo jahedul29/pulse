@@ -1,3 +1,5 @@
+import type { ServerErrorInfo } from "./server-error";
+
 export type LoginResult =
   | "SUCCESS"
   | "MFA_REQUIRED"
@@ -28,6 +30,7 @@ export interface MockAccount {
 
 export interface AttemptOutcome {
   result: LoginResult;
+  serverError?: ServerErrorInfo;
   lockedUntil?: number;
   email: string;
   name?: string;
@@ -54,12 +57,19 @@ export interface Session {
   refreshToken?: string;
   expiresAt?: number;
   adminId?: string;
+  permissions?: string[];
 }
 
 export interface AuthenticatedAdmin {
   id: string;
   staff_id?: number;
   email: string;
+  full_name?: string | null;
+  username?: string | null;
+  must_change_password?: boolean;
+  has_roles?: boolean;
+  navigation_locked?: boolean;
+  landing_page?: string | null;
   preferred_language?: string;
   status?: string;
   roles?: string[];

@@ -38,6 +38,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { StatusBadge } from "@/components/common/status-badge";
+import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 import { DataTable, toolbarIconButtonClass, type ServerTableState } from "@/components/common/data-table";
 import { fmtDateTimeParts } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api/error-message";
@@ -49,6 +50,7 @@ import type { RoleDto } from "@/lib/rbac/dto";
 export function RolesList() {
   const t = useTranslations("rbac");
   const tc = useTranslations("common");
+  const canEdit = useHasPermission(PERMISSIONS.ROLES_EDIT);
   const te = useTranslations("apiErrors");
   const locale = useLocale();
   const router = useRouter();
@@ -227,14 +229,17 @@ export function RolesList() {
                         event.stopPropagation();
                         openEdit(role);
                       }}
-                      disabled={role.is_system}
+                      focusableWhenDisabled
+                      disabled={role.is_system || !canEdit}
                       aria-label={t("rename")}
                     />
                   }
                 >
                   <Pencil className="size-4" />
                 </TooltipTrigger>
-                <TooltipContent>{role.is_system ? t("builtinHint") : t("rename")}</TooltipContent>
+                <TooltipContent>
+                  {!canEdit ? tc("noPermission") : role.is_system ? t("builtinHint") : t("rename")}
+                </TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger
@@ -246,7 +251,8 @@ export function RolesList() {
                         event.stopPropagation();
                         setDeleting(role);
                       }}
-                      disabled={role.is_system}
+                      focusableWhenDisabled
+                      disabled={role.is_system || !canEdit}
                       aria-label={t("delete")}
                       className="hover:bg-danger/10 hover:text-danger"
                     />
@@ -254,14 +260,16 @@ export function RolesList() {
                 >
                   <Trash2 className="size-4" />
                 </TooltipTrigger>
-                <TooltipContent>{role.is_system ? t("builtinHint") : t("delete")}</TooltipContent>
+                <TooltipContent>
+                  {!canEdit ? tc("noPermission") : role.is_system ? t("builtinHint") : t("delete")}
+                </TooltipContent>
               </Tooltip>
             </div>
           );
         },
       },
     ],
-    [t, locale, openEdit],
+    [t, tc, locale, openEdit, canEdit],
   );
 
   return (
@@ -317,6 +325,8 @@ export function RolesList() {
                         variant="default"
                         size="lg"
                         onClick={openCreate}
+                        focusableWhenDisabled
+                        disabled={!canEdit}
                         aria-label={t("newRole")}
                         className={toolbarIconButtonClass}
                       />
@@ -325,7 +335,7 @@ export function RolesList() {
                     <Plus className="size-4" />
                     <span className="hidden sm:inline">{t("newRole")}</span>
                   </TooltipTrigger>
-                  <TooltipContent>{t("newRole")}</TooltipContent>
+                  <TooltipContent>{canEdit ? t("newRole") : tc("noPermission")}</TooltipContent>
                 </Tooltip>
               }
             />
@@ -343,6 +353,7 @@ export function RolesList() {
             <DialogBody className="flex flex-col gap-4">
               <Field
                 label={t("nameLabel")}
+                required
                 htmlFor="role-name"
                 error={formState.errors.name?.message}
                 reserveMessage={false}

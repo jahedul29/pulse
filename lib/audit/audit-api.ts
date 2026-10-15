@@ -1,7 +1,7 @@
-import { apiFetch, apiList } from "@/lib/api/client";
+import { apiList } from "@/lib/api/client";
 import type { Paginated } from "@/lib/api/client";
 import { ADMIN_IDENTITY } from "@/lib/api/config";
-import { buildListQuery, csvExportQuery, type ListParams } from "@/lib/api/list-query";
+import { buildListQuery, fetchCsvExport, type ListParams } from "@/lib/api/list-query";
 import { loginAuditDtoToEntry, type LoginAuditLogDto } from "./dto";
 import type { LoginAuditEntry } from "./types";
 
@@ -17,5 +17,5 @@ export async function listLoginAudit(params: ListParams): Promise<Paginated<Logi
 }
 
 export function exportLoginAuditCsv(params: ListParams): Promise<string> {
-  return apiFetch<string>(LOGIN_AUDIT, { query: csvExportQuery(params) });
+  return fetchCsvExport(LOGIN_AUDIT, params);
 }

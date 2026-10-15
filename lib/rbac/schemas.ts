@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isFutureDateKey } from "./expiry";
 
 export type RoleMessages = { nameRequired: string };
 
@@ -11,7 +12,7 @@ export function roleSchema(msgs: RoleMessages) {
 }
 export type RoleForm = z.infer<ReturnType<typeof roleSchema>>;
 
-export type GrantMessages = { roleRequired: string; duplicateRole: string };
+export type GrantMessages = { roleRequired: string; duplicateRole: string; expiryPast: string };
 
 export function grantSchema(msgs: GrantMessages, opts: { existingRoleIds: string[] }) {
   return z.object({
@@ -19,6 +20,7 @@ export function grantSchema(msgs: GrantMessages, opts: { existingRoleIds: string
       .string()
       .min(1, msgs.roleRequired)
       .refine((id) => !opts.existingRoleIds.includes(id), msgs.duplicateRole),
+    expiresOn: z.string().refine((value) => value === "" || isFutureDateKey(value), msgs.expiryPast),
   });
 }
 export type GrantForm = z.infer<ReturnType<typeof grantSchema>>;

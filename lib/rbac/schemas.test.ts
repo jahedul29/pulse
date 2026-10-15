@@ -15,20 +15,27 @@ describe("roleSchema", () => {
 
 describe("grantSchema", () => {
   const schema = grantSchema(
-    { roleRequired: "req", duplicateRole: "dup" },
+    { roleRequired: "req", duplicateRole: "dup", expiryPast: "past" },
     { existingRoleIds: ["role_admin"] },
   );
 
   it("rejects an empty role", () => {
-    expect(schema.safeParse({ roleId: "" }).success).toBe(false);
+    expect(schema.safeParse({ roleId: "", expiresOn: "" }).success).toBe(false);
   });
 
   it("rejects an already-granted role", () => {
-    expect(schema.safeParse({ roleId: "role_admin" }).success).toBe(false);
+    expect(schema.safeParse({ roleId: "role_admin", expiresOn: "" }).success).toBe(false);
   });
 
-  it("accepts a new role", () => {
-    expect(schema.safeParse({ roleId: "role_auditor" }).success).toBe(true);
+  it("accepts a new role with no expiry", () => {
+    expect(schema.safeParse({ roleId: "role_auditor", expiresOn: "" }).success).toBe(true);
+  });
+
+  it("accepts a future expiry and rejects today or a past date", () => {
+    expect(schema.safeParse({ roleId: "role_auditor", expiresOn: "2999-01-01" }).success).toBe(true);
+    const past = schema.safeParse({ roleId: "role_auditor", expiresOn: "2000-01-01" });
+    expect(past.success).toBe(false);
+    expect(past.error?.issues[0].message).toBe("past");
   });
 });
 

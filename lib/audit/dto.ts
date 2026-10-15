@@ -9,6 +9,8 @@ export interface StaffRef {
 export interface AdminAccountRef {
   id?: string;
   email?: string | null;
+  full_name?: string | null;
+  username?: string | null;
   staff?: StaffRef | null;
 }
 
@@ -31,7 +33,8 @@ export function toEpoch(value: string | null | undefined): number {
 
 export function accountName(account: AdminAccountRef | null | undefined): string | null {
   if (!account) return null;
-  const full = `${account.staff?.first_name ?? ""} ${account.staff?.last_name ?? ""}`.trim();
+  const full =
+    account.full_name?.trim() || `${account.staff?.first_name ?? ""} ${account.staff?.last_name ?? ""}`.trim();
   return full || account.email || null;
 }
 

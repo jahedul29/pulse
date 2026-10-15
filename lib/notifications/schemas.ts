@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { htmlToPlainText } from "./variables";
-import { AUDIENCE_TYPES, type AudienceType } from "./dto";
+import { AUDIENCE_TYPES, SEVERITY_ORDER, type AudienceType, type DeliverySeverityCode } from "./dto";
 import { RECIPIENT_ROLES } from "./types";
 import type { RecipientRole } from "./types";
 
 const AUDIENCE = AUDIENCE_TYPES as [AudienceType, ...AudienceType[]];
+const ROUTE_SEVERITIES = SEVERITY_ORDER as [DeliverySeverityCode, ...DeliverySeverityCode[]];
 
 const nonEmptyHtml = (html: string) => htmlToPlainText(html).trim().length > 0;
 
@@ -57,6 +58,7 @@ export function alertRouteSchema(msgs: AlertRouteMessages, opts: { isCreate: boo
       audienceType: z.enum(AUDIENCE),
       audienceIds: z.array(z.string()),
       priority: z.number({ error: msgs.priorityInvalid }).int(msgs.priorityInvalid).min(0, msgs.priorityInvalid),
+      severity: z.enum(ROUTE_SEVERITIES),
       isActive: z.boolean(),
     })
     .refine(

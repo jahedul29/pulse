@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm, useController } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Check, ChevronsUpDown, Mail, Search } from "lucide-react";
 import { toast } from "sonner";
 
@@ -26,10 +26,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { fmtDateTime } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api/error-message";
 import { useInvitableStaff, useSendInvitation } from "@/lib/user-management/queries";
 import { useRoles } from "@/lib/rbac/queries";
-import { fetchCurrentPolicy } from "@/lib/security-policy/api";
 import { inviteSchema, type InviteForm } from "@/lib/user-management/schemas";
 import type { StaffRecord } from "@/lib/staff/types";
 
@@ -45,18 +45,17 @@ export function InviteAdminDialog({
   const t = useTranslations("userManagement");
   const tc = useTranslations("common");
   const ta = useTranslations("apiErrors");
+  const locale = useLocale();
 
   const [picked, setPicked] = useState<StaffRecord | null>(null);
   const [staffOpen, setStaffOpen] = useState(false);
   const [staffQuery, setStaffQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [expiryDays, setExpiryDays] = useState<number | null>(null);
 
   const schema = useMemo(
     () =>
       inviteSchema({
         staffRequired: t("staffRequired"),
-        roleRequired: t("roleRequired"),
       }),
     [t],
   );
@@ -81,19 +80,6 @@ export function InviteAdminDialog({
     return () => clearTimeout(timer);
   }, [staffQuery]);
 
-  useEffect(() => {
-    if (!open) return;
-    let alive = true;
-    fetchCurrentPolicy()
-      .then((policy) => {
-        if (alive) setExpiryDays(policy?.inviteExpiryDays ?? null);
-      })
-      .catch(() => void 0);
-    return () => {
-      alive = false;
-    };
-  }, [open]);
-
   const handleOpenChange = (next: boolean) => {
     if (!next) {
       reset({ staffId: "", email: "", roleIds: [] });
@@ -116,8 +102,13 @@ export function InviteAdminDialog({
 
   const onSubmit = async (values: InviteForm) => {
     try {
-      await sendInvite.mutateAsync({ staffId: values.staffId, roleIds: values.roleIds });
-      toast.success(t("sentToast", { email: values.email.trim() }));
+      const invitation = await sendInvite.mutateAsync({ staffId: values.staffId, roleIds: values.roleIds });
+      const expiresAt = invitation?.expires_at ? Date.parse(invitation.expires_at) : Number.NaN;
+      toast.success(
+        Number.isNaN(expiresAt)
+          ? t("sentToast", { email: values.email.trim() })
+          : t("sentToastExpires", { email: values.email.trim(), date: fmtDateTime(expiresAt, locale) }),
+      );
       handleOpenChange(false);
     } catch (error) {
       toast.error(apiErrorMessage(error, ta));
@@ -133,7 +124,7 @@ export function InviteAdminDialog({
         </DialogHeader>
         <Form onSubmit={handleSubmit(onSubmit)}>
           <DialogBody className="flex flex-col gap-4">
-            <Field label={t("staffLabel")} error={formState.errors.staffId?.message} reserveMessage={false}>
+            <Field label={t("staffLabel")} required error={formState.errors.staffId?.message} reserveMessage={false}>
               <Popover open={staffOpen} onOpenChange={setStaffOpen}>
                 <PopoverTrigger
                   render={
@@ -221,7 +212,6 @@ export function InviteAdminDialog({
             <Field
               label={t("rolesLabel")}
               error={formState.errors.roleIds?.message}
-              hint={expiryDays == null ? t("expiryUnknown") : t("expiryNote", { days: expiryDays })}
               reserveMessage={false}
             >
               <MultiSelect

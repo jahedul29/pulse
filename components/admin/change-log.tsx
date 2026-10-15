@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -15,7 +15,7 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
-  SheetFooter,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -27,24 +27,94 @@ import { ProfileCell } from "@/components/common/profile-cell";
 import { StatusBadge } from "@/components/common/status-badge";
 import { DetailList } from "@/components/common/detail-list";
 import { DiffViewer } from "@/components/common/diff-viewer";
+import { Chip } from "@/components/common/chip";
+import { RecordLink } from "@/components/common/record-link";
+import { ActionTargetName, ReferenceValue, RoleNameChips } from "@/components/admin/record-refs";
+import { recordHref, tableRecordKind, targetRecordKind } from "@/lib/record-links";
+import { humanizeCode, humanizeLabel } from "@/lib/admin-actions/dto";
 import { AdminUserFilter } from "@/components/admin/admin-user-filter";
 import { AdminActionFilter } from "@/components/admin/admin-action-filter";
 import { useChangeLog } from "@/lib/admin-actions/queries";
 import { getChangeLog, exportChangeLogCsv } from "@/lib/admin-actions/audit-api";
 import { CsvExportButton } from "@/components/admin/csv-export-button";
 import { changeServerStateToParams } from "@/lib/admin-actions/list-params";
-import type { ChangeLogEntry } from "@/lib/admin-actions/types";
+import type { AdminAction, ChangeLogEntry } from "@/lib/admin-actions/types";
 
 const OPS: string[] = ["INSERT", "UPDATE", "DELETE"];
+const FIELD_PREVIEW = 2;
 
-function shortId(value: string): string {
-  return value.length > 10 ? `${value.slice(0, 8)}…` : value;
+
+function ChipSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <h5 className="text-xs font-medium text-muted-foreground">{title}</h5>
+      {children}
+    </div>
+  );
 }
 
 export function ChangeLog() {
   const t = useTranslations("changeLog");
+  const tl = useTranslations("actionLog");
   const tc = useTranslations("common");
   const locale = useLocale();
+  const resultLabel = useCallback(
+    (value: string) => (tl.has(`result_${value}`) ? tl(`result_${value}`) : value),
+    [tl],
+  );
+  const severityLabel = useCallback(
+    (value: string) => (tl.has(`severity_${value}`) ? tl(`severity_${value}`) : value),
+    [tl],
+  );
+  const refFallbacks = useMemo(
+    () => ({
+      admin: t("recordKind_adminAccount"),
+      template: t("recordKind_template"),
+      alertRoute: t("recordKind_alertRoute"),
+      role: t("recordKind_role"),
+    }),
+    [t],
+  );
+  const renderChangeValue = useCallback(
+    (value: string, column: string): ReactNode => (
+      <ReferenceValue fieldKey={column} value={value} locale={locale} fallbacks={refFallbacks} />
+    ),
+    [locale, refFallbacks],
+  );
+  const tableLabel = useCallback(
+    (table: string) => (t.has(`table_${table}`) ? t(`table_${table}`) : humanizeCode(table)),
+    [t],
+  );
+  const changeCell = useCallback(
+    (entry: ChangeLogEntry, side: "before" | "after"): ReactNode => {
+      const first = entry.changes[0];
+      if (!first) return <span className="text-muted-foreground">-</span>;
+      const value = side === "before" ? first.before : first.after;
+      return (
+        <div className="flex min-w-0 flex-col">
+          <span className="block truncate text-xs font-medium">
+            {value == null ? (
+              "-"
+            ) : (
+              <ReferenceValue plain fieldKey={first.column} value={value} locale={locale} fallbacks={refFallbacks} />
+            )}
+          </span>
+          <span className="block truncate text-xs text-muted-foreground">{humanizeLabel(first.column)}</span>
+        </div>
+      );
+    },
+    [locale, refFallbacks],
+  );
+  const actionTargetText = useCallback(
+    (entry: ChangeLogEntry): string | null => {
+      const action = entry.action;
+      if (!action) return null;
+      if (action.targetUser) return action.targetUser.name;
+      const kind = targetRecordKind(action.targetType);
+      return kind ? t(`recordKind_${kind}`) : humanizeCode(action.targetType) || null;
+    },
+    [t],
+  );
 
   const opLabel = useCallback(
     (value: string) => (t.has(`op_${value}`) ? t(`op_${value}`) : value),
@@ -89,6 +159,61 @@ export function ChangeLog() {
     openAt(stepIndex(selectedIndex, delta, rows.length));
   };
 
+  const targetItem = (action: AdminAction, entry: ChangeLogEntry) => {
+    if (action.targetUser) {
+      const targetUser = action.targetUser;
+      const cell = (
+        <ProfileCell
+          name={targetUser.name}
+          subtitle={[targetUser.username, targetUser.email].filter(Boolean).join(" · ") || undefined}
+        />
+      );
+      return {
+        label: tl("colTarget"),
+        value: targetUser.id ? (
+          <RecordLink
+            href={recordHref("adminAccount", targetUser.id)}
+            label={t("openAccount", { name: targetUser.name })}
+          >
+            {cell}
+          </RecordLink>
+        ) : (
+          cell
+        ),
+      };
+    }
+    if (!action.targetType) return null;
+    const kind = targetRecordKind(action.targetType);
+    const isThisRecord = kind === tableRecordKind(entry.table) && action.targetId === entry.recordId;
+    const fallback = action.payloadName ?? (kind ? t(`recordKind_${kind}`) : humanizeCode(action.targetType));
+    const name = <ActionTargetName action={action} fallback={fallback} />;
+    return {
+      label: tl("colTarget"),
+      value: kind && action.targetId && !isThisRecord ? <RecordLink href={recordHref(kind, action.targetId)}>{name}</RecordLink> : name,
+    };
+  };
+
+  const linkedActionItems = (action: AdminAction, entry: ChangeLogEntry) => {
+    const target = targetItem(action, entry);
+    return [
+      {
+        label: tl("colResult"),
+        value: (
+          <div className="flex flex-wrap gap-2">
+            <StatusBadge tone={auditTone(action.result)} equalWidth={false}>
+              {resultLabel(action.result)}
+            </StatusBadge>
+            <StatusBadge tone={auditTone(action.severity)} equalWidth={false}>
+              {severityLabel(action.severity)}
+            </StatusBadge>
+          </div>
+        ),
+      },
+      ...(target ? [target] : []),
+      ...(action.device ? [{ label: tl("detailDevice"), value: action.device }] : []),
+    ];
+  };
+
   const columns = useMemo<ColumnDef<ChangeLogEntry, unknown>[]>(
     () => [
       {
@@ -96,6 +221,7 @@ export function ChangeLog() {
         accessorFn: (entry) => entry.createdAt,
         size: 168,
         header: t("colTimestamp"),
+        meta: { filter: "dateRange", filterLabel: t("colTimestamp") },
         cell: ({ row }) => {
           const { date, time } = fmtDateTimeParts(row.original.createdAt, locale);
           return (
@@ -106,26 +232,72 @@ export function ChangeLog() {
         },
       },
       {
-        id: "schema",
-        accessorFn: (entry) => entry.schema ?? "",
-        size: 150,
-        header: t("colSchema"),
-        cell: ({ row }) => <span className="text-xs">{row.original.schema || "-"}</span>,
+        id: "who",
+        accessorFn: (entry) => entry.actorName,
+        size: 170,
+        header: t("colActor"),
+        enableSorting: false,
+        meta: {
+          filter: "select",
+          filterLabel: t("colActor"),
+          renderFilter: ({ value, setValue, searchLabel }) => (
+            <AdminUserFilter value={value} onChange={setValue} searchLabel={searchLabel} emptyLabel={tc("noResults")} />
+          ),
+        },
+        cell: ({ row }) => <ProfileCell name={row.original.actorName} />,
+      },
+      {
+        id: "action",
+        accessorFn: (entry) => entry.action?.actionName ?? entry.actionCode ?? "",
+        size: 200,
+        header: t("colAction"),
+        enableSorting: false,
+        meta: {
+          filter: "select",
+          filterLabel: t("colAction"),
+          renderFilter: ({ value, setValue, searchLabel }) => (
+            <AdminActionFilter value={value} onChange={setValue} searchLabel={searchLabel} emptyLabel={tc("noResults")} />
+          ),
+        },
+        cell: ({ row }) => {
+          const label = row.original.action?.actionName ?? row.original.actionCode;
+          const target = actionTargetText(row.original);
+          return label ? (
+            <div className="flex min-w-0 flex-col">
+              <span className="truncate text-xs font-medium">{label}</span>
+              {target && <span className="truncate text-xs text-muted-foreground">{target}</span>}
+            </div>
+          ) : row.original.actionId ? (
+            <span className="text-xs text-muted-foreground">{t("viewAction")}</span>
+          ) : (
+            <span className="text-muted-foreground">{t("noAction")}</span>
+          );
+        },
       },
       {
         id: "table",
-        accessorFn: (entry) => entry.table,
-        size: 170,
+        accessorFn: (entry) => tableLabel(entry.table),
+        size: 160,
         header: t("colTable"),
-        cell: ({ row }) => <span className="block truncate text-xs">{row.original.table}</span>,
+        cell: ({ row }) => <span className="block truncate text-sm">{tableLabel(row.original.table)}</span>,
       },
       {
-        id: "record",
-        accessorFn: (entry) => entry.recordId,
-        size: 150,
-        header: t("colRecord"),
+        id: "fields",
+        accessorFn: (entry) => entry.changes.map((change) => humanizeLabel(change.column)).join(", "),
+        size: 200,
+        header: t("colFields"),
         enableSorting: false,
-        cell: ({ row }) => <span className="block truncate text-xs">{row.original.recordId}</span>,
+        cell: ({ row }) => {
+          const names = row.original.changes.map((change) => humanizeLabel(change.column));
+          if (names.length === 0) return <span className="text-muted-foreground">-</span>;
+          const extra = names.length - FIELD_PREVIEW;
+          return (
+            <span className="block truncate text-xs">
+              {names.slice(0, FIELD_PREVIEW).join(", ")}
+              {extra > 0 && <span className="text-muted-foreground"> {t("moreFields", { count: extra })}</span>}
+            </span>
+          );
+        },
       },
       {
         id: "operation",
@@ -145,51 +317,23 @@ export function ChangeLog() {
         ),
       },
       {
-        id: "who",
-        accessorFn: (entry) => entry.actorName,
+        id: "before",
+        accessorFn: (entry) => entry.changes[0]?.before ?? "",
         size: 170,
-        header: t("colActor"),
+        header: t("colBefore"),
         enableSorting: false,
-        meta: {
-          filter: "select",
-          filterLabel: t("colActor"),
-          renderFilter: ({ value, setValue, searchLabel }) => (
-            <AdminUserFilter value={value} onChange={setValue} searchLabel={searchLabel} emptyLabel={tc("noResults")} />
-          ),
-        },
-        cell: ({ row }) => <ProfileCell name={row.original.actorName} />,
+        cell: ({ row }) => changeCell(row.original, "before"),
       },
       {
-        id: "action",
-        accessorFn: (entry) => entry.actionCode ?? "",
-        size: 200,
-        header: t("colAction"),
+        id: "after",
+        accessorFn: (entry) => entry.changes[0]?.after ?? "",
+        size: 170,
+        header: t("colAfter"),
         enableSorting: false,
-        meta: {
-          filter: "select",
-          filterLabel: t("colAction"),
-          renderFilter: ({ value, setValue, searchLabel }) => (
-            <AdminActionFilter value={value} onChange={setValue} searchLabel={searchLabel} emptyLabel={tc("noResults")} />
-          ),
-        },
-        cell: ({ row }) =>
-          row.original.actionCode ? (
-            <div className="flex min-w-0 flex-col">
-              <span className="truncate text-xs font-medium">{row.original.actionCode}</span>
-              {row.original.actionTarget && (
-                <span className="truncate text-xs text-muted-foreground">{row.original.actionTarget}</span>
-              )}
-            </div>
-          ) : row.original.actionId ? (
-            <span className="block truncate text-xs text-muted-foreground tabular">
-              {shortId(row.original.actionId)}
-            </span>
-          ) : (
-            <span className="text-muted-foreground">{t("noAction")}</span>
-          ),
+        cell: ({ row }) => changeCell(row.original, "after"),
       },
     ],
-    [t, tc, locale, opLabel],
+    [t, tc, locale, opLabel, actionTargetText, tableLabel, changeCell],
   );
 
   return (
@@ -239,7 +383,7 @@ export function ChangeLog() {
               emptyLabel={t("empty")}
               itemsLabel={t("items")}
               onRowClick={(entry) => openAt(rows.indexOf(entry))}
-              rowAriaLabel={(entry) => `${entry.table} ${entry.recordId}`}
+              rowAriaLabel={(entry) => `${opLabel(entry.operation)} · ${tableLabel(entry.table)}`}
               rowClassName={(entry) => (active && entry.id === active.id ? "bg-accent" : undefined)}
               toolbar={<CsvExportButton onExport={onExport} />}
               getSearchText={(entry) =>
@@ -287,11 +431,15 @@ export function ChangeLog() {
                   <ChevronDown className="size-4" />
                 </Button>
               </div>
-              <SheetTitle className="font-mono text-base">
-                {[selected.schema, selected.recordId].filter(Boolean).join(" · ")}
-              </SheetTitle>
+              <SheetTitle>{selected.action?.actionName || selected.table}</SheetTitle>
+              <SheetDescription className="sr-only">{selected.table}</SheetDescription>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <StatusBadge tone={auditTone(selected.operation)} equalWidth={false}>
+                  {opLabel(selected.operation)}
+                </StatusBadge>
+              </div>
             </SheetHeader>
-            <SheetBody ref={detailRef} className="flex flex-col gap-4">
+            <SheetBody ref={detailRef} className="flex flex-col gap-5">
               {detailLoading ? (
                 <div className="flex flex-col gap-3">
                   <Skeleton className="h-4 w-40" />
@@ -310,23 +458,25 @@ export function ChangeLog() {
                   <DetailList
                     items={[
                       {
-                        label: t("colOperation"),
-                        value: (
-                          <StatusBadge tone={auditTone(detail.operation)} equalWidth={false}>
-                            {opLabel(detail.operation)}
-                          </StatusBadge>
-                        ),
-                      },
-                      { label: t("colActor"), value: <ProfileCell name={detail.actorName} /> },
-                      {
-                        label: t("linkedAction"),
-                        value: detail.actionCode
-                          ? detail.actionTarget
-                            ? `${detail.actionCode} · ${detail.actionTarget}`
-                            : detail.actionCode
-                          : detail.actionId
-                            ? detail.actionId
-                            : t("noAction"),
+                        label: t("colActor"),
+                        value: (() => {
+                          const cell = (
+                            <ProfileCell
+                              name={detail.actorName}
+                              subtitle={[detail.actorUsername, detail.actorEmail].filter(Boolean).join(" · ") || undefined}
+                            />
+                          );
+                          return detail.actorId ? (
+                            <RecordLink
+                              href={recordHref("adminAccount", detail.actorId)}
+                              label={t("openAccount", { name: detail.actorName })}
+                            >
+                              {cell}
+                            </RecordLink>
+                          ) : (
+                            cell
+                          );
+                        })(),
                       },
                       {
                         label: t("colTimestamp"),
@@ -335,28 +485,85 @@ export function ChangeLog() {
                           return `${date} ${time}`;
                         })(),
                       },
-                      { label: t("colTable"), value: detail.table },
+                      { label: t("colTable"), value: tableLabel(detail.table) },
+                      { label: t("colSchema"), value: detail.schema || "-" },
+                      {
+                        label: t("colRecord"),
+                        value: (() => {
+                          const kind = tableRecordKind(detail.table);
+                          return kind ? (
+                            <RecordLink href={recordHref(kind, detail.recordId)}>{t(`recordKind_${kind}`)}</RecordLink>
+                          ) : (
+                            <span className="break-all">{detail.recordId}</span>
+                          );
+                        })(),
+                      },
+                      {
+                        label: t("hashChain"),
+                        value: (
+                          <StatusBadge tone={detail.chain === "missing" ? "warning" : "neutral"} equalWidth={false}>
+                            {t(`hashChain_${detail.chain ?? "missing"}`)}
+                          </StatusBadge>
+                        ),
+                      },
                     ]}
                   />
-                  <div className="flex flex-col gap-2">
+
+                  {detail.actionId && (
+                    <section className="flex flex-col gap-3">
+                      <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                        {t("linkedAction")}
+                      </h4>
+                      <DetailList
+                        items={[
+                          {
+                            label: t("colAction"),
+                            value: (
+                              <RecordLink
+                                href={recordHref("actionLog", detail.actionId)}
+                                label={t("openAction", { name: detail.action?.actionName ?? t("viewAction") })}
+                              >
+                                <span className="font-medium">{detail.action?.actionName ?? t("viewAction")}</span>
+                              </RecordLink>
+                            ),
+                          },
+                          ...(detail.action ? linkedActionItems(detail.action, detail) : []),
+                        ]}
+                      />
+                      {detail.action && detail.action.roleNames.length > 0 && (
+                        <ChipSection title={tl("detailRoles", { count: detail.action.roleNames.length })}>
+                          <RoleNameChips names={detail.action.roleNames} />
+                        </ChipSection>
+                      )}
+                      {detail.action && detail.action.permissionNames.length > 0 && (
+                        <ChipSection title={tl("detailPermissions", { count: detail.action.permissionNames.length })}>
+                          <div className="flex flex-wrap gap-1.5">
+                            {detail.action.permissionNames.map((name, index) => (
+                              <Chip key={`${name}-${index}`} className="leading-snug whitespace-normal">
+                                {name}
+                              </Chip>
+                            ))}
+                          </div>
+                        </ChipSection>
+                      )}
+                    </section>
+                  )}
+
+                  <section className="flex flex-col gap-2">
                     <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                       {t("detailDiff")}
                     </h4>
-                    <DiffViewer changes={detail.changes} />
-                  </div>
+                    {detail.changes.length === 0 ? (
+                      <p className="rounded-lg border bg-muted/30 px-3 py-4 text-center text-sm text-muted-foreground">
+                        {t("noColumnData")}
+                      </p>
+                    ) : (
+                      <DiffViewer changes={detail.changes} renderValue={renderChangeValue} />
+                    )}
+                  </section>
                 </>
               )}
             </SheetBody>
-            {selected.actionId && (
-              <SheetFooter>
-                <Button
-                  size="lg"
-                  onClick={() => router.push(`/admin/audit/actions?open=${selected.actionId}`)}
-                >
-                  {t("viewAction")}
-                </Button>
-              </SheetFooter>
-            )}
           </SheetContent>
         )}
       </Sheet>

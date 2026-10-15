@@ -73,6 +73,7 @@ const validRoute = {
   audienceType: "ALL_ADMINS" as const,
   audienceIds: [] as string[],
   priority: 100,
+  severity: "HIGH" as const,
   isActive: true,
 };
 
@@ -109,6 +110,13 @@ describe("alertRouteSchema", () => {
 
   it("rejects a bad code format on create", () => {
     expect(schema.safeParse({ ...validRoute, code: "bad code" }).success).toBe(false);
+  });
+
+  it("accepts every backend severity and rejects anything else", () => {
+    for (const severity of ["CRITICAL", "HIGH", "MEDIUM", "LOW"]) {
+      expect(schema.safeParse({ ...validRoute, severity }).success).toBe(true);
+    }
+    expect(schema.safeParse({ ...validRoute, severity: "URGENT" }).success).toBe(false);
   });
 });
 

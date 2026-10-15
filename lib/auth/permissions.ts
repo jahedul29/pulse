@@ -1,27 +1,34 @@
 import { useAuthStore } from "./store";
+import type { Session } from "./types";
 
 export const PERMISSIONS = {
-  ACCOUNT_LOCK_EDIT: "SECURITY.account_lock.EDIT",
-  USER_MANAGEMENT_EDIT: "USER_MANAGEMENT.EDIT",
+  USER_MANAGEMENT_EDIT: "USER_MANAGEMENT.user_management.EDIT",
+  INVITATIONS_EDIT: "USER_MANAGEMENT.invitations.EDIT",
+  ROLES_EDIT: "ROLES.roles.EDIT",
+  SECURITY_POLICY_EDIT: "ROLES.security_policy.EDIT",
+  NOTIFICATION_TEMPLATES_EDIT: "NOTIFICATIONS.notification_templates.EDIT",
+  ALERT_ROUTES_EDIT: "NOTIFICATIONS.alert_routes.EDIT",
 } as const;
 
-const ADMIN_EDIT = [PERMISSIONS.ACCOUNT_LOCK_EDIT, PERMISSIONS.USER_MANAGEMENT_EDIT];
+export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 
-const ROLE_PERMISSIONS: Record<string, readonly string[]> = {
-  superadmin: ADMIN_EDIT,
-  admin: ADMIN_EDIT,
-  Owner: ADMIN_EDIT,
-  Administrator: ADMIN_EDIT,
-  Analyst: [],
-  Member: [],
+const ALL_PERMISSIONS: readonly string[] = Object.values(PERMISSIONS);
+
+const ROLE_FALLBACK: Record<string, readonly string[]> = {
+  superadmin: ALL_PERMISSIONS,
+  Owner: ALL_PERMISSIONS,
+  Administrator: ALL_PERMISSIONS,
 };
 
-export function roleHasPermission(role: string | undefined, code: string): boolean {
-  if (!role) return false;
-  return (ROLE_PERMISSIONS[role] ?? []).includes(code);
+export function sessionHasPermission(
+  session: Pick<Session, "role" | "permissions"> | null | undefined,
+  code: string,
+): boolean {
+  if (!session) return false;
+  if (session.permissions) return session.permissions.includes(code);
+  return (ROLE_FALLBACK[session.role] ?? []).includes(code);
 }
 
 export function useHasPermission(code: string): boolean {
-  const role = useAuthStore((state) => state.session?.role);
-  return roleHasPermission(role, code);
+  return useAuthStore((state) => sessionHasPermission(state.session, code));
 }

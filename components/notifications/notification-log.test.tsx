@@ -19,6 +19,8 @@ const delivery = {
   created_at: "2026-09-10T15:35:51.000000Z",
   channel: { id: 1, code: "IN_APP", name: "In-app inbox", is_active: true },
   template: { id: 1, code: "EDR_SESSION_MISSED", name: "Missed", channel_id: 1, subject: { EN: "s" }, body: { EN: "<p>body</p>" }, is_active: true },
+  alert_route_id: 3,
+  alert_route: { id: 3, code: "SEED_SITE_DOWN", name: "Site down" },
   admin_account: { id: "u1", email: "layla@abapro.health", staff: { first_name: "Layla", last_name: "Haddad" } },
 };
 
@@ -68,7 +70,18 @@ describe("NotificationLog", () => {
 
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getAllByText("Layla Haddad").length).toBeGreaterThan(0);
-    expect(within(dialog).getByText("Missed")).toBeInTheDocument();
+    expect(within(dialog).getByRole("link", { name: "Open admin account Layla Haddad" })).toHaveAttribute(
+      "href",
+      "/admin/user-management?open=u1",
+    );
+    expect(within(dialog).getByRole("link", { name: "Open message template Missed" })).toHaveAttribute(
+      "href",
+      "/admin/notifications/templates?open=1",
+    );
+    expect(within(dialog).getByRole("link", { name: "Open alert route Site down" })).toHaveAttribute(
+      "href",
+      "/admin/notifications/routing?open=3",
+    );
     expect(within(dialog).getByText("The session was missed by the client.")).toBeInTheDocument();
   });
 });

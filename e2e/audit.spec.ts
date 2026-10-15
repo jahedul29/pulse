@@ -7,20 +7,26 @@ test.beforeEach(async ({ page }) => {
 
 test("lists semantic actions and opens a detail drawer", async ({ page }) => {
   await page.goto("/admin/audit/actions");
-  await expect(page.getByText("Refund client order").first()).toBeVisible();
+  const row = page.getByRole("link", { name: "CLIENT_REFUND" });
+  await expect(row).toBeVisible();
+  await expect(row.getByText("Order", { exact: true })).toBeVisible();
 
-  await page.getByRole("link", { name: "CLIENT_REFUND" }).click();
+  await row.click();
   await expect(page.getByText("Target type")).toBeVisible();
   await expect(page.getByText("Refund client order").first()).toBeVisible();
+  await expect(page.getByText("Permissions (1)")).toBeVisible();
+  await expect(page.getByText("Manage Orders module.")).toBeVisible();
 });
 
 test("drills from a row-level change into its linked action", async ({ page }) => {
   await page.goto("/admin/audit/changes");
-  await expect(page.getByText("orders").first()).toBeVisible();
+  await expect(page.getByText("Orders").first()).toBeVisible();
 
-  await page.getByRole("link", { name: "orders ord-88" }).click();
-  const viewAction = page.getByRole("button", { name: "View action log" });
+  await page.getByRole("link", { name: "Update · Orders" }).click();
+  await expect(page.getByText("Linked to the previous change")).toBeVisible();
+  const viewAction = page.getByRole("link", { name: "Open action log entry Refunded a client order" });
   await expect(viewAction).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open admin account Dana Okonkwo" })).toBeVisible();
   await viewAction.click();
 
   await expect(page).toHaveURL(/\/admin\/audit\/actions\?open=/);

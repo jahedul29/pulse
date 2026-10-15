@@ -1,5 +1,5 @@
 import type { ServerTableState } from "@/components/common/data-table";
-import type { ListParams } from "@/lib/api/list-query";
+import { dateRangeFilters, type ListParams } from "@/lib/api/list-query";
 
 type Filters = Record<string, string | number | string[]>;
 
@@ -20,12 +20,14 @@ function finish(
 const ACTION_SORT: Record<string, string> = {
   timestamp: "created_at",
   actionCode: "action_code",
-  target: "target_type",
+  targetType: "target_type",
 };
 const ACTION_FILTER: Record<string, string> = {
   result: "result",
   severity: "severity",
   actor: "admin_account_id",
+  actionCode: "action_code",
+  targetType: "target_type",
 };
 
 function applyFilter(value: unknown, field: string, filters: Filters) {
@@ -42,6 +44,10 @@ export function actionServerStateToParams(state: ServerTableState | null): ListP
   }
   const filters: Filters = {};
   for (const columnFilter of state.columnFilters) {
+    if (columnFilter.id === "timestamp") {
+      Object.assign(filters, dateRangeFilters("created_at", columnFilter.value));
+      continue;
+    }
     const field = ACTION_FILTER[columnFilter.id];
     if (field) applyFilter(columnFilter.value, field, filters);
   }
@@ -50,7 +56,6 @@ export function actionServerStateToParams(state: ServerTableState | null): ListP
 
 const CHANGE_SORT: Record<string, string> = {
   timestamp: "created_at",
-  schema: "schema_name",
   table: "table_name",
 };
 const CHANGE_FILTER: Record<string, string> = {
@@ -80,6 +85,10 @@ export function changeServerStateToParams(
   }
   const filters: Filters = { ...seed };
   for (const columnFilter of state.columnFilters) {
+    if (columnFilter.id === "timestamp") {
+      Object.assign(filters, dateRangeFilters("created_at", columnFilter.value));
+      continue;
+    }
     const field = CHANGE_FILTER[columnFilter.id];
     if (field) applyFilter(columnFilter.value, field, filters);
   }

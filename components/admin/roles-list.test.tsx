@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import mockMessages from "../../messages/en.json";
 import { RolesList } from "./roles-list";
+import { useAuthStore } from "@/lib/auth/store";
 
 jest.mock("next/navigation", () => ({ useRouter: () => ({ push: jest.fn() }) }));
 
@@ -27,6 +28,13 @@ jest.mock("next-intl", () => {
   };
 });
 
+
+beforeEach(() => {
+  useAuthStore.setState({
+    session: { email: "owner@abapro.health", name: "Owner", role: "superadmin", token: "t", issuedAt: 0 },
+  });
+});
+
 describe("RolesList create validation", () => {
   it("blocks create and shows a required error on an empty name", async () => {
     render(<RolesList />);
@@ -36,5 +44,17 @@ describe("RolesList create validation", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "Create role" }));
 
     expect(await within(dialog).findByText("Enter a role name")).toBeInTheDocument();
+  });
+
+  it("disables New role for an admin without the roles edit permission", async () => {
+    useAuthStore.setState({
+      session: { email: "viewer@abapro.health", name: "Viewer", role: "admin", token: "t", issuedAt: 0, permissions: ["ROLES.roles.VIEW"] },
+    });
+    render(<RolesList />);
+
+    const create = await screen.findByRole("button", { name: "New role" });
+    expect(create).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(create);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });

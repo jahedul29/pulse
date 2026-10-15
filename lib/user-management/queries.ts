@@ -13,6 +13,7 @@ import {
   assignUserRoles,
   fetchAdminUserDetail,
   fetchInvitableStaff,
+  fetchInvitation,
   fetchPendingInvitations,
   fetchUserDevices,
   listAdminUsers,
@@ -81,6 +82,15 @@ export function useAdminUser(id: string | null) {
   return useQuery({
     queryKey: queryKeys.adminUser(id ?? ""),
     queryFn: () => fetchAdminUserDetail(id as string),
+    enabled: authed && Boolean(id),
+  });
+}
+
+export function useInvitation(id: string | null) {
+  const authed = useAuthed();
+  return useQuery({
+    queryKey: [...PENDING_INVITATIONS, "detail", id ?? ""],
+    queryFn: () => fetchInvitation(id as string),
     enabled: authed && Boolean(id),
   });
 }

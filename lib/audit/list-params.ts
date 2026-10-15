@@ -1,5 +1,5 @@
 import type { ServerTableState } from "@/components/common/data-table";
-import type { ListParams } from "@/lib/api/list-query";
+import { dateRangeFilters, type ListParams } from "@/lib/api/list-query";
 
 const SORT_FIELD: Record<string, string> = { timestamp: "created_at", result: "result", method: "method" };
 const FILTER_FIELD: Record<string, string> = {
@@ -19,6 +19,10 @@ export function serverStateToParams(state: ServerTableState | null): ListParams 
 
   const filters: Record<string, string | number | string[]> = {};
   for (const columnFilter of state.columnFilters) {
+    if (columnFilter.id === "timestamp") {
+      Object.assign(filters, dateRangeFilters("created_at", columnFilter.value));
+      continue;
+    }
     const field = FILTER_FIELD[columnFilter.id];
     if (field && Array.isArray(columnFilter.value) && columnFilter.value.length) {
       filters[field] = columnFilter.value as string[];

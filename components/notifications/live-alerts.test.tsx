@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import mockMessages from "../../messages/en.json";
 import { LiveAlerts } from "./live-alerts";
 
@@ -12,7 +13,16 @@ const alerts = [
     sent_at: "2026-09-21T10:00:00.000000Z",
     created_at: "2026-09-21T10:00:00.000000Z",
     channel: { id: 3, code: "SMS", name: "SMS", is_active: true },
-    admin_account: { id: "u1", email: "ops@abapro.ai", staff: { first_name: "Ops", last_name: "Lead" } },
+    admin_account_id: "u1",
+    alert_route_id: 1,
+    alert_route: { id: 1, code: "SEED_SITE_DOWN", name: "Site down" },
+    admin_account: {
+      id: "u1",
+      email: "ops@abapro.ai",
+      full_name: "Ops Lead",
+      username: "SUID-0009",
+      staff: { first_name: "Ops", last_name: "Lead" },
+    },
   },
   {
     id: "a2",
@@ -34,7 +44,12 @@ jest.mock("../../lib/notifications/queries", () => ({
     isError: false,
     refetch: jest.fn(),
   }),
-  useDelivery: () => ({ data: undefined, isPending: false, isError: false, refetch: jest.fn() }),
+  useDelivery: (id: string | null) => ({
+    data: alerts.find((alert) => alert.id === id),
+    isPending: false,
+    isError: false,
+    refetch: jest.fn(),
+  }),
 }));
 
 jest.mock("next-intl", () => {
@@ -60,5 +75,23 @@ describe("LiveAlerts", () => {
     expect(screen.getByText("Treatment plan updated")).toBeInTheDocument();
     expect(screen.getByText("High")).toBeInTheDocument();
     expect(screen.getByText("Medium")).toBeInTheDocument();
+  });
+
+  it("links the recipient and alert route in the detail drawer and never shows raw ids", async () => {
+    render(<LiveAlerts />);
+
+    await userEvent.click(await screen.findByRole("link", { name: "Session missed" }));
+    const dialog = await screen.findByRole("dialog");
+
+    expect(within(dialog).getByRole("link", { name: "Open admin account Ops Lead" })).toHaveAttribute(
+      "href",
+      "/admin/user-management?open=u1",
+    );
+    expect(within(dialog).getByText("SUID-0009 · ops@abapro.ai")).toBeInTheDocument();
+    expect(within(dialog).getByRole("link", { name: "Open alert route Site down" })).toHaveAttribute(
+      "href",
+      "/admin/notifications/routing?open=1",
+    );
+    expect(within(dialog).queryByText(/^#/)).not.toBeInTheDocument();
   });
 });

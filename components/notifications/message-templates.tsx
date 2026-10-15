@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
@@ -10,7 +11,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, FieldError } from "@/components/ui/field";
+import { Field, FieldError, RequiredMark } from "@/components/ui/field";
 import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
@@ -67,6 +68,7 @@ import {
   useUpdateTemplate,
 } from "@/lib/notifications/queries";
 import type { NotificationTemplateDto } from "@/lib/notifications/dto";
+import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 
 function VarInserter({ label, onInsert }: { label: string; onInsert: (token: string) => void }) {
   const t = useTranslations("notifications");
@@ -119,6 +121,7 @@ const EMPTY_FORM: TemplateForm = {
 export function MessageTemplates() {
   const t = useTranslations("notifications");
   const tc = useTranslations("common");
+  const canEdit = useHasPermission(PERMISSIONS.NOTIFICATION_TEMPLATES_EDIT);
   const te = useTranslations("apiErrors");
   const locale = useLocale();
 
@@ -138,9 +141,19 @@ export function MessageTemplates() {
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
   const [editing, setEditing] = useState<NotificationTemplateDto | null>(null);
   const [deleting, setDeleting] = useState<NotificationTemplateDto | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [linkedId, setLinkedId] = useState<number | null>(() => Number(searchParams.get("open")) || null);
   const [detail, setDetail] = useState<NotificationTemplateDto | null>(null);
-  const shownDetail = useRetained(detail);
-  const detailQuery = useTemplate(detail?.id ?? null);
+  const detailQuery = useTemplate(detail?.id ?? linkedId);
+  const linkedDetail = linkedId != null && detail == null && detailQuery.data?.id === linkedId ? detailQuery.data : null;
+  const shownDetail = useRetained(detail ?? linkedDetail);
+  const closeDetail = () => {
+    setDetail(null);
+    if (linkedId == null) return;
+    setLinkedId(null);
+    router.replace("/admin/notifications/templates");
+  };
 
   const schema = useMemo(
     () =>
@@ -342,13 +355,15 @@ export function MessageTemplates() {
                         event.stopPropagation();
                         openEdit(template);
                       }}
+                      focusableWhenDisabled
+                      disabled={!canEdit}
                       aria-label={t("templates.edit")}
                     />
                   }
                 >
                   <Pencil className="size-4" />
                 </TooltipTrigger>
-                <TooltipContent>{t("templates.edit")}</TooltipContent>
+                <TooltipContent>{canEdit ? t("templates.edit") : tc("noPermission")}</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger
@@ -360,6 +375,8 @@ export function MessageTemplates() {
                         event.stopPropagation();
                         setDeleting(template);
                       }}
+                      focusableWhenDisabled
+                      disabled={!canEdit}
                       aria-label={t("templates.delete")}
                       className="hover:bg-danger/10 hover:text-danger"
                     />
@@ -367,14 +384,14 @@ export function MessageTemplates() {
                 >
                   <Trash2 className="size-4" />
                 </TooltipTrigger>
-                <TooltipContent>{t("templates.delete")}</TooltipContent>
+                <TooltipContent>{canEdit ? t("templates.delete") : tc("noPermission")}</TooltipContent>
               </Tooltip>
             </div>
           );
         },
       },
     ],
-    [t, tc, channelName, openEdit],
+    [t, tc, channelName, openEdit, canEdit],
   );
 
   return (
@@ -428,6 +445,8 @@ export function MessageTemplates() {
                       <Button
                         size="lg"
                         onClick={openCreate}
+                        focusableWhenDisabled
+                        disabled={!canEdit}
                         aria-label={t("templates.newTemplate")}
                         className={toolbarIconButtonClass}
                       />
@@ -436,7 +455,7 @@ export function MessageTemplates() {
                     <Plus className="size-4" />
                     <span className="hidden sm:inline">{t("templates.newTemplate")}</span>
                   </TooltipTrigger>
-                  <TooltipContent>{t("templates.newTemplate")}</TooltipContent>
+                  <TooltipContent>{canEdit ? t("templates.newTemplate") : tc("noPermission")}</TooltipContent>
                 </Tooltip>
               }
             />
@@ -457,6 +476,7 @@ export function MessageTemplates() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field
                   label={t("templates.codeLabel")}
+                  required={dialogMode === "create"}
                   htmlFor="tpl-code"
                   error={formState.errors.code?.message}
                   reserveMessage={false}
@@ -471,6 +491,7 @@ export function MessageTemplates() {
                 </Field>
                 <Field
                   label={t("templates.nameLabel")}
+                  required
                   htmlFor="tpl-name"
                   error={formState.errors.name?.message}
                   reserveMessage={false}
@@ -481,6 +502,7 @@ export function MessageTemplates() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field
                   label={t("templates.channelLabel")}
+                  required
                   htmlFor="tpl-channel"
                   error={formState.errors.channelId?.message}
                   reserveMessage={false}
@@ -519,6 +541,7 @@ export function MessageTemplates() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field
                   label={t("templates.subjectEnLabel")}
+                  required
                   htmlFor="tpl-subject-en"
                   error={formState.errors.subjectEn?.message}
                   reserveMessage={false}
@@ -532,7 +555,12 @@ export function MessageTemplates() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <Label>{t("templates.enLabel")}</Label>
+                    <Label>
+                      <span>
+                        {t("templates.enLabel")}
+                        <RequiredMark />
+                      </span>
+                    </Label>
                     <span className="text-xs text-muted-foreground tabular">
                       {t("templates.chars", { count: htmlToPlainText(bodyEnVal).length })}
                     </span>
@@ -648,7 +676,7 @@ export function MessageTemplates() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Sheet open={detail != null} onOpenChange={(open) => !open && setDetail(null)}>
+      <Sheet open={detail != null || linkedId != null} onOpenChange={(open) => !open && closeDetail()}>
         {shownDetail && (
           <SheetContent>
             <SheetHeader>
@@ -739,19 +767,21 @@ export function MessageTemplates() {
                 })()
               )}
             </SheetBody>
-            <SheetFooter>
-              <Button
-                size="lg"
-                disabled={detailQuery.isPending || detailQuery.isError}
-                onClick={() => {
-                  const target = detailQuery.data ?? shownDetail;
-                  setDetail(null);
-                  openEdit(target);
-                }}
-              >
-                {t("templates.edit")}
-              </Button>
-            </SheetFooter>
+            {canEdit && (
+              <SheetFooter>
+                <Button
+                  size="lg"
+                  disabled={detailQuery.isPending || detailQuery.isError}
+                  onClick={() => {
+                    const target = detailQuery.data ?? shownDetail;
+                    closeDetail();
+                    openEdit(target);
+                  }}
+                >
+                  {t("templates.edit")}
+                </Button>
+              </SheetFooter>
+            )}
           </SheetContent>
         )}
       </Sheet>

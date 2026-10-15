@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { apiErrorMessage } from "@/lib/api/error-message";
 import { usePermissionModules, usePermissions, useRole, useSyncRolePermissions } from "@/lib/rbac/queries";
 import { permissionCode, permissionLabel, type PermissionDto } from "@/lib/rbac/dto";
+import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 
 interface ModuleGroup {
   key: string;
@@ -88,7 +89,8 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
     seededRef.current = role.id;
   }, [role]);
 
-  const locked = role?.is_system ?? false;
+  const canEdit = useHasPermission(PERMISSIONS.ROLES_EDIT);
+  const locked = (role?.is_system ?? false) || !canEdit;
   const dirty = useMemo(
     () => selected.size !== original.size || [...selected].some((id) => !original.has(id)),
     [selected, original],
@@ -318,7 +320,7 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
             <>
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Lock className="size-4 shrink-0" />
-                {t("superadminLocked")}
+                {role?.is_system ? t("superadminLocked") : tc("noPermission")}
               </p>
               {backBtn}
             </>

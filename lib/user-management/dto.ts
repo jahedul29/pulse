@@ -24,6 +24,8 @@ export interface UserDto {
   id: string;
   staff_id: number;
   email: string;
+  full_name?: string | null;
+  username?: string | null;
   preferred_language?: string | null;
   status: UserStatusWire;
   status_reason?: string | null;
@@ -129,6 +131,13 @@ export function normalizeInvitationStatus(wire: string): AdminUserStatus {
   return "pending";
 }
 
+export function invitationStatus(dto: Pick<InvitationDto, "status" | "expires_at">, now = Date.now()): AdminUserStatus {
+  const status = normalizeInvitationStatus(dto.status);
+  if (status !== "pending") return status;
+  const expiresAt = toEpoch(dto.expires_at);
+  return expiresAt != null && expiresAt <= now ? "expired" : status;
+}
+
 export function initialsOf(name: string): string {
   return name
     .split(" ")
@@ -164,13 +173,14 @@ function withDerived(user: AdminUser, isLocked = false): AdminUserRow {
 }
 
 export function userDtoToRow(dto: UserDto): AdminUserRow {
-  const name = staffName(dto.staff, dto.email);
+  const name = dto.full_name?.trim() || staffName(dto.staff, dto.email);
   const createdAt = toEpoch(dto.created_at) ?? 0;
   const roles = rolesFromDto(dto.roles);
   return withDerived({
     id: dto.id,
     staffId: String(dto.staff_id),
     name,
+    username: dto.username?.trim() || null,
     email: dto.email,
     initials: initialsOf(name),
     status: normalizeStatus(dto.status),
@@ -185,6 +195,7 @@ export function userDtoToRow(dto: UserDto): AdminUserRow {
     activatedAt: toEpoch(dto.activated_at),
     lastStatusChangeAt: toEpoch(dto.updated_at),
     lastStatusChangeBy: null,
+    statusReason: dto.status_reason?.trim() || null,
     registeredDevices: 0,
     lastInviteSentAt: null,
   }, Boolean(dto.is_locked));
@@ -205,7 +216,7 @@ export function invitationDtoToRow(dto: InvitationDto): AdminUserRow {
     name,
     email: dto.email ?? "",
     initials: initialsOf(name || "?"),
-    status: normalizeInvitationStatus(dto.status),
+    status: invitationStatus(dto),
     lockedUntil: null,
     lastLogin: null,
     roleIds: (dto.proposed_role_ids ?? []).map(String),

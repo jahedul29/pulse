@@ -5,6 +5,7 @@ import { login } from "./api";
 import { currentDeviceLabel } from "@/lib/device";
 import { registerAuthBridge } from "@/lib/api/auth-bridge";
 import { isApiError } from "@/lib/api/errors";
+import { describeServerError } from "./server-error";
 import type { AttemptOutcome, AuditEntry, AuthToken, LoginResult, Session } from "./types";
 
 const SESSION_COOKIE = "abapro_session";
@@ -77,7 +78,7 @@ export const useAuthStore = create<AuthState>()(
       const establishReal = (tok: AuthToken, remember: boolean) => {
         const session: Session = {
           email: tok.user.email,
-          name: tok.user.email,
+          name: tok.user.full_name?.trim() || tok.user.email,
           role: tok.user.roles?.[0] ?? "Admin",
           token: tok.access_token,
           issuedAt: Date.now(),
@@ -85,6 +86,7 @@ export const useAuthStore = create<AuthState>()(
           refreshToken: tok.refresh_token,
           expiresAt: Date.now() + (tok.expires_in ?? 0) * 1000,
           adminId: tok.user.id,
+          permissions: Array.isArray(tok.user.permissions) ? tok.user.permissions : [],
         };
         writeSessionCookie();
         set({ session });
@@ -148,11 +150,16 @@ export const useAuthStore = create<AuthState>()(
             const tok = await login({ email, password, remember });
             log(email, "SUCCESS", "password");
             establishReal(tok, remember);
-            return { result: "SUCCESS", email: tok.user.email, name: tok.user.email, role: tok.user.roles?.[0] };
+            return {
+              result: "SUCCESS",
+              email: tok.user.email,
+              name: tok.user.full_name?.trim() || tok.user.email,
+              role: tok.user.roles?.[0],
+            };
           } catch (error) {
             const result = mapLoginError(error);
             log(email, result, "password");
-            return { result, email };
+            return result === "SERVER_ERROR" ? { result, email, serverError: describeServerError(error) } : { result, email };
           }
         },
 

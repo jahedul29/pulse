@@ -4,6 +4,7 @@ import { ADMIN_IDENTITY } from "@/lib/api/config";
 import { buildListQuery, listAll, type ListParams } from "@/lib/api/list-query";
 import type {
   AdminAccountAssignmentDto,
+  GrantedPermissionDto,
   GrantedRoleDto,
   PermissionDto,
   PermissionModuleDto,
@@ -19,20 +20,27 @@ const USERS = `${ADMIN_IDENTITY}/users`;
 
 export interface AdminAccess {
   roles: GrantedRoleDto[];
-  permissions: PermissionDto[];
+  permissions: GrantedPermissionDto[];
+  effectivePermissionCount: number;
 }
 
 export async function getAdminAccess(userId: string): Promise<AdminAccess> {
   const user = await apiData<{
     roles?: GrantedRoleDto[];
-    permissions?: PermissionDto[];
-    direct_permissions?: PermissionDto[];
-  }>(`${USERS}/${encodeURIComponent(userId)}`, { query: { relations: ["roles", "permissions"] } });
-  return { roles: user.roles ?? [], permissions: user.direct_permissions ?? user.permissions ?? [] };
+    direct_permissions?: GrantedPermissionDto[];
+    effective_permissions?: unknown[];
+  }>(`${USERS}/${encodeURIComponent(userId)}`, { query: { detail: true } });
+  return {
+    roles: user.roles ?? [],
+    permissions: user.direct_permissions ?? [],
+    effectivePermissionCount: (user.effective_permissions ?? []).length,
+  };
 }
 
-export function attachUserRoles(userId: string, roleIds: number[]): Promise<RoleDto[]> {
-  return apiData<RoleDto[]>(`${USERS}/${encodeURIComponent(userId)}/roles`, { method: "POST", body: { role_ids: roleIds } });
+export function attachUserRoles(userId: string, roleIds: number[], expiresAt?: string | null): Promise<RoleDto[]> {
+  const body: { role_ids: number[]; expires_at?: string } = { role_ids: roleIds };
+  if (expiresAt) body.expires_at = expiresAt;
+  return apiData<RoleDto[]>(`${USERS}/${encodeURIComponent(userId)}/roles`, { method: "POST", body });
 }
 
 export function detachUserRoles(userId: string, roleIds: number[]): Promise<RoleDto[]> {
