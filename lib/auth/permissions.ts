@@ -8,6 +8,8 @@ export const PERMISSIONS = {
   SECURITY_POLICY_EDIT: "ROLES.security_policy.EDIT",
   NOTIFICATION_TEMPLATES_EDIT: "NOTIFICATIONS.notification_templates.EDIT",
   ALERT_ROUTES_EDIT: "NOTIFICATIONS.alert_routes.EDIT",
+  TECHNICAL_VIEW: "TECHNICAL.technical.VIEW",
+  TECHNICAL_EDIT: "TECHNICAL.technical.EDIT",
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

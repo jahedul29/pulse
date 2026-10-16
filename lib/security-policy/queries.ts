@@ -1,12 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/api/query-keys";
-import { useAuthStore } from "@/lib/auth/store";
+import { useAuthed } from "@/lib/auth/use-authed";
 import { getCurrentPolicy, listPolicyVersions, publishPolicy } from "./policy-api";
 import type { StorePolicyBody } from "./dto";
-
-function useAuthed() {
-  return useAuthStore((state) => Boolean(state.session?.accessToken ?? state.session?.token));
-}
 
 export function useCurrentPolicy() {
   const authed = useAuthed();

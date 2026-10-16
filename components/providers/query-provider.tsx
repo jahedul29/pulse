@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { isApiError } from "@/lib/api/errors";
+import { useAuthStore } from "@/lib/auth/store";
+import type { Session } from "@/lib/auth/types";
 
 const Devtools =
   process.env.NODE_ENV === "production"
@@ -36,8 +38,22 @@ function makeQueryClient() {
   });
 }
 
+function sessionOwner(session: Session | null): string | null {
+  return session ? (session.adminId ?? session.email) : null;
+}
+
 export function QueryProvider({ children }: { children: ReactNode }) {
   const [client] = useState(makeQueryClient);
+
+  useEffect(
+    () =>
+      useAuthStore.subscribe((state, previous) => {
+        const before = sessionOwner(previous.session);
+        if (before && before !== sessionOwner(state.session)) client.clear();
+      }),
+    [client],
+  );
+
   return (
     <QueryClientProvider client={client}>
       {children}

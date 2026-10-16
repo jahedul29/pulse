@@ -8,7 +8,7 @@ import {
 import type { QueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { Paginated } from "@/lib/api/client";
-import { useAuthStore } from "@/lib/auth/store";
+import { useAuthed } from "@/lib/auth/use-authed";
 import {
   assignUserRoles,
   fetchAdminUserDetail,
@@ -28,10 +28,6 @@ import type { AdminUserRow, AdminUserStatus } from "./types";
 
 const ADMIN_USERS = ["admin-users"] as const;
 const PENDING_INVITATIONS = ["pending-invitations"] as const;
-
-function useAuthed() {
-  return useAuthStore((state) => Boolean(state.session?.accessToken ?? state.session?.token));
-}
 
 export function useAdminUsers(params: ListParams) {
   const authed = useAuthed();

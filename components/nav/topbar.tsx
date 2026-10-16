@@ -1,9 +1,11 @@
 "use client";
 
+import { useLayoutEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, Menu } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { BUILDER_PATH, COUNTRIES_PATH, REGIONS_PATH } from "@/lib/locations/routes";
 import { SECTIONS } from "@/lib/nav";
 import { LocaleSwitcher } from "@/components/nav/locale-switcher";
 import { ProfileMenu } from "@/components/nav/profile-menu";
@@ -27,12 +29,26 @@ const ADMIN_TITLE_KEYS: Record<string, string> = {
   "/admin/notifications/log": "notifications.log.title",
   "/admin/notifications/routing": "notifications.routing.title",
   "/admin/notifications/alerts": "notifications.alerts.title",
+  [REGIONS_PATH]: "locations.regions.title",
+  [COUNTRIES_PATH]: "locations.countries.title",
 };
 
 export function Topbar() {
   const t = useTranslations();
   const pathname = usePathname();
   const setMobileOpen = useUiStore((state) => state.setMobileOpen);
+  const headerRef = useRef<HTMLElement>(null);
+
+  useLayoutEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+    const publishHeight = () =>
+      document.documentElement.style.setProperty("--topbar-height", `${header.offsetHeight}px`);
+    publishHeight();
+    const observer = new ResizeObserver(publishHeight);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
 
   const segments = pathname.split("/").filter(Boolean);
   const section = SECTIONS.find((sectionItem) => sectionItem.slug === segments[0]) ?? SECTIONS[2];
@@ -54,7 +70,12 @@ export function Topbar() {
     : undefined;
 
   let adminTrail: Crumb[] | undefined;
-  if (pathname.startsWith("/admin/roles/")) {
+  if (pathname === BUILDER_PATH) {
+    adminTrail = [
+      { label: t("locations.regions.title"), href: REGIONS_PATH },
+      { label: t("nav.regionBuilder") },
+    ];
+  } else if (pathname.startsWith("/admin/roles/")) {
     adminTrail = [
       { label: t("rbac.rolesTitle"), href: "/admin/roles" },
       { label: t("rbac.matrixTitle") },
@@ -83,7 +104,7 @@ export function Topbar() {
       : trail;
 
   return (
-    <header className="sticky top-0 z-20 flex items-center gap-3 border-b bg-background/85 px-4 py-3 backdrop-blur md:px-5">
+    <header ref={headerRef} className="sticky top-0 z-20 flex items-center gap-3 border-b bg-background/85 px-4 py-3 backdrop-blur md:px-5">
       <button
         type="button"
         onClick={() => setMobileOpen(true)}

@@ -96,6 +96,12 @@ describe("actionDtoToRow", () => {
 });
 
 describe("flattenPayload (deep, dotted labels, masked)", () => {
+  it("counts long lists of objects instead of listing every entry", () => {
+    const points = Array.from({ length: 26 }, () => ({ mgrs: "39Q WG 71500 53500" }));
+    expect(flattenPayload({ points })).toEqual([{ key: "points.count", label: "Points · Count", value: "26" }]);
+    expect(flattenPayload({ points: points.slice(0, 2) })).toHaveLength(2);
+  });
+
   it("flattens nested objects to dotted leaf rows", () => {
     const inputs = flattenPayload({
       body: { EN: "Welcome to ABAPRO Admin" },
@@ -251,6 +257,7 @@ describe("humanizeCode", () => {
 describe("payloadName", () => {
   it("reads a readable name from the request payload for unresolvable targets", () => {
     expect(payloadName({ name: "Dubai", code: "DXB" })).toBe("Dubai");
+    expect(payloadName({ name: { en: "Abu Dhabi", ar: "أبوظبي" }, code: "AD-01" })).toBe("Abu Dhabi");
     expect(payloadName({ name: { EN: "Welcome", AR: "مرحبا" } })).toBe("Welcome");
     expect(payloadName({ name: { AR: "مرحبا" } })).toBe("مرحبا");
     expect(payloadName({ code: "SECURITY_INCIDENT" })).toBe("SECURITY_INCIDENT");

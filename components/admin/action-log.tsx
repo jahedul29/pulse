@@ -73,6 +73,8 @@ export function ActionLog() {
       admin: t("refAdminAccount"),
       template: t("refTemplate"),
       alertRoute: t("refAlertRoute"),
+      region: t("refRegion"),
+      country: t("refCountry"),
     }),
     [t],
   );

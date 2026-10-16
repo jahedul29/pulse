@@ -16,6 +16,7 @@ const eslintConfig = defineConfig([
     "coverage/**",
     "playwright-report/**",
     "test-results/**",
+    "public/vendor/**",
     // Vendored agent/skill scaffold (not app source):
     ".claude/**",
   ]),

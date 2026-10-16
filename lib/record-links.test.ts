@@ -17,13 +17,17 @@ describe("record links", () => {
     expect(targetRecordKind("USERS")).toBe("adminAccount");
     expect(targetRecordKind("ROLES")).toBe("role");
     expect(targetRecordKind("NOTIFICATION_ALERT_ROUTES")).toBe("alertRoute");
-    expect(targetRecordKind("CITIES")).toBeNull();
+    expect(targetRecordKind("CITIES")).toBe("region");
+    expect(targetRecordKind("COUNTRIES")).toBe("country");
+    expect(targetRecordKind("STAFF")).toBeNull();
     expect(targetRecordKind(null)).toBeNull();
   });
 
   it("builds the deep link for each kind", () => {
     expect(recordHref("adminAccount", "u 1")).toBe("/admin/user-management?open=u%201");
     expect(recordHref("invitation", "inv-1")).toBe("/admin/user-management?invite=inv-1");
+    expect(recordHref("region", 2)).toBe("/admin/locations/builder?region=2");
+    expect(recordHref("country", 1)).toBe("/admin/locations/regions?country=1");
     expect(recordHref("role", 9)).toBe("/admin/roles/9");
     expect(recordHref("template", 1)).toBe("/admin/notifications/templates?open=1");
     expect(recordHref("alertRoute", 7)).toBe("/admin/notifications/routing?open=7");
@@ -37,6 +41,8 @@ describe("record links", () => {
     expect(referenceKind("admin_account_id")).toBe("admin");
     expect(referenceKind("audience_filter.user_ids")).toBe("adminList");
     expect(referenceKind("proposed_role_ids")).toBe("roles");
+    expect(referenceKind("country_id")).toBe("country");
+    expect(referenceKind("city_id")).toBe("region");
     expect(referenceKind("audience_filter.role_ids")).toBe("roles");
     expect(referenceKind("template_id")).toBe("template");
     expect(referenceKind("alert_route_id")).toBe("alertRoute");

@@ -30,6 +30,8 @@ describe("sessionHasPermission", () => {
       "ROLES.security_policy.EDIT",
       "NOTIFICATIONS.notification_templates.EDIT",
       "NOTIFICATIONS.alert_routes.EDIT",
+      "TECHNICAL.technical.VIEW",
+      "TECHNICAL.technical.EDIT",
     ]);
   });
 });

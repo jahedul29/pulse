@@ -21,6 +21,33 @@ export function fmtCompact(value: number): string {
   return compact.format(value);
 }
 
+const latinNumberFormats = new Map<string, Intl.NumberFormat>();
+
+function latinNumberFormat(locale: string, maximumFractionDigits: number): Intl.NumberFormat {
+  const key = `${locale}:${maximumFractionDigits}`;
+  let format = latinNumberFormats.get(key);
+  if (!format) {
+    format = new Intl.NumberFormat(locale === "ar" ? "ar-u-nu-latn" : "en-US", {
+      maximumFractionDigits,
+      minimumFractionDigits: maximumFractionDigits === 4 ? 4 : 0,
+    });
+    latinNumberFormats.set(key, format);
+  }
+  return format;
+}
+
+export function fmtCount(value: number, locale = "en"): string {
+  return latinNumberFormat(locale, 0).format(value);
+}
+
+export function fmtList(items: string[], locale = "en", type: "conjunction" | "unit" = "conjunction"): string {
+  return new Intl.ListFormat(locale, { type, style: type === "unit" ? "short" : "long" }).format(items);
+}
+
+export function fmtCoordinate(value: number, locale = "en"): string {
+  return latinNumberFormat(locale, 4).format(value);
+}
+
 export function fmtDelta(value: number): string {
   return `${value > 0 ? "+" : ""}${value}%`;
 }

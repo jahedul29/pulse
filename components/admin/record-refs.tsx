@@ -13,6 +13,10 @@ import {
   targetRecordKind,
   type RecordKind,
 } from "@/lib/record-links";
+import { useLocale } from "next-intl";
+import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
+import { localizedName } from "@/lib/locations/names";
+import { useAllCities, useAllCountries } from "@/lib/locations/queries";
 import { useAlertRoute, useAllTemplates, useChannels } from "@/lib/notifications/queries";
 import { useRoles } from "@/lib/rbac/queries";
 import { useAllAdminUsers, useInvitation } from "@/lib/user-management/queries";
@@ -122,12 +126,32 @@ function InvitationName({ id, fallback }: { id: string; fallback: string }) {
   return <>{useInvitationName(id) ?? fallback}</>;
 }
 
+function useLocationName(kind: "region" | "country", id: string): string | null {
+  const locale = useLocale();
+  const canView = useHasPermission(PERMISSIONS.TECHNICAL_VIEW);
+  const citiesQuery = useAllCities({ enabled: canView && kind === "region" });
+  const countriesQuery = useAllCountries({ enabled: canView && kind === "country" });
+  const records = kind === "region" ? citiesQuery.data : countriesQuery.data;
+  const record = (records ?? []).find((entry: { id: number }) => String(entry.id) === id);
+  return record ? localizedName(record.name, record.name_translations, locale) : null;
+}
+
+function LocationName({ kind, id, fallback }: { kind: "region" | "country"; id: string; fallback: string }) {
+  return <>{useLocationName(kind, id) ?? fallback}</>;
+}
+
+function LocationIdLink({ kind, id, fallback }: { kind: "region" | "country"; id: string; fallback: string }) {
+  const name = useLocationName(kind, id);
+  return <InlineRecordLink href={recordHref(kind, id)}>{name ?? fallback}</InlineRecordLink>;
+}
+
 export function RecordName({ kind, id, fallback }: { kind: RecordKind; id: string; fallback: string }) {
   if (kind === "adminAccount") return <AdminNames ids={[id]} fallback={fallback} />;
   if (kind === "role") return <RoleNames ids={[id]} fallback={fallback} />;
   if (kind === "template") return <TemplateName id={id} fallback={fallback} />;
   if (kind === "alertRoute") return <AlertRouteName id={id} fallback={fallback} />;
   if (kind === "invitation") return <InvitationName id={id} fallback={fallback} />;
+  if (kind === "region" || kind === "country") return <LocationName kind={kind} id={id} fallback={fallback} />;
   return <>{fallback}</>;
 }
 
@@ -178,6 +202,8 @@ export interface ReferenceFallbacks {
   template: string;
   alertRoute: string;
   role?: string;
+  region?: string;
+  country?: string;
 }
 
 export function ReferenceValue({
@@ -206,6 +232,8 @@ export function ReferenceValue({
   if (kind === "template") return <TemplateIdLink id={value} fallback={fallbacks.template} />;
   if (kind === "alertRoute") return <AlertRouteIdLink id={value} fallback={fallbacks.alertRoute} />;
   if (kind === "channel") return <ChannelName id={value} />;
+  if (plain && (kind === "region" || kind === "country")) return <LocationName kind={kind} id={value} fallback={fallbacks[kind] ?? "-"} />;
+  if (kind === "region" || kind === "country") return <LocationIdLink kind={kind} id={value} fallback={fallbacks[kind] ?? "-"} />;
   const epoch = dbDateTimeToEpoch(value);
   return <>{epoch == null ? value : fmtDateTime(epoch, locale)}</>;
 }

@@ -20,6 +20,8 @@ const OWNER = {
     "NOTIFICATIONS.notification_templates.EDIT",
     "NOTIFICATIONS.alert_routes.VIEW",
     "NOTIFICATIONS.alert_routes.EDIT",
+    "TECHNICAL.technical.VIEW",
+    "TECHNICAL.technical.EDIT",
   ],
 };
 

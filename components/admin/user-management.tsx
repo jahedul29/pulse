@@ -505,7 +505,7 @@ export function UserManagement() {
                         aria-label={item.label}
                         onClick={item.onSelect}
                         className={cn(
-                          "size-8 text-muted-foreground hover:text-foreground data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[disabled]:hover:bg-transparent data-[disabled]:hover:text-muted-foreground",
+                          "size-8 text-muted-foreground hover:text-foreground data-[disabled]:hover:bg-transparent data-[disabled]:hover:text-muted-foreground",
                           item.variant === "destructive" && "hover:bg-danger-muted hover:text-danger",
                         )}
                       />

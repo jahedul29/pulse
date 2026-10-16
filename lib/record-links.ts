@@ -1,3 +1,5 @@
+import { countryRegionsHref, regionHref } from "@/lib/locations/routes";
+
 export type RecordKind =
   | "adminAccount"
   | "invitation"
@@ -5,9 +7,11 @@ export type RecordKind =
   | "securityPolicy"
   | "template"
   | "alertRoute"
-  | "actionLog";
+  | "actionLog"
+  | "region"
+  | "country";
 
-export type ReferenceKind = "admin" | "adminList" | "roles" | "template" | "alertRoute" | "channel";
+export type ReferenceKind = "admin" | "adminList" | "roles" | "template" | "alertRoute" | "channel" | "region" | "country";
 
 const TABLE_KIND: Record<string, RecordKind> = {
   admin_accounts: "adminAccount",
@@ -26,6 +30,8 @@ const TARGET_KIND: Record<string, RecordKind> = {
   SECURITY_POLICY: "securityPolicy",
   NOTIFICATION_TEMPLATES: "template",
   NOTIFICATION_ALERT_ROUTES: "alertRoute",
+  CITIES: "region",
+  COUNTRIES: "country",
 };
 
 const REFERENCE_KIND: [RegExp, ReferenceKind][] = [
@@ -35,6 +41,8 @@ const REFERENCE_KIND: [RegExp, ReferenceKind][] = [
   [/^template_id$/, "template"],
   [/^alert_route_id$/, "alertRoute"],
   [/^channel_id$/, "channel"],
+  [/^city_id$/, "region"],
+  [/^country_id$/, "country"],
 ];
 
 const HTTP_ROUTE = /^(GET|POST|PUT|PATCH|DELETE)\s+\S+$/;
@@ -56,6 +64,8 @@ export function recordHref(kind: RecordKind, id: string | number): string {
   if (kind === "template") return `/admin/notifications/templates?open=${encoded}`;
   if (kind === "alertRoute") return `/admin/notifications/routing?open=${encoded}`;
   if (kind === "actionLog") return `/admin/audit/actions?open=${encoded}`;
+  if (kind === "region") return regionHref(id);
+  if (kind === "country") return countryRegionsHref(id);
   return "/admin/settings/security";
 }
 

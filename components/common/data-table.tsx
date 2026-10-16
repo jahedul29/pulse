@@ -132,6 +132,7 @@ type DataTableProps<TData> = {
   rowCount?: number;
   onServerStateChange?: (state: ServerTableState) => void;
   searchDebounceMs?: number;
+  initialColumnFilters?: ColumnFiltersState;
 };
 
 export type ServerTableState = {
@@ -413,6 +414,7 @@ export function DataTable<TData>({
   rowCount,
   onServerStateChange,
   searchDebounceMs = 350,
+  initialColumnFilters,
 }: DataTableProps<TData>) {
   const sizeOptions = useMemo(
     () =>
@@ -423,7 +425,7 @@ export function DataTable<TData>({
   );
   const [globalFilter, setGlobalFilter] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(initialColumnFilters ?? []);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize });
   const [freezeCount, setFreezeCount] = useState(0);
   const [rowH, setRowH] = useState(0);

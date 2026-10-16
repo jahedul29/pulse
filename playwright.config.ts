@@ -17,7 +17,11 @@ export default defineConfig({
     { name: "setup", testMatch: /auth\.setup\.ts/ },
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"], storageState: "e2e/.auth/state.json" },
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "e2e/.auth/state.json",
+        launchOptions: { args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] },
+      },
       dependencies: ["setup"],
       testIgnore: /auth\.setup\.ts/,
     },

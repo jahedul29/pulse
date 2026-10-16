@@ -147,7 +147,7 @@ function EditButton({
       focusableWhenDisabled
       disabled={Boolean(disabledReason)}
       className={cn(
-        "data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[disabled]:hover:bg-transparent",
+        "data-[disabled]:hover:bg-transparent",
         className,
       )}
     />
@@ -192,10 +192,10 @@ function GrantRow({
   return (
     <li
       className={cn(
-        "grid gap-x-3 gap-y-1.5 py-3 sm:items-center sm:gap-x-4 sm:px-4",
+        "grid gap-x-3 gap-y-1.5 py-3 sm:px-4 @2xl:items-center @2xl:gap-x-4",
         action
-          ? "grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_auto_auto]"
-          : "grid-cols-[minmax(0,1fr)] sm:grid-cols-[minmax(0,1fr)_auto]",
+          ? "grid-cols-[minmax(0,1fr)_auto] @2xl:grid-cols-[minmax(0,1fr)_auto_auto]"
+          : "grid-cols-[minmax(0,1fr)] @2xl:grid-cols-[minmax(0,1fr)_auto]",
       )}
     >
       <div className="col-start-1 row-start-1 flex min-w-0 flex-wrap items-center gap-2 self-center">
@@ -203,11 +203,11 @@ function GrantRow({
         {tags}
       </div>
       {details.length > 0 && (
-        <div className="col-span-full row-start-2 flex min-w-0 flex-col gap-0.5 text-xs text-muted-foreground sm:col-span-1 sm:col-start-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-1.5">
+        <div className="col-span-full row-start-2 flex min-w-0 flex-col gap-0.5 text-xs text-muted-foreground @2xl:col-span-1 @2xl:col-start-1 @2xl:flex-row @2xl:flex-wrap @2xl:items-center @2xl:gap-x-1.5">
           {details.map((detail, index) => (
             <span key={index} className="flex min-w-0 items-center gap-x-1.5 [overflow-wrap:anywhere]">
               {index > 0 && (
-                <span aria-hidden className="hidden sm:inline">
+                <span aria-hidden className="hidden @2xl:inline">
                   ·
                 </span>
               )}
@@ -216,14 +216,14 @@ function GrantRow({
           ))}
         </div>
       )}
-      <div className="col-span-full row-start-3 justify-self-start sm:col-span-1 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:justify-self-end">
+      <div className="col-span-full row-start-3 justify-self-start @2xl:col-span-1 @2xl:col-start-2 @2xl:row-span-2 @2xl:row-start-1 @2xl:justify-self-end">
         {status}
       </div>
       {action && (
         <EditButton
           {...action}
           icon={<X className="size-3.5" />}
-          className="col-start-2 row-start-1 self-start text-danger hover:bg-danger/10 hover:text-danger sm:col-start-3 sm:row-span-2 sm:self-center"
+          className="col-start-2 row-start-1 self-start text-danger hover:bg-danger/10 hover:text-danger @2xl:col-start-3 @2xl:row-span-2 @2xl:self-center"
         />
       )}
     </li>
@@ -454,7 +454,7 @@ export function UserAccessEditor({
     grantedRoles.length === 0 ? (
       <p className="py-6 text-center text-sm text-muted-foreground">{t("noGrants")}</p>
     ) : (
-      <ul className="divide-y sm:overflow-hidden sm:rounded-lg sm:border">
+      <ul className="@container divide-y sm:overflow-hidden sm:rounded-lg sm:border">
         {grantedRoles.map((role) => (
           <GrantRow
             key={role.id}
@@ -492,7 +492,7 @@ export function UserAccessEditor({
         {variant === "drawer" ? t("noDirectPermissions") : t("noOverlays")}
       </p>
     ) : (
-      <ul className="divide-y sm:overflow-hidden sm:rounded-lg sm:border">
+      <ul className="@container divide-y sm:overflow-hidden sm:rounded-lg sm:border">
         {directPermissions.map((permission) => (
           <GrantRow
             key={permission.id}

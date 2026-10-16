@@ -12,7 +12,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Topbar />
         </Suspense>
         <MobileNav />
-        <main className="flex-1 px-4 py-6 md:px-6">{children}</main>
+        <main className="flex-1 px-4 py-6 md:px-6 has-[[data-full-bleed]]:p-0">{children}</main>
       </div>
     </div>
   );

@@ -6,8 +6,12 @@ import {
   Bell,
   ChevronDown,
   GitCompare,
+  Earth,
+  Flag,
+  LandPlot,
   ListChecks,
   Lock,
+  MapPinned,
   MessageSquareText,
   // Route,
   ScrollText,
@@ -24,6 +28,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { BUILDER_PATH, COUNTRIES_PATH, REGIONS_PATH } from "@/lib/locations/routes";
 import { SECTIONS } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +54,12 @@ const NOTIFICATION_ITEMS: NavGroupItem[] = [
   { href: "/admin/notifications/log", key: "notifLog", icon: ListChecks },
   { href: "/admin/notifications/routing", key: "alertRouting", icon: SlidersHorizontal },
   { href: "/admin/notifications/alerts", key: "liveAlerts", icon: Siren },
+];
+
+const LOCATION_ITEMS: NavGroupItem[] = [
+  { href: BUILDER_PATH, key: "regionBuilder", icon: LandPlot },
+  { href: REGIONS_PATH, key: "regions", icon: MapPinned },
+  { href: COUNTRIES_PATH, key: "countries", icon: Flag },
 ];
 
 const LINK_BASE =
@@ -204,7 +215,9 @@ export function NavItems({
       ? "rbacGroup"
       : NOTIFICATION_ITEMS.some((i) => isActive(pathname, i.href))
         ? "notificationsGroup"
-        : null;
+        : LOCATION_ITEMS.some((i) => isActive(pathname, i.href))
+          ? "locationsGroup"
+          : null;
   const [openGroup, setOpenGroup] = useState<string | null>(activeGroup);
   const toggleGroup = (key: string) => setOpenGroup((previous) => (previous === key ? null : key));
 
@@ -260,6 +273,15 @@ export function NavItems({
         collapsed={collapsed}
         open={openGroup === "notificationsGroup"}
         onToggle={() => toggleGroup("notificationsGroup")}
+        onNavigate={onNavigate}
+      />
+      <NavGroup
+        labelKey="locationsGroup"
+        icon={Earth}
+        items={LOCATION_ITEMS}
+        collapsed={collapsed}
+        open={openGroup === "locationsGroup"}
+        onToggle={() => toggleGroup("locationsGroup")}
         onNavigate={onNavigate}
       />
     </nav>

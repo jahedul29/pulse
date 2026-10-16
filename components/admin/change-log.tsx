@@ -72,6 +72,8 @@ export function ChangeLog() {
       template: t("recordKind_template"),
       alertRoute: t("recordKind_alertRoute"),
       role: t("recordKind_role"),
+      region: t("recordKind_region"),
+      country: t("recordKind_country"),
     }),
     [t],
   );

@@ -1,11 +1,7 @@
 import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/api/query-keys";
-import { useAuthStore } from "@/lib/auth/store";
+import { useAuthed } from "@/lib/auth/use-authed";
 import { getActionFilterOptions, listAdminActions, listChangeLog, type ListParams } from "./audit-api";
-
-function useAuthed() {
-  return useAuthStore((state) => Boolean(state.session?.accessToken ?? state.session?.token));
-}
 
 export function useAdminActions(params: ListParams) {
   const authed = useAuthed();

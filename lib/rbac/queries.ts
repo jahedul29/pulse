@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/api/query-keys";
-import { useAuthStore } from "@/lib/auth/store";
+import { useAuthed } from "@/lib/auth/use-authed";
 import {
   attachUserRoles,
   createRole,
@@ -18,10 +18,6 @@ import {
   type ListParams,
 } from "./rbac-api";
 import type { RoleDto, StoreRoleBody, UpdateRoleBody } from "./dto";
-
-function useAuthed() {
-  return useAuthStore((state) => Boolean(state.session?.accessToken ?? state.session?.token));
-}
 
 export function useRoles(params: ListParams) {
   const authed = useAuthed();

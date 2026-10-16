@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { LogOut, MonitorSmartphone } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAuthStore } from "@/lib/auth/store";
+import { runGuarded } from "@/lib/use-unsaved-changes-guard";
 
 function initialsOf(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -30,9 +31,11 @@ export function ProfileMenu() {
 
   const onSignOut = () => {
     setOpen(false);
-    signOut();
-    toast.success(t("signedOut"));
-    router.replace("/login");
+    runGuarded(() => {
+      signOut();
+      toast.success(t("signedOut"));
+      router.replace("/login");
+    });
   };
 
   return (

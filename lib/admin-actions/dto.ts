@@ -110,6 +110,8 @@ export function humanizeLabel(path: string): string {
   return path.split(".").map(titleizeSegment).join(" · ");
 }
 
+const MAX_LISTED_PAYLOAD_ITEMS = 25;
+
 export function flattenPayload(value: unknown, prefix = ""): ActionInput[] {
   if (value === null || value === undefined) {
     return prefix ? [{ key: prefix, label: humanizeLabel(prefix), value: "-" }] : [];
@@ -122,6 +124,10 @@ export function flattenPayload(value: unknown, prefix = ""): ActionInput[] {
     if (allPrimitive) {
       const joined = value.map((item) => stringifyLeaf(item)).join(", ");
       return [{ key: prefix, label: humanizeLabel(prefix), value: maskInputValue(prefix, joined) }];
+    }
+    if (value.length > MAX_LISTED_PAYLOAD_ITEMS) {
+      const key = `${prefix}.count`;
+      return [{ key, label: humanizeLabel(key), value: String(value.length) }];
     }
     return value.flatMap((item, index) => flattenPayload(item, `${prefix}[${index}]`));
   }
@@ -140,7 +146,9 @@ export function payloadName(payload: unknown): string | null {
   const name = record.name;
   if (name && typeof name === "object" && !Array.isArray(name)) {
     const localized = name as Record<string, unknown>;
-    return textOf(localized.EN) ?? textOf(localized.AR) ?? textOf(record.code);
+    return (
+      textOf(localized.EN) ?? textOf(localized.en) ?? textOf(localized.AR) ?? textOf(localized.ar) ?? textOf(record.code)
+    );
   }
   return textOf(name) ?? textOf(record.code);
 }
