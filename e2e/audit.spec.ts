@@ -13,13 +13,14 @@ test("lists semantic actions and opens a detail drawer", async ({ page }) => {
   await expect(row.getByText("Financial", { exact: true })).toBeVisible();
 
   await row.click();
-  await expect(page.getByText("Target type")).toBeVisible();
-  await expect(page.getByText("Refund client order").first()).toBeVisible();
-  await expect(page.getByText("Permissions (1)")).toBeVisible();
-  await expect(page.getByText("Manage Orders module.")).toBeVisible();
-  await expect(page.getByText("corr-1")).toBeVisible();
-  await expect(page.getByText("c".repeat(64))).toBeVisible();
-  await expect(page.getByText("Request details")).toBeVisible();
+  const drawer = page.getByRole("dialog");
+  await expect(drawer.getByText("Target type")).toBeVisible();
+  await expect(drawer.getByText("Refund client order").first()).toBeVisible();
+  await expect(drawer.getByText("Permissions (1)")).toBeVisible();
+  await expect(drawer.getByText("Manage Orders module.")).toBeVisible();
+  await expect(drawer.getByText("corr-1")).toBeVisible();
+  await expect(drawer.getByText("c".repeat(64))).toBeVisible();
+  await expect(drawer.getByText("Request details")).toBeVisible();
 });
 
 test("drills from a row-level change into its linked action", async ({ page }) => {

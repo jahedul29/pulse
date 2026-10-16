@@ -12,8 +12,8 @@ test("rejects invalid credentials", async ({ page }) => {
   await page.getByLabel(/^Email/).fill("owner@abapro.health");
   await page.getByLabel(/^Password/).fill("wrong-password");
   await page.getByRole("button", { name: "Sign In" }).click();
-  const banner = page.getByRole("alert");
-  await expect(banner).toContainText("Incorrect email or password");
+  const banner = page.getByRole("alert").filter({ hasText: "Incorrect email or password" });
+  await expect(banner).toBeVisible();
   await expect(banner.getByRole("button", { name: "Try again" })).toHaveCount(0);
 });
 
