@@ -18,6 +18,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/common/toggle-switch";
 import { StatusBadge } from "@/components/common/status-badge";
 import { DetailList } from "@/components/common/detail-list";
+import { InlineRecordLink } from "@/components/common/record-link";
+import { recordHref } from "@/lib/record-links";
 import {
   Dialog,
   DialogBody,
@@ -31,6 +33,7 @@ import { fmtDateTimeParts } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api/error-message";
 import { useCurrentPolicy, usePolicyVersions, usePublishPolicy } from "@/lib/security-policy/queries";
 import { policyToForm } from "@/lib/security-policy/dto";
+import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 import { policySchema, reasonSchema, type PolicyForm, type ReasonForm } from "@/lib/security-policy/schemas";
 import type { SecurityPolicyDto } from "@/lib/security-policy/dto";
 
@@ -51,8 +54,15 @@ type BoolKey =
   | "password_require_symbol"
   | "mfa_required";
 
-function versionActor(version: SecurityPolicyDto): string {
-  return version.created_by?.email ?? version.created_by_admin_id ?? "-";
+function versionActor(version: SecurityPolicyDto, fallback: string): string {
+  return version.created_by?.full_name?.trim() || version.created_by?.email || fallback;
+}
+
+function actorLink(version: SecurityPolicyDto) {
+  const actorId = version.created_by?.id ?? version.created_by_admin_id ?? null;
+  return function ActorLink(chunks: ReactNode) {
+    return actorId ? <InlineRecordLink href={recordHref("adminAccount", actorId)}>{chunks}</InlineRecordLink> : chunks;
+  };
 }
 
 export function SecurityPolicyEditor() {
@@ -60,6 +70,7 @@ export function SecurityPolicyEditor() {
   const tc = useTranslations("common");
   const te = useTranslations("apiErrors");
   const locale = useLocale();
+  const canEdit = useHasPermission(PERMISSIONS.SECURITY_POLICY_EDIT);
 
   const currentQuery = useCurrentPolicy();
   const versionsQuery = usePolicyVersions();
@@ -165,6 +176,7 @@ export function SecurityPolicyEditor() {
   const numField = (key: NumKey, label: string, unit: string, hint?: string) => (
     <Field
       label={label}
+      required
       htmlFor={`sp-${key}`}
       hint={hint}
       error={formState.errors[key]?.message}
@@ -204,7 +216,11 @@ export function SecurityPolicyEditor() {
         <h1 className="font-heading text-2xl font-semibold tracking-tight">{t("title")}</h1>
         <p className="text-sm text-muted-foreground text-pretty">{t("subtitle")}</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          {t("currentSummary", { date: fmtIso(current.created_at), name: versionActor(current) })}
+          {t.rich("currentSummary", {
+            date: fmtIso(current.created_at),
+            name: versionActor(current, t("unknownActor")),
+            link: actorLink(current),
+          })}
         </p>
       </header>
 
@@ -212,53 +228,59 @@ export function SecurityPolicyEditor() {
         <div className="lg:col-span-3">
           <Card>
             <Form onSubmit={openSave}>
-              <CardContent className="flex flex-col gap-6">
-                {section(
-                  t("sectionLockout"),
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {numField("max_failed_attempts", t("lockoutThreshold"), t("unitAttempts"), t("lockoutThresholdHint"))}
-                    {numField("lockout_duration_minutes", t("lockoutDuration"), t("unitMinutes"))}
-                  </div>,
-                )}
-                {section(
-                  t("sectionSessions"),
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {numField("access_token_ttl_minutes", t("accessTokenTtl"), t("unitMinutes"))}
-                    {numField("refresh_token_ttl_days", t("refreshTokenTtl"), t("unitDays"))}
-                  </div>,
-                )}
-                {section(
-                  t("sectionPassword"),
-                  <div className="flex flex-col gap-4">
+              <CardContent>
+                <fieldset disabled={!canEdit} className="flex min-w-0 flex-col gap-6">
+                  {section(
+                    t("sectionLockout"),
                     <div className="grid gap-4 sm:grid-cols-2">
-                      {numField("password_min_length", t("minLength"), t("unitChars"))}
-                      {numField("password_history_check_count", t("historyCount"), t("unitPasswords"), t("historyHint"))}
-                      {numField("password_max_age_days", t("passwordMaxAge"), t("unitDays"), t("passwordMaxAgeHint"))}
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      {switchRow("password_require_uppercase", t("requireUpper"))}
-                      {switchRow("password_require_lowercase", t("requireLowercase"))}
-                      {switchRow("password_require_number", t("requireNumber"))}
-                      {switchRow("password_require_symbol", t("requireSymbol"))}
-                    </div>
-                  </div>,
-                )}
-                {section(
-                  t("sectionMfa"),
-                  <div className="flex flex-col gap-4">
-                    {switchRow("mfa_required", t("mfaRequired"), t("mfaHint"))}
-                    {numField("sensitive_action_reauth_minutes", t("reauthWindow"), t("unitMinutes"), t("reauthHint"))}
-                  </div>,
-                )}
+                      {numField("max_failed_attempts", t("lockoutThreshold"), t("unitAttempts"), t("lockoutThresholdHint"))}
+                      {numField("lockout_duration_minutes", t("lockoutDuration"), t("unitMinutes"))}
+                    </div>,
+                  )}
+                  {section(
+                    t("sectionSessions"),
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {numField("access_token_ttl_minutes", t("accessTokenTtl"), t("unitMinutes"))}
+                      {numField("refresh_token_ttl_days", t("refreshTokenTtl"), t("unitDays"))}
+                    </div>,
+                  )}
+                  {section(
+                    t("sectionPassword"),
+                    <div className="flex flex-col gap-4">
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        {numField("password_min_length", t("minLength"), t("unitChars"))}
+                        {numField("password_history_check_count", t("historyCount"), t("unitPasswords"), t("historyHint"))}
+                        {numField("password_max_age_days", t("passwordMaxAge"), t("unitDays"), t("passwordMaxAgeHint"))}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        {switchRow("password_require_uppercase", t("requireUpper"))}
+                        {switchRow("password_require_lowercase", t("requireLowercase"))}
+                        {switchRow("password_require_number", t("requireNumber"))}
+                        {switchRow("password_require_symbol", t("requireSymbol"))}
+                      </div>
+                    </div>,
+                  )}
+                  {section(
+                    t("sectionMfa"),
+                    <div className="flex flex-col gap-4">
+                      {switchRow("mfa_required", t("mfaRequired"), t("mfaHint"))}
+                      {numField("sensitive_action_reauth_minutes", t("reauthWindow"), t("unitMinutes"), t("reauthHint"))}
+                    </div>,
+                  )}
+                </fieldset>
               </CardContent>
             </Form>
             <CardFooter className="flex-col items-stretch gap-3 sm:flex-row sm:items-center">
-              {dirty && <span className="text-xs text-muted-foreground">{t("unsaved")}</span>}
+              {!canEdit ? (
+                <span className="text-xs text-muted-foreground">{tc("noPermission")}</span>
+              ) : (
+                dirty && <span className="text-xs text-muted-foreground">{t("unsaved")}</span>
+              )}
               <ButtonRow layout="split" className="sm:ms-auto">
-                <Button variant="secondary" size="lg" onClick={onReset} disabled={!dirty}>
+                <Button variant="secondary" size="lg" onClick={onReset} disabled={!dirty || !canEdit}>
                   {t("reset")}
                 </Button>
-                <Button size="lg" onClick={openSave} disabled={!dirty}>
+                <Button size="lg" onClick={openSave} disabled={!dirty || !canEdit}>
                   {t("save")}
                 </Button>
               </ButtonRow>
@@ -329,7 +351,10 @@ export function SecurityPolicyEditor() {
                         </span>
                         <p className="text-sm text-muted-foreground">{version.change_reason ?? "-"}</p>
                         <span className="text-xs text-muted-foreground">
-                          {t("changedBy", { name: versionActor(version) })}
+                          {t.rich("changedBy", {
+                            name: versionActor(version, t("unknownActor")),
+                            link: actorLink(version),
+                          })}
                         </span>
                       </div>
                     </li>
@@ -348,7 +373,7 @@ export function SecurityPolicyEditor() {
             <DialogDescription>{t("saveDesc")}</DialogDescription>
           </DialogHeader>
           <DialogBody>
-            <Field label={t("reasonLabel")} htmlFor="sp-reason" error={reasonForm.formState.errors.reason?.message}>
+            <Field label={t("reasonLabel")} required htmlFor="sp-reason" error={reasonForm.formState.errors.reason?.message}>
               <Textarea
                 id="sp-reason"
                 rows={3}

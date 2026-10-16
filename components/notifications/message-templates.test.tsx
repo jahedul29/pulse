@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import mockMessages from "../../messages/en.json";
 import { MessageTemplates } from "./message-templates";
+import { useAuthStore } from "@/lib/auth/store";
 
 const template = {
   id: 1,
@@ -14,6 +15,19 @@ const template = {
 };
 
 const createMock = jest.fn();
+
+let mockSearch = new URLSearchParams();
+const mockReplace = jest.fn();
+
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn(), replace: mockReplace }),
+  useSearchParams: () => mockSearch,
+}));
+
+beforeEach(() => {
+  mockSearch = new URLSearchParams();
+  mockReplace.mockReset();
+});
 
 jest.mock("../../lib/notifications/queries", () => ({
   useAllTemplates: () => ({ data: [template], isPending: false, isError: false, refetch: jest.fn() }),
@@ -58,6 +72,13 @@ jest.mock("next-intl", () => {
   };
 });
 
+
+beforeEach(() => {
+  useAuthStore.setState({
+    session: { email: "owner@abapro.health", name: "Owner", role: "superadmin", token: "t", issuedAt: 0 },
+  });
+});
+
 describe("MessageTemplates", () => {
   afterEach(() => createMock.mockReset());
 
@@ -70,7 +91,8 @@ describe("MessageTemplates", () => {
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByLabelText("English copy")).toBeInTheDocument();
     expect(within(dialog).getByLabelText("Arabic copy")).toBeInTheDocument();
-    expect(within(dialog).getByLabelText("Subject (English)")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText(/^Subject \(English\)/)).toBeInTheDocument();
+    expect(within(dialog).getByText("Subject (English)").closest("label")).toHaveTextContent("required");
     expect(within(dialog).getByRole("button", { name: "Create template" })).toBeInTheDocument();
   });
 
@@ -95,5 +117,16 @@ describe("MessageTemplates", () => {
     expect(within(dialog).getByText("An English subject is required.")).toBeInTheDocument();
     expect(within(dialog).getByText("English copy is required.")).toBeInTheDocument();
     expect(createMock).not.toHaveBeenCalled();
+  });
+
+  it("opens the template drawer from an ?open= deep link and clears it on close", async () => {
+    mockSearch = new URLSearchParams("open=1");
+    render(<MessageTemplates />);
+
+    const dialog = await screen.findByRole("dialog", { name: "OTP message" });
+    expect(within(dialog).getByText("AUTH_OTP")).toBeInTheDocument();
+
+    await userEvent.keyboard("{Escape}");
+    expect(mockReplace).toHaveBeenCalledWith("/admin/notifications/templates");
   });
 });

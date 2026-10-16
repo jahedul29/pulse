@@ -1,12 +1,28 @@
+"use client"
+
 import * as React from "react"
+import { useTranslations } from "next-intl"
 import { AlertCircle, Check } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
 
+function RequiredMark() {
+  const t = useTranslations("common")
+  return (
+    <>
+      <span aria-hidden="true" className="ms-0.5 text-danger">
+        *
+      </span>
+      <span className="sr-only">{t("required")}</span>
+    </>
+  )
+}
+
 function Field({
   label,
   htmlFor,
+  required = false,
   error,
   success,
   hint,
@@ -16,6 +32,7 @@ function Field({
 }: {
   label: string
   htmlFor?: string
+  required?: boolean
   error?: string
   success?: string
   hint?: string
@@ -41,7 +58,12 @@ function Field({
 
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <Label htmlFor={htmlFor}>{label}</Label>
+      <Label htmlFor={htmlFor}>
+        <span>
+          {label}
+          {required && <RequiredMark />}
+        </span>
+      </Label>
       {children}
       {reserveMessage ? (
         <div className="min-h-4 text-xs leading-4">{message}</div>
@@ -63,4 +85,4 @@ function FieldError({ children }: { children: React.ReactNode }) {
   )
 }
 
-export { Field, FieldError }
+export { Field, FieldError, RequiredMark }

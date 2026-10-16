@@ -156,6 +156,7 @@ export function LoginAuditLog() {
         accessorFn: (entry) => entry.createdAt,
         size: 172,
         header: t("colTimestamp"),
+        meta: { filter: "dateRange", filterLabel: t("colTimestamp") },
         cell: ({ row }) => (
           <span className="text-xs whitespace-nowrap tabular">
             {fmtStamp(row.original.createdAt, locale)}

@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/api/query-keys";
-import { useAuthStore } from "@/lib/auth/store";
+import { useAuthed } from "@/lib/auth/use-authed";
 import {
   attachUserRoles,
   createRole,
@@ -18,10 +18,6 @@ import {
   type ListParams,
 } from "./rbac-api";
 import type { RoleDto, StoreRoleBody, UpdateRoleBody } from "./dto";
-
-function useAuthed() {
-  return useAuthStore((state) => Boolean(state.session?.accessToken ?? state.session?.token));
-}
 
 export function useRoles(params: ListParams) {
   const authed = useAuthed();
@@ -108,15 +104,24 @@ function setAccessRoles(qc: ReturnType<typeof useQueryClient>, userId: string, r
   qc.setQueryData<AdminAccess>(queryKeys.adminAccess(userId), (previous) => ({
     roles,
     permissions: previous?.permissions ?? [],
+    effectivePermissionCount: previous?.effectivePermissionCount ?? 0,
   }));
+}
+
+function refreshAccess(qc: ReturnType<typeof useQueryClient>, userId: string) {
+  void qc.invalidateQueries({ queryKey: queryKeys.adminAccess(userId) });
+  void qc.invalidateQueries({ queryKey: ["admin-users"] });
 }
 
 export function useAttachUserRoles() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ userId, roleIds }: { userId: string; roleIds: number[] }) =>
-      attachUserRoles(userId, roleIds),
-    onSuccess: (roles, { userId }) => setAccessRoles(qc, userId, roles),
+    mutationFn: ({ userId, roleIds, expiresAt }: { userId: string; roleIds: number[]; expiresAt?: string | null }) =>
+      attachUserRoles(userId, roleIds, expiresAt),
+    onSuccess: (roles, { userId }) => {
+      setAccessRoles(qc, userId, roles);
+      refreshAccess(qc, userId);
+    },
   });
 }
 
@@ -125,7 +130,10 @@ export function useDetachUserRoles() {
   return useMutation({
     mutationFn: ({ userId, roleIds }: { userId: string; roleIds: number[] }) =>
       detachUserRoles(userId, roleIds),
-    onSuccess: (roles, { userId }) => setAccessRoles(qc, userId, roles),
+    onSuccess: (roles, { userId }) => {
+      setAccessRoles(qc, userId, roles);
+      refreshAccess(qc, userId);
+    },
   });
 }
 
@@ -134,10 +142,13 @@ export function useSyncUserPermissions() {
   return useMutation({
     mutationFn: ({ userId, permissionIds }: { userId: string; permissionIds: number[] }) =>
       syncUserPermissions(userId, permissionIds),
-    onSuccess: (assignment, { userId }) =>
-      qc.setQueryData<AdminAccess>(queryKeys.adminAccess(userId), {
-        roles: assignment.roles,
+    onSuccess: (assignment, { userId }) => {
+      qc.setQueryData<AdminAccess>(queryKeys.adminAccess(userId), (previous) => ({
+        roles: previous?.roles ?? assignment.roles,
         permissions: assignment.direct_permissions,
-      }),
+        effectivePermissionCount: previous?.effectivePermissionCount ?? 0,
+      }));
+      refreshAccess(qc, userId);
+    },
   });
 }

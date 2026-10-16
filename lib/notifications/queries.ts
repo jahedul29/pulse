@@ -6,7 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/api/query-keys";
-import { useAuthStore } from "@/lib/auth/store";
+import { useAuthed } from "@/lib/auth/use-authed";
 import {
   createAlertRoute,
   createTemplate,
@@ -33,10 +33,6 @@ import type {
   UpdateAlertRouteBody,
   UpdateTemplateBody,
 } from "./dto";
-
-function useAuthed() {
-  return useAuthStore((state) => Boolean(state.session?.accessToken ?? state.session?.token));
-}
 
 export function useAllTemplates() {
   const authed = useAuthed();

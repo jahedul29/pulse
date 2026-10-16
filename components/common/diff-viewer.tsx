@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -7,11 +8,15 @@ const EMPTY = "∅";
 
 export function DiffViewer({
   changes,
+  renderValue,
   className,
 }: {
   changes: DiffChange[];
+  renderValue?: (value: string, column: string) => ReactNode;
   className?: string;
 }) {
+  const show = (value: string | null, column: string) =>
+    value == null ? EMPTY : renderValue ? renderValue(value, column) : value;
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       {changes.map((change, i) => (
@@ -26,7 +31,7 @@ export function DiffViewer({
                   : "bg-danger/10 text-danger line-through decoration-danger/40",
               )}
             >
-              {change.before ?? EMPTY}
+              {show(change.before, change.column)}
             </span>
             <ArrowRight className="size-3 shrink-0 text-muted-foreground rtl:-scale-x-100" />
             <span
@@ -35,7 +40,7 @@ export function DiffViewer({
                 change.after == null ? "text-muted-foreground" : "bg-success/10 text-success",
               )}
             >
-              {change.after ?? EMPTY}
+              {show(change.after, change.column)}
             </span>
           </div>
         </div>

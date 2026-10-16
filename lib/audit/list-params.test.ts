@@ -6,6 +6,16 @@ function state(partial: Partial<ServerTableState>): ServerTableState {
 }
 
 describe("login-audit serverStateToParams", () => {
+  it("maps the Created at date range to created_at_from/_to ISO datetimes", () => {
+    const from = new Date(2026, 9, 14, 0, 0, 0, 0).getTime();
+    const to = new Date(2026, 9, 14, 23, 59, 59, 999).getTime();
+    const params = serverStateToParams(state({ columnFilters: [{ id: "timestamp", value: [from, to] }] }));
+    expect(params.filters).toEqual({
+      created_at_from: new Date(from).toISOString(),
+      created_at_to: new Date(to).toISOString(),
+    });
+  });
+
   it("defaults to page 1 + created_at desc when no state", () => {
     expect(serverStateToParams(null)).toEqual({ page: 1, perPage: 10, sort: { created_at: "desc" } });
   });

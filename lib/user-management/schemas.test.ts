@@ -2,7 +2,6 @@ import { inviteSchema } from "./schemas";
 
 const messages = {
   staffRequired: "staff",
-  roleRequired: "role",
 };
 const schema = () => inviteSchema(messages);
 
@@ -22,8 +21,8 @@ describe("inviteSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("requires at least one role", () => {
+  it("treats proposed roles as optional", () => {
     const result = schema().safeParse({ staffId: "st-1", email: "new@abapro.health", roleIds: [] });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 });

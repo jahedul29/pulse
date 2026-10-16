@@ -10,6 +10,10 @@ describe("toEpoch / accountName", () => {
   it("builds a name from staff, falls back to email then null", () => {
     expect(accountName({ staff: { first_name: "Dana", last_name: "Okonkwo" } })).toBe("Dana Okonkwo");
     expect(accountName({ email: "dana@x.com" })).toBe("dana@x.com");
+    expect(
+      accountName({ full_name: "System Admin", staff: { first_name: "Old", last_name: "Name" }, email: "a@x.com" }),
+    ).toBe("System Admin");
+    expect(accountName({ full_name: "  ", staff: { first_name: "Dana", last_name: "Okonkwo" } })).toBe("Dana Okonkwo");
     expect(accountName(null)).toBeNull();
     expect(accountName({})).toBeNull();
   });

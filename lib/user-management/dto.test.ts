@@ -1,6 +1,7 @@
 import {
   initialsOf,
   invitationDtoToRow,
+  invitationStatus,
   normalizeInvitationStatus,
   normalizeStatus,
   staffDtoToRecord,
@@ -70,6 +71,14 @@ describe("userDtoToRow", () => {
     ],
   };
 
+  it("carries the status reason the backend stored, ignoring blanks", () => {
+    expect(userDtoToRow({ ...dto, status: "SUSPENDED", status_reason: " Leave of absence " }).statusReason).toBe(
+      "Leave of absence",
+    );
+    expect(userDtoToRow({ ...dto, status_reason: "  " }).statusReason).toBeNull();
+    expect(userDtoToRow(dto).statusReason).toBeNull();
+  });
+
   it("maps identity, status, name and derived fields", () => {
     const row = userDtoToRow(dto);
     expect(row.id).toBe(dto.id);
@@ -80,6 +89,14 @@ describe("userDtoToRow", () => {
     expect(row.effectiveStatus).toBe("active");
     expect(row.resendReady).toBe(false);
     expect(row.preferredLanguage).toBe("en");
+  });
+
+  it("prefers the BE full_name and maps username", () => {
+    const row = userDtoToRow({ ...dto, full_name: "Test Administrator", username: "SUID-0005" });
+    expect(row.name).toBe("Test Administrator");
+    expect(row.initials).toBe("TA");
+    expect(row.username).toBe("SUID-0005");
+    expect(userDtoToRow(dto).username).toBeNull();
   });
 
   it("carries role refs and ids", () => {
@@ -131,7 +148,7 @@ describe("invitationDtoToRow", () => {
     staff_id: 9,
     email: "omar@abapro.health",
     status: "pending",
-    expires_at: "2026-09-20T00:00:00Z",
+    expires_at: "2099-09-20T00:00:00Z",
     created_at: "2026-09-10T00:00:00Z",
     staff: { id: 9, first_name: "Omar", last_name: "Haddad" },
   };
@@ -144,6 +161,31 @@ describe("invitationDtoToRow", () => {
     expect(row.name).toBe("Omar Haddad");
     expect(row.email).toBe("omar@abapro.health");
     expect(row.roleIds).toEqual([]);
+  });
+
+  it("shows a still-PENDING invitation as expired once its expiry has passed", () => {
+    const row = invitationDtoToRow({ ...dto, status: "PENDING", expires_at: "2026-09-28T17:22:58.000000Z" });
+    expect(row.status).toBe("expired");
+    expect(row.effectiveStatus).toBe("expired");
+  });
+});
+
+describe("invitationStatus", () => {
+  const now = Date.parse("2026-10-15T12:00:00Z");
+
+  it("keeps a pending invitation pending until its expiry", () => {
+    expect(invitationStatus({ status: "PENDING", expires_at: "2026-10-22T08:23:46.000000Z" }, now)).toBe("pending");
+    expect(invitationStatus({ status: "PENDING", expires_at: null }, now)).toBe("pending");
+  });
+
+  it("derives expired from expires_at because the backend keeps PENDING", () => {
+    expect(invitationStatus({ status: "PENDING", expires_at: "2026-09-30T14:26:32.000000Z" }, now)).toBe("expired");
+    expect(invitationStatus({ status: "PENDING", expires_at: "2026-10-15T12:00:00Z" }, now)).toBe("expired");
+  });
+
+  it("never overrides a revoked or accepted invitation", () => {
+    expect(invitationStatus({ status: "REVOKED", expires_at: "2026-09-28T12:33:43.000000Z" }, now)).toBe("revoked");
+    expect(invitationStatus({ status: "ACCEPTED", expires_at: "2026-09-28T12:33:43.000000Z" }, now)).toBe("active");
   });
 });
 

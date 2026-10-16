@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import mockMessages from "../../messages/en.json";
 import { PermissionMatrix } from "./permission-matrix";
+import { useAuthStore } from "@/lib/auth/store";
 
 jest.mock("next/navigation", () => ({ useRouter: () => ({ push: jest.fn() }) }));
 
@@ -46,6 +47,13 @@ jest.mock("next-intl", () => {
   };
 });
 
+
+beforeEach(() => {
+  useAuthStore.setState({
+    session: { email: "owner@abapro.health", name: "Owner", role: "superadmin", token: "t", issuedAt: 0 },
+  });
+});
+
 describe("PermissionMatrix", () => {
   it("renders the module group with its real permissions and a pristine Save disabled", async () => {
     render(<PermissionMatrix roleId="1" />);
@@ -54,5 +62,15 @@ describe("PermissionMatrix", () => {
     expect(screen.getAllByText("client:read").length).toBeGreaterThan(0);
     expect(screen.getAllByText("client:update").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+  });
+
+  it("locks the matrix for an admin without the roles edit permission", async () => {
+    useAuthStore.setState({
+      session: { email: "viewer@abapro.health", name: "Viewer", role: "admin", token: "t", issuedAt: 0, permissions: ["ROLES.roles.VIEW"] },
+    });
+    render(<PermissionMatrix roleId="1" />);
+
+    expect(await screen.findByText("You don't have permission to do this.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save changes" })).not.toBeInTheDocument();
   });
 });

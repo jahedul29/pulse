@@ -4,6 +4,7 @@ import {
   deliveryStatusTone,
   localizedText,
   normalizeAudienceFilter,
+  recipientName,
 } from "./dto";
 import type { NotificationAlertRouteDto } from "./dto";
 
@@ -83,5 +84,20 @@ describe("deliveryStatusTone", () => {
     expect(deliveryStatusTone("SENT")).toBe("success");
     expect(deliveryStatusTone("FAILED")).toBe("danger");
     expect(deliveryStatusTone("PENDING")).toBe("warning");
+  });
+});
+
+describe("recipientName", () => {
+  const base = { id: "d-1", admin_account_id: "01a0af2a-c372-7318-beda-d54750399138" } as Parameters<typeof recipientName>[0];
+
+  it("prefers the BE full_name, then staff name, then email, then a short id", () => {
+    expect(
+      recipientName({ ...base, admin_account: { id: "u", full_name: "System Admin", staff: { first_name: "A", last_name: "B" } } }),
+    ).toBe("System Admin");
+    expect(recipientName({ ...base, admin_account: { id: "u", staff: { first_name: "Dana", last_name: "Okonkwo" } } })).toBe(
+      "Dana Okonkwo",
+    );
+    expect(recipientName({ ...base, admin_account: { id: "u", email: "dana@x.com" } })).toBe("dana@x.com");
+    expect(recipientName({ ...base, admin_account: null })).toBe("01a0af2a…");
   });
 });

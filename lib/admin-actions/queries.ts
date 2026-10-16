@@ -1,11 +1,7 @@
 import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/api/query-keys";
-import { useAuthStore } from "@/lib/auth/store";
-import { listAdminActions, listChangeLog, type ListParams } from "./audit-api";
-
-function useAuthed() {
-  return useAuthStore((state) => Boolean(state.session?.accessToken ?? state.session?.token));
-}
+import { useAuthed } from "@/lib/auth/use-authed";
+import { getActionFilterOptions, listAdminActions, listChangeLog, type ListParams } from "./audit-api";
 
 export function useAdminActions(params: ListParams) {
   const authed = useAuthed();
@@ -30,6 +26,16 @@ export function useAdminActionSearch(search: string, enabled: boolean) {
     },
     enabled: authed && enabled,
     placeholderData: keepPreviousData,
+  });
+}
+
+export function useActionFilterOptions() {
+  const authed = useAuthed();
+  return useQuery({
+    queryKey: queryKeys.adminActionFilterOptions(),
+    queryFn: getActionFilterOptions,
+    staleTime: 5 * 60_000,
+    enabled: authed,
   });
 }
 

@@ -1,18 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type SyntheticEvent } from "react";
-import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import type { ColumnDef } from "@tanstack/react-table";
-import { ChevronDown, ChevronUp, MoreHorizontal, Plus } from "lucide-react";
+import { Ban, ChevronDown, ChevronUp, CirclePause, CirclePlay, Plus, Send, UserX } from "lucide-react";
 import { toast } from "sonner";
 
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +38,10 @@ import { DataTable, toolbarIconButtonClass, type ServerTableState } from "@/comp
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ProfileCell } from "@/components/common/profile-cell";
 import { Chip } from "@/components/common/chip";
+import { ChipLink, RecordLink } from "@/components/common/record-link";
+import { AdminIdLink } from "@/components/admin/record-refs";
+import { UserAccessEditor } from "@/components/admin/user-access-editor";
+import { recordHref } from "@/lib/record-links";
 import { StatusBadge, type Tone } from "@/components/common/status-badge";
 import { DetailList } from "@/components/common/detail-list";
 import { Field } from "@/components/ui/field";
@@ -64,6 +69,7 @@ import { useHasPermission, PERMISSIONS } from "@/lib/auth/permissions";
 import type { AdminUserRow, AdminUserStatus, EffectiveStatus } from "@/lib/user-management/types";
 
 const CONFIRM_WORD = "DEACTIVATE";
+const STATUS_REASON_MAX = 255;
 
 const STATUS_TONE: Record<EffectiveStatus, Tone> = {
   pending: "neutral",
@@ -84,8 +90,11 @@ export function UserManagement() {
   const languageLabel = useLanguageLabel();
   const locale = useLocale();
 
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const selfEmail = useAuthStore((state) => state.session?.email?.toLowerCase() ?? "");
   const canManage = useHasPermission(PERMISSIONS.USER_MANAGEMENT_EDIT);
+  const canInvite = useHasPermission(PERMISSIONS.INVITATIONS_EDIT);
 
   const [server, setServer] = useState<ServerTableState | null>(null);
   const params = useMemo(() => serverStateToParams(server), [server]);
@@ -112,45 +121,71 @@ export function UserManagement() {
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [revoking, setRevoking] = useState<AdminUserRow | null>(null);
+  const [suspending, setSuspending] = useState<AdminUserRow | null>(null);
+  const [statusReason, setStatusReason] = useState("");
   const [deactivating, setDeactivating] = useState<AdminUserRow | null>(null);
   const [confirmText, setConfirmText] = useState("");
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [linkedId, setLinkedId] = useState<string | null>(searchParams.get("open"));
 
-  const active = selectedIndex == null ? null : (rows[selectedIndex] ?? null);
+  const linkedIndex = linkedId ? rows.findIndex((row) => row.id === linkedId) : -1;
+  const activeIndex = selectedIndex ?? (linkedIndex >= 0 ? linkedIndex : null);
+  const active = activeIndex == null ? null : (rows[activeIndex] ?? null);
   const [retained, setRetained] = useState<AdminUserRow | null>(null);
-  const selected = active ?? retained;
-  const devicesQuery = useUserDevices(selected?.id ?? null);
 
   const [selectedInvite, setSelectedInvite] = useState<AdminUserRow | null>(null);
-  const shownInvite = useRetained(selectedInvite);
+  const [linkedInviteId, setLinkedInviteId] = useState<string | null>(searchParams.get("invite"));
   const loadInvitation = useCallback((id: string) => fetchInvitation(id), []);
   const {
     data: inviteDetail,
     loading: inviteLoading,
     error: inviteError,
     reload: inviteReload,
-  } = useRecordDetail(selectedInvite?.id ?? null, loadInvitation);
+  } = useRecordDetail(selectedInvite?.id ?? linkedInviteId, loadInvitation);
+  const linkedInvite =
+    linkedInviteId && !selectedInvite && inviteDetail?.id === linkedInviteId ? inviteDetail : null;
+  const shownInvite = useRetained(selectedInvite ?? linkedInvite);
+  const closeInvite = () => {
+    setSelectedInvite(null);
+    if (!linkedInviteId) return;
+    setLinkedInviteId(null);
+    router.replace("/admin/user-management");
+  };
   const detailRef = useRef<HTMLDivElement>(null);
   const loadDetail = useCallback(
     (id: string) => fetchAdminUserDetail(id).then(userDetailToDetail),
     [],
   );
   const { data: detail, loading: detailLoading, error: detailError, reload } = useRecordDetail(
-    selected?.id ?? null,
+    active?.id ?? linkedId ?? retained?.id ?? null,
     loadDetail,
   );
+  const linkedDetail = linkedId && detail?.id === linkedId ? detail : null;
+  const selected = active ?? linkedDetail ?? retained;
+  const devicesQuery = useUserDevices(selected?.id ?? null);
 
   useEffect(() => {
     detailRef.current?.scrollTo({ top: 0 });
   }, [selected?.id]);
 
+  const clearLink = () => {
+    if (!linkedId) return;
+    setLinkedId(null);
+    router.replace("/admin/user-management");
+  };
   const openAt = (index: number) => {
+    clearLink();
     setSelectedIndex(index);
     setRetained(rows[index] ?? null);
   };
+  const closeDetail = () => {
+    if (selected) setRetained(selected);
+    setSelectedIndex(null);
+    clearLink();
+  };
   const page = (delta: number) => {
-    if (selectedIndex == null) return;
-    openAt(stepIndex(selectedIndex, delta, rows.length));
+    if (activeIndex == null) return;
+    openAt(stepIndex(activeIndex, delta, rows.length));
   };
 
   const rolesQuery = useRoles({ page: 1, perPage: 100 });
@@ -208,10 +243,21 @@ export function UserManagement() {
     if (!deactivating || confirmText !== CONFIRM_WORD) return;
     const target = deactivating;
     try {
-      await mutateStatusAsync({ id: target.id, status: "deactivated" });
+      await mutateStatusAsync({ id: target.id, status: "deactivated", reason: statusReason.trim() || undefined });
       toast.success(t("deactivatedToast", { name: target.name }));
       setDeactivating(null);
       setConfirmText("");
+    } catch {
+      toast.error(t("changeFailed"));
+    }
+  };
+  const confirmSuspend = async () => {
+    if (!suspending) return;
+    const target = suspending;
+    try {
+      await mutateStatusAsync({ id: target.id, status: "suspended", reason: statusReason.trim() || undefined });
+      toast.success(t("suspendedToast", { name: target.name }));
+      setSuspending(null);
     } catch {
       toast.error(t("changeFailed"));
     }
@@ -220,6 +266,7 @@ export function UserManagement() {
   type RowAction = {
     key: string;
     label: string;
+    icon: typeof Send;
     onSelect: () => void;
     variant?: "default" | "destructive";
     disabled?: boolean;
@@ -228,21 +275,26 @@ export function UserManagement() {
 
   const actionsFor = useCallback(
     (user: AdminUserRow): RowAction[] => {
-      if (!canManage) return [];
       const selfBlock = user.email.toLowerCase() === selfEmail ? t("selfBlock") : undefined;
       const suspendItem: RowAction = {
         key: "suspend",
         label: t("actionSuspend"),
-        onSelect: () => applyStatus(user.id, "suspended", t("suspendedToast", { name: user.name })),
+        icon: CirclePause,
+        onSelect: () => {
+          setStatusReason("");
+          setSuspending(user);
+        },
         disabled: Boolean(selfBlock),
         title: selfBlock,
       };
       const deactivateItem: RowAction = {
         key: "deactivate",
         label: t("actionDeactivate"),
+        icon: UserX,
         variant: "destructive",
         onSelect: () => {
           setConfirmText("");
+          setStatusReason("");
           setDeactivating(user);
         },
         disabled: Boolean(selfBlock),
@@ -251,6 +303,7 @@ export function UserManagement() {
       const reactivateItem: RowAction = {
         key: "reactivate",
         label: t("actionReactivate"),
+        icon: CirclePlay,
         onSelect: () => applyStatus(user.id, "active", t("reactivatedToast", { name: user.name })),
         disabled: Boolean(selfBlock),
         title: selfBlock,
@@ -258,11 +311,13 @@ export function UserManagement() {
       switch (user.effectiveStatus) {
         case "expired":
         case "pending": {
+          if (!canInvite) return [];
           const cooldownActive = user.invitableAgainAt != null && user.invitableAgainAt > now;
           return [
             {
               key: "resend",
               label: t("actionResend"),
+              icon: Send,
               onSelect: () => resendInvite(user),
               disabled: !user.invitationId || cooldownActive,
               title: !user.invitationId
@@ -274,6 +329,7 @@ export function UserManagement() {
             {
               key: "revoke",
               label: t("actionRevoke"),
+              icon: Ban,
               variant: "destructive",
               onSelect: () => setRevoking(user),
               disabled: !user.invitationId,
@@ -282,14 +338,14 @@ export function UserManagement() {
           ];
         }
         case "active":
-          return [suspendItem, deactivateItem];
+          return canManage ? [suspendItem, deactivateItem] : [];
         case "suspended":
-          return [reactivateItem, deactivateItem];
+          return canManage ? [reactivateItem, deactivateItem] : [];
         default:
           return [];
       }
     },
-    [t, canManage, selfEmail, applyStatus, resendInvite, now, locale],
+    [t, canManage, canInvite, selfEmail, applyStatus, resendInvite, now, locale],
   );
 
   const { accountsColumns, invitationColumns } = useMemo(() => {
@@ -412,7 +468,7 @@ export function UserManagement() {
     const actionsCol: ColumnDef<AdminUserRow, unknown> = {
       id: "actions",
       enableSorting: false,
-      size: 80,
+      size: 96,
       header: "",
       meta: { headClassName: "text-end", cellClassName: "text-end", noClip: true },
       cell: ({ row }) => {
@@ -420,50 +476,52 @@ export function UserManagement() {
         const stop = (event: SyntheticEvent) => event.stopPropagation();
         if (items.length === 0) {
           return (
-            <div className="flex justify-end" onClick={stop} onKeyDown={stop}>
-              <Tooltip>
-                <TooltipTrigger
-                  render={<Button size="icon-sm" variant="ghost" disabled aria-label={t("noActions")} />}
-                >
-                  <MoreHorizontal className="size-4" />
-                </TooltipTrigger>
-                <TooltipContent>{t("noActions")}</TooltipContent>
-              </Tooltip>
+            <div className="flex justify-end pe-2 text-muted-foreground">
+              <span aria-hidden>-</span>
+              <span className="sr-only">{t("noActions")}</span>
             </div>
           );
         }
         return (
-          <div className="flex justify-end" onClick={stop} onKeyDown={stop}>
-            <Menu>
-              <MenuTrigger render={<Button size="icon-sm" variant="ghost" aria-label={t("rowActions")} />}>
-                <MoreHorizontal className="size-4" />
-              </MenuTrigger>
-              <MenuContent>
-                {items.map((item) =>
-                  item.title ? (
-                    <Tooltip key={item.key}>
-                      <TooltipTrigger
-                        render={
-                          <MenuItem variant={item.variant} disabled={item.disabled} onClick={item.onSelect} />
-                        }
-                      >
-                        {item.label}
-                      </TooltipTrigger>
-                      <TooltipContent>{item.title}</TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    <MenuItem
-                      key={item.key}
-                      variant={item.variant}
-                      disabled={item.disabled}
-                      onClick={item.onSelect}
-                    >
-                      {item.label}
-                    </MenuItem>
-                  ),
-                )}
-              </MenuContent>
-            </Menu>
+          <div
+            role="group"
+            aria-label={t("rowActions")}
+            className="flex items-center justify-end gap-0.5"
+            onClick={stop}
+            onKeyDown={stop}
+          >
+            {items.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Tooltip key={item.key}>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        focusableWhenDisabled
+                        disabled={item.disabled}
+                        aria-label={item.label}
+                        onClick={item.onSelect}
+                        className={cn(
+                          "size-8 text-muted-foreground hover:text-foreground data-[disabled]:hover:bg-transparent data-[disabled]:hover:text-muted-foreground",
+                          item.variant === "destructive" && "hover:bg-danger-muted hover:text-danger",
+                        )}
+                      />
+                    }
+                  >
+                    <Icon className="size-4" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <span className="flex flex-col gap-0.5">
+                      <span>{item.label}</span>
+                      {item.title && <span className="text-xs opacity-80">{item.title}</span>}
+                    </span>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
           </div>
         );
       },
@@ -482,7 +540,7 @@ export function UserManagement() {
           <CardDescription>{t("subtitle")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="accounts" className="gap-4">
+          <Tabs defaultValue={linkedInviteId ? "pending" : "accounts"} className="gap-4">
             <TabsList>
               <TabsTrigger value="accounts">{t("tabAccounts")}</TabsTrigger>
               <TabsTrigger value="pending">
@@ -536,7 +594,8 @@ export function UserManagement() {
                           <Button
                             size="lg"
                             onClick={() => setInviteOpen(true)}
-                            disabled={!canManage}
+                            focusableWhenDisabled
+                            disabled={!canInvite}
                             aria-label={t("inviteAdmin")}
                             className={toolbarIconButtonClass}
                           />
@@ -545,7 +604,7 @@ export function UserManagement() {
                         <Plus className="size-4" />
                         <span className="hidden sm:inline">{t("inviteAdmin")}</span>
                       </TooltipTrigger>
-                      <TooltipContent>{canManage ? t("inviteAdmin") : t("noPermission")}</TooltipContent>
+                      <TooltipContent>{canInvite ? t("inviteAdmin") : t("noPermission")}</TooltipContent>
                     </Tooltip>
                   }
                 />
@@ -639,13 +698,23 @@ export function UserManagement() {
               {deactivating ? t("deactivateBody", { name: deactivating.name }) : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <Field label={t("deactivateConfirmLabel", { word: CONFIRM_WORD })} htmlFor="deactivate-confirm">
+          <Field label={t("deactivateConfirmLabel", { word: CONFIRM_WORD })} required htmlFor="deactivate-confirm">
             <Input
               id="deactivate-confirm"
               value={confirmText}
               onChange={(event) => setConfirmText(event.target.value)}
               placeholder={CONFIRM_WORD}
               autoComplete="off"
+            />
+          </Field>
+          <Field label={t("statusReasonLabel")} htmlFor="deactivate-reason" reserveMessage={false}>
+            <Textarea
+              id="deactivate-reason"
+              rows={2}
+              maxLength={STATUS_REASON_MAX}
+              value={statusReason}
+              onChange={(event) => setStatusReason(event.target.value)}
+              placeholder={t("statusReasonPlaceholder")}
             />
           </Field>
           <AlertDialogFooter layout="split">
@@ -662,33 +731,67 @@ export function UserManagement() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Sheet open={selectedIndex != null} onOpenChange={(open) => !open && setSelectedIndex(null)}>
+      <AlertDialog
+        open={suspending != null}
+        onOpenChange={(open) => {
+          if (!open && !statusPending) setSuspending(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("suspendTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {suspending ? t("suspendBody", { name: suspending.name }) : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Field label={t("statusReasonLabel")} htmlFor="suspend-reason" reserveMessage={false}>
+            <Textarea
+              id="suspend-reason"
+              rows={2}
+              maxLength={STATUS_REASON_MAX}
+              value={statusReason}
+              onChange={(event) => setStatusReason(event.target.value)}
+              placeholder={t("statusReasonPlaceholder")}
+            />
+          </Field>
+          <AlertDialogFooter layout="split">
+            <AlertDialogCancel disabled={statusPending}>{tc("cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmSuspend} loading={statusPending}>
+              {t("suspendConfirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Sheet open={selectedIndex != null || linkedId != null} onOpenChange={(open) => !open && closeDetail()}>
         {selected && (
           <SheetContent onSwipeNext={() => page(1)} onSwipePrev={() => page(-1)}>
             <SheetHeader>
-              <div className="flex items-center gap-1 pe-8">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => page(-1)}
-                  disabled={selectedIndex === 0}
-                  aria-label={tc("prevRecord")}
-                >
-                  <ChevronUp className="size-4" />
-                </Button>
-                <span className="text-xs text-muted-foreground tabular">
-                  {tc("recordPosition", { index: (selectedIndex ?? 0) + 1, total: rows.length })}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => page(1)}
-                  disabled={selectedIndex === rows.length - 1}
-                  aria-label={tc("nextRecord")}
-                >
-                  <ChevronDown className="size-4" />
-                </Button>
-              </div>
+              {activeIndex != null && (
+                <div className="flex items-center gap-1 pe-8">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => page(-1)}
+                    disabled={activeIndex === 0}
+                    aria-label={tc("prevRecord")}
+                  >
+                    <ChevronUp className="size-4" />
+                  </Button>
+                  <span className="text-xs text-muted-foreground tabular">
+                    {tc("recordPosition", { index: activeIndex + 1, total: rows.length })}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => page(1)}
+                    disabled={activeIndex === rows.length - 1}
+                    aria-label={tc("nextRecord")}
+                  >
+                    <ChevronDown className="size-4" />
+                  </Button>
+                </div>
+              )}
               <div className="flex items-center gap-3">
                 <ProfileCell name={selected.name} initials={selected.initials} subtitle={selected.email} />
               </div>
@@ -722,22 +825,13 @@ export function UserManagement() {
                     </div>
                   )}
 
-                  <section className="flex flex-col gap-2">
-                    <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                      {t("sectionRoles")}
-                    </h4>
-                    {(detail.roles ?? []).length === 0 ? (
-                      <p className="text-sm text-muted-foreground">{t("noRoles")}</p>
-                    ) : (
-                      <div className="flex flex-wrap gap-1.5">
-                        {(detail.roles ?? []).map((role) => (
-                          <Link key={role.id} href={`/admin/roles/${role.id}`}>
-                            <Chip className="hover:border-primary hover:text-primary">{role.name}</Chip>
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </section>
+                  <UserAccessEditor
+                    userId={detail.id}
+                    userName={detail.name}
+                    variant="drawer"
+                    canEdit={canManage}
+                    blockedReason={detail.email.toLowerCase() === selfEmail ? t("selfBlock") : undefined}
+                  />
 
                   <section className="flex flex-col gap-2">
                     <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
@@ -749,6 +843,9 @@ export function UserManagement() {
                           label: t("lastLoginLabel"),
                           value: detail.lastLogin == null ? t("never") : fmtDateTime(detail.lastLogin, locale),
                         },
+                        ...(detail.statusReason
+                          ? [{ label: t("statusReasonRow"), value: detail.statusReason }]
+                          : []),
                       ]}
                     />
                   </section>
@@ -803,7 +900,14 @@ export function UserManagement() {
                     </h4>
                     <DetailList
                       items={[
-                        { label: t("invitedByLabel"), value: detail.invitedBy || "-" },
+                        {
+                          label: t("invitedByLabel"),
+                          value: detail.invitedBy ? (
+                            <AdminIdLink id={detail.invitedBy} fallback={t("inviterFallback")} />
+                          ) : (
+                            "-"
+                          ),
+                        },
                         { label: t("createdAtLabel"), value: fmtDateTime(detail.invitedAt, locale) },
                         {
                           label: t("activatedAtLabel"),
@@ -821,6 +925,7 @@ export function UserManagement() {
                     <DetailList
                       items={[
                         { label: t("staffNameLabel"), value: detail.name },
+                        { label: t("usernameLabel"), value: detail.username || "-" },
                         { label: t("staffEmailLabel"), value: detail.email },
                       ]}
                     />
@@ -836,6 +941,7 @@ export function UserManagement() {
                   {items.map((item) => (
                     <Button
                       key={item.key}
+                      size="lg"
                       variant={item.variant === "destructive" ? "outline" : "default"}
                       disabled={item.disabled}
                       onClick={item.onSelect}
@@ -855,7 +961,10 @@ export function UserManagement() {
         )}
       </Sheet>
 
-      <Sheet open={selectedInvite != null} onOpenChange={(open) => !open && setSelectedInvite(null)}>
+      <Sheet
+        open={selectedInvite != null || linkedInviteId != null}
+        onOpenChange={(open) => !open && closeInvite()}
+      >
         {shownInvite &&
           (() => {
             const record = inviteDetail ?? shownInvite;
@@ -906,7 +1015,9 @@ export function UserManagement() {
                         ) : (
                           <div className="flex flex-wrap items-center gap-1.5">
                             {inviteRoles.map((role) => (
-                              <Chip key={role.id}>{role.name}</Chip>
+                              <ChipLink key={role.id} href={recordHref("role", role.id)}>
+                                {role.name}
+                              </ChipLink>
                             ))}
                           </div>
                         )}
@@ -916,7 +1027,17 @@ export function UserManagement() {
                         <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                           {t("invitedByLabel")}
                         </h4>
-                        {record.invitedByName ? (
+                        {record.invitedByName && record.invitedBy ? (
+                          <RecordLink
+                            href={recordHref("adminAccount", record.invitedBy)}
+                            label={t("openAccount", { name: record.invitedByName })}
+                          >
+                            <ProfileCell
+                              name={record.invitedByName}
+                              subtitle={record.invitedByEmail ?? undefined}
+                            />
+                          </RecordLink>
+                        ) : record.invitedByName ? (
                           <ProfileCell
                             name={record.invitedByName}
                             subtitle={record.invitedByEmail ?? undefined}
@@ -961,13 +1082,14 @@ export function UserManagement() {
                     </>
                   )}
                 </SheetBody>
-                {canManage && (
+                {canInvite && (
                   <SheetFooter layout="split">
                     <Button
+                      size="lg"
                       variant="outline"
                       onClick={() => {
                         const target = record;
-                        setSelectedInvite(null);
+                        closeInvite();
                         setRevoking(target);
                       }}
                       className="text-danger hover:bg-danger-muted hover:text-danger"
@@ -975,6 +1097,7 @@ export function UserManagement() {
                       {t("actionRevoke")}
                     </Button>
                     <Button
+                      size="lg"
                       onClick={() => resendInvite(record)}
                       loading={resendPending}
                       disabled={inviteLoading || !record.invitationId || cooldownActive}

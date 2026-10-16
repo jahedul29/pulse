@@ -9,8 +9,8 @@ test("invites an admin and the pending row appears without a refresh", async ({ 
   await page.goto("/admin/user-management");
   await expect(page.getByText("Dana Okonkwo").first()).toBeVisible();
 
-  await page.getByRole("button", { name: "Invite admin" }).click();
-  const dialog = page.getByRole("dialog", { name: "Invite admin" });
+  await page.getByRole("button", { name: "Invite user" }).click();
+  const dialog = page.getByRole("dialog", { name: "Invite user" });
   await expect(dialog).toBeVisible();
 
   await dialog.getByRole("button", { name: "Select a staff member" }).click();
@@ -44,8 +44,10 @@ test("suspends an active account with an optimistic status change", async ({ pag
   const row = page.getByRole("link", { name: "Nadia Kaur" });
   await expect(row).toBeVisible();
 
-  await row.getByRole("button", { name: "Account actions" }).click();
-  await page.getByRole("menuitem", { name: "Suspend" }).click();
+  await row.getByRole("button", { name: "Suspend" }).click();
+  const confirm = page.getByRole("alertdialog");
+  await confirm.getByLabel("Reason (optional)").fill("Leave of absence");
+  await confirm.getByRole("button", { name: "Suspend" }).click();
 
   await expect(row.getByText("Suspended")).toBeVisible();
 });
@@ -55,8 +57,8 @@ test("rolls back an optimistic status change when the API fails", async ({ page 
   const row = page.getByRole("link", { name: "Noah Weiss" });
   await expect(row).toBeVisible();
 
-  await row.getByRole("button", { name: "Account actions" }).click();
-  await page.getByRole("menuitem", { name: "Suspend" }).click();
+  await row.getByRole("button", { name: "Suspend" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Suspend" }).click();
 
   await expect(page.getByText("Couldn't apply the change. Reverted.")).toBeVisible();
   await expect(row.getByText("Active")).toBeVisible();

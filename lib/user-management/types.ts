@@ -11,6 +11,7 @@ export interface AdminUser {
   id: string;
   staffId: string;
   name: string;
+  username?: string | null;
   email: string;
   initials: string;
   status: AdminUserStatus;
@@ -25,6 +26,7 @@ export interface AdminUser {
   invitableAgainAt?: number | null;
   invitationExpiresAt?: number | null;
   preferredLanguage?: string | null;
+  statusReason?: string | null;
   invitedAt: number;
   activatedAt: number | null;
   lastStatusChangeAt: number | null;

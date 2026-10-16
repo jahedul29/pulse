@@ -62,6 +62,13 @@
 :root {
   --radius: 0.7rem;
   --badge-w: 5.6rem;
+  --topbar-height: 4rem;
+  --map-picked: var(--primary);
+  --map-picked-on-dark: var(--lavender);
+  --map-other: var(--grey-4);
+  --map-grid: var(--black);
+  --map-grid-on-dark: var(--white);
+  --map-remove: var(--danger);
   --modal-w: 390px;
 
   --brand-color-1: #4f008b;
@@ -76,6 +83,7 @@
   --black: #000000;
   --white: #ffffff;
   --input-field: #efe3fa;
+  --lavender: #d9b8f2;
   --sidebar-line: #eceaee;
 
   --background: var(--white);
@@ -135,7 +143,7 @@
   --muted: #221a2b;
   --muted-foreground: #a595b0;
   --accent: #2e1f3d;
-  --accent-foreground: #d9b8f2;
+  --accent-foreground: var(--lavender);
   --destructive: var(--brand-color-2);
   --border: #312539;
   --border-strong: #3a2f44;
@@ -160,7 +168,7 @@
   --sidebar-primary: var(--brand-color-1);
   --sidebar-primary-foreground: var(--white);
   --sidebar-accent: #2e1f3d;
-  --sidebar-accent-foreground: #d9b8f2;
+  --sidebar-accent-foreground: var(--lavender);
   --sidebar-border: #2a2033;
   --sidebar-ring: var(--brand-color-1);
 }

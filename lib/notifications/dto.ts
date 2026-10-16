@@ -43,7 +43,7 @@ export interface NotificationDeliveryDto {
   template_id: number | null;
   channel_id: number | null;
   campaign_id: string | null;
-  alert_route_id: string | null;
+  alert_route_id: string | number | null;
   admin_account_id: string | null;
   status: DeliveryStatusCode;
   title: string | null;
@@ -56,9 +56,12 @@ export interface NotificationDeliveryDto {
   channel?: NotificationChannelDto | null;
   template?: NotificationTemplateDto | null;
   campaign?: NotificationCampaignDto | null;
+  alert_route?: { id: number; code?: string | null; name?: string | null } | null;
   admin_account?: {
     id: string;
     email?: string | null;
+    full_name?: string | null;
+    username?: string | null;
     staff_id?: number | null;
     staff?: { first_name?: string | null; last_name?: string | null; nickname?: string | null } | null;
   } | null;
@@ -103,6 +106,7 @@ export interface StoreAlertRouteBody {
   audience_type: AudienceType;
   audience_filter: { role_ids?: number[]; user_ids?: string[] } | never[];
   priority: number;
+  severity: DeliverySeverityCode;
   is_active: boolean;
 }
 
@@ -147,6 +151,10 @@ export function deliveryStatusTone(status: DeliveryStatusCode): Tone {
 export type DeliverySeverityCode = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 export const SEVERITY_ORDER: DeliverySeverityCode[] = ["CRITICAL", "HIGH", "MEDIUM", "LOW"];
 
+export function isSeverityCode(value: string | null | undefined): value is DeliverySeverityCode {
+  return SEVERITY_ORDER.includes(value as DeliverySeverityCode);
+}
+
 export function severityTone(severity: string | null | undefined): Tone {
   if (severity === "CRITICAL" || severity === "HIGH") return "danger";
   if (severity === "MEDIUM") return "warning";
@@ -162,6 +170,7 @@ export function shortId(value: string | null): string {
 export function recipientName(entry: NotificationDeliveryDto): string {
   const account = entry.admin_account;
   const staff = account?.staff;
-  const full = staff ? `${staff.first_name ?? ""} ${staff.last_name ?? ""}`.trim() : "";
+  const full =
+    account?.full_name?.trim() || (staff ? `${staff.first_name ?? ""} ${staff.last_name ?? ""}`.trim() : "");
   return full || account?.email || shortId(entry.admin_account_id);
 }

@@ -4,6 +4,9 @@ import {
   changeDtoToDetail,
   changeDtoToRow,
   flattenPayload,
+  hashChainStatus,
+  humanizeCode,
+  payloadName,
   type AdminActionLogDto,
   type ChangeLogDto,
 } from "./dto";
@@ -14,7 +17,6 @@ describe("actionDtoToRow", () => {
     admin_account_id: "ad-1",
     admin_account: { email: "dana@abapro.health", staff: { first_name: "Dana", last_name: "Okonkwo" } },
     action_code: "user.suspend",
-    target_service: "admin-identity",
     target_type: "User",
     target_id: "42",
     target_summary: "Suspended Yuki Tanaka",
@@ -29,7 +31,6 @@ describe("actionDtoToRow", () => {
     const row = actionDtoToRow(dto);
     expect(row.actionName).toBe("user.suspend");
     expect(row.summary).toBe("Suspended Yuki Tanaka");
-    expect(row.service).toBe("admin-identity");
     expect(row.entity).toBe("User · 42");
     expect(row.targetType).toBe("User");
     expect(row.targetId).toBe("42");
@@ -39,6 +40,47 @@ describe("actionDtoToRow", () => {
     expect(row.actorName).toBe("Dana Okonkwo");
     expect(row.result).toBe("success");
     expect(row.severity).toBe("warning");
+  });
+
+  it("maps target_user to a display name, preferring full_name, then real_name, then email", () => {
+    const targetUser = {
+      id: "u-5",
+      full_name: "Test Administrator",
+      real_name: "Real Name",
+      username: "SUID-0005",
+      email: "administrator@ababro.ai",
+    };
+    expect(actionDtoToRow({ ...dto, target_user: targetUser }).targetUser).toEqual({
+      id: "u-5",
+      name: "Test Administrator",
+      username: "SUID-0005",
+      email: "administrator@ababro.ai",
+    });
+    expect(actionDtoToRow({ ...dto, target_user: { ...targetUser, full_name: " " } }).targetUser?.name).toBe(
+      "Real Name",
+    );
+    expect(
+      actionDtoToRow({ ...dto, target_user: { email: "only@ababro.ai", full_name: null, real_name: null } })
+        .targetUser,
+    ).toEqual({ name: "only@ababro.ai", username: undefined, email: "only@ababro.ai" });
+  });
+
+  it("returns a null target user when absent or nameless", () => {
+    expect(actionDtoToRow(dto).targetUser).toBeNull();
+    expect(actionDtoToRow({ ...dto, target_user: null }).targetUser).toBeNull();
+    expect(actionDtoToRow({ ...dto, target_user: { id: "u-9", username: "SUID-0009" } }).targetUser).toBeNull();
+  });
+
+  it("maps permission_names and role_names, dropping blanks and defaulting to empty", () => {
+    const row = actionDtoToRow({
+      ...dto,
+      permission_names: ["Manage Dashboard module.", "", "View Dashboard module."],
+      role_names: ["Administrator"],
+    });
+    expect(row.permissionNames).toEqual(["Manage Dashboard module.", "View Dashboard module."]);
+    expect(row.roleNames).toEqual(["Administrator"]);
+    expect(actionDtoToRow(dto).permissionNames).toEqual([]);
+    expect(actionDtoToRow({ ...dto, role_names: null }).roleNames).toEqual([]);
   });
 
   it("falls back to System when no admin account", () => {
@@ -54,6 +96,12 @@ describe("actionDtoToRow", () => {
 });
 
 describe("flattenPayload (deep, dotted labels, masked)", () => {
+  it("counts long lists of objects instead of listing every entry", () => {
+    const points = Array.from({ length: 26 }, () => ({ mgrs: "39Q WG 71500 53500" }));
+    expect(flattenPayload({ points })).toEqual([{ key: "points.count", label: "Points · Count", value: "26" }]);
+    expect(flattenPayload({ points: points.slice(0, 2) })).toHaveLength(2);
+  });
+
   it("flattens nested objects to dotted leaf rows", () => {
     const inputs = flattenPayload({
       body: { EN: "Welcome to ABAPRO Admin" },
@@ -71,12 +119,12 @@ describe("flattenPayload (deep, dotted labels, masked)", () => {
   });
 
   it("handles a flat primitive payload with a humanized label", () => {
-    expect(flattenPayload({ seed: true })).toEqual([{ label: "Seed", value: "true" }]);
+    expect(flattenPayload({ seed: true })).toEqual([{ key: "seed", label: "Seed", value: "true" }]);
   });
 
   it("joins an array of primitives into one humanized row", () => {
     expect(flattenPayload({ permission_ids: [1, 4, 3, 6, 5, 70] })).toEqual([
-      { label: "Permission IDs", value: "1, 4, 3, 6, 5, 70" },
+      { key: "permission_ids", label: "Permission IDs", value: "1, 4, 3, 6, 5, 70" },
     ]);
   });
 
@@ -85,6 +133,13 @@ describe("flattenPayload (deep, dotted labels, masked)", () => {
     const map = Object.fromEntries(inputs.map((input) => [input.label, input.value]));
     expect(map["Items[0] · ID"]).toBe("1");
     expect(map["Items[1] · ID"]).toBe("2");
+    expect(inputs.map((input) => input.key)).toEqual(["items[0].id", "items[1].id"]);
+  });
+
+  it("keeps the raw dotted key so ids can be resolved", () => {
+    expect(flattenPayload({ audience_filter: { role_ids: [3, 1] } })).toEqual([
+      { key: "audience_filter.role_ids", label: "Audience filter · Role IDs", value: "3, 1" },
+    ]);
   });
 
   it("masks email-looking values (mask keyed on the raw field, label humanized)", () => {
@@ -99,12 +154,11 @@ describe("actionDtoToDetail", () => {
     const detail = actionDtoToDetail({
       id: "A-1",
       action_code: "template.create",
-      target_service: "notify",
       result: "success",
       severity: "info",
       request_payload: { name: "Welcome message" },
     });
-    expect(detail.inputs).toEqual([{ label: "Name", value: "Welcome message" }]);
+    expect(detail.inputs).toEqual([{ key: "name", label: "Name", value: "Welcome message" }]);
   });
 });
 
@@ -134,6 +188,41 @@ describe("changeDtoToRow / changeDtoToDetail", () => {
     expect(row.changes).toHaveLength(1);
   });
 
+  it("carries the actor (id, username, email) and the embedded action", () => {
+    const row = changeDtoToRow({
+      ...dto,
+      actor: { id: "u-5", full_name: "Test Administrator", username: "SUID-0005", email: "administrator@ababro.ai" },
+      admin_action_log: {
+        id: "34",
+        action_code: "INVITATIONS_CREATE",
+        action_label: "Sent an invitation",
+        result: "SUCCESS",
+        severity: "INFO",
+        role_names: ["admin"],
+      },
+    });
+    expect(row.actorId).toBe("u-5");
+    expect(row.actorName).toBe("Test Administrator");
+    expect(row.actorUsername).toBe("SUID-0005");
+    expect(row.actorEmail).toBe("administrator@ababro.ai");
+    expect(row.action?.actionName).toBe("Sent an invitation");
+    expect(row.action?.roleNames).toEqual(["admin"]);
+    expect(changeDtoToRow(dto).action).toBeNull();
+    expect(changeDtoToRow({ ...dto, actor: null, actor_admin_id: "u-7" }).actorId).toBe("u-7");
+  });
+
+  it("drops BE pseudo columns from array data and the id column that repeats the record", () => {
+    expect(changeDtoToDetail({ ...dto, changed_columns: ["0"], old_data: [], new_data: [] }).changes).toEqual([]);
+    const inserted = changeDtoToDetail({
+      ...dto,
+      operation: "INSERT",
+      changed_columns: null,
+      old_data: null,
+      new_data: { id: "ad-9", status: "PENDING" },
+    });
+    expect(inserted.changes).toEqual([{ column: "status", before: null, after: "PENDING" }]);
+  });
+
   it("derives before/after per changed column", () => {
     const detail = changeDtoToDetail(dto);
     expect(detail.changes).toEqual([{ column: "preferred_language", before: "EN", after: "AR" }]);
@@ -149,5 +238,46 @@ describe("changeDtoToRow / changeDtoToDetail", () => {
     expect(detail.changes).toEqual([
       { column: "meta", before: '{"a":1}', after: '{"a":2}' },
     ]);
+  });
+});
+
+describe("humanizeCode", () => {
+  it("turns backend target-type codes into sentence-case labels", () => {
+    expect(humanizeCode("NOTIFICATION_ALERT_ROUTES")).toBe("Notification alert routes");
+    expect(humanizeCode("ADMIN_ACCOUNT")).toBe("Admin account");
+    expect(humanizeCode("USERS")).toBe("Users");
+  });
+
+  it("returns an empty string for a missing code", () => {
+    expect(humanizeCode("")).toBe("");
+    expect(humanizeCode(null)).toBe("");
+  });
+});
+
+describe("payloadName", () => {
+  it("reads a readable name from the request payload for unresolvable targets", () => {
+    expect(payloadName({ name: "Dubai", code: "DXB" })).toBe("Dubai");
+    expect(payloadName({ name: { en: "Abu Dhabi", ar: "أبوظبي" }, code: "AD-01" })).toBe("Abu Dhabi");
+    expect(payloadName({ name: { EN: "Welcome", AR: "مرحبا" } })).toBe("Welcome");
+    expect(payloadName({ name: { AR: "مرحبا" } })).toBe("مرحبا");
+    expect(payloadName({ code: "SECURITY_INCIDENT" })).toBe("SECURITY_INCIDENT");
+  });
+
+  it("returns null when the payload has nothing readable", () => {
+    expect(payloadName({ staff_id: 4 })).toBeNull();
+    expect(payloadName([])).toBeNull();
+    expect(payloadName(null)).toBeNull();
+    expect(payloadName({ name: "  " })).toBeNull();
+  });
+});
+
+describe("hashChainStatus", () => {
+  it("follows the spec: no previous hash means the first change, otherwise linked", () => {
+    expect(hashChainStatus({ prev_row_hash: null, row_hash: "a".repeat(64) })).toBe("first");
+    expect(hashChainStatus({ prev_row_hash: "b".repeat(64), row_hash: "a".repeat(64) })).toBe("linked");
+  });
+
+  it("flags a change with no row hash, which the spec says must always exist", () => {
+    expect(hashChainStatus({ prev_row_hash: null, row_hash: null })).toBe("missing");
   });
 });

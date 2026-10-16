@@ -20,7 +20,7 @@ export interface SecurityPolicyDto {
   change_reason?: string | null;
   created_by_admin_id?: string | null;
   created_at?: string | null;
-  created_by?: { id: string; email: string; staff_id?: number } | null;
+  created_by?: { id: string; email: string; full_name?: string | null; staff_id?: number } | null;
 }
 
 export interface StorePolicyBody extends PolicyForm {

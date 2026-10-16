@@ -5,7 +5,7 @@ import { buildListQuery, listAll, type ListParams } from "@/lib/api/list-query";
 import type { StaffRecord } from "@/lib/staff/types";
 import {
   invitationDtoToRow,
-  normalizeInvitationStatus,
+  invitationStatus,
   staffDtoToRecord,
   toWireStatus,
   userDtoToRow,
@@ -40,7 +40,7 @@ export async function fetchPendingInvitations(): Promise<AdminUserRow[]> {
   const invitations = await listAll<InvitationDto>(INVITATIONS, { relations: ["staff", "invitedBy"] });
   return invitations
     .filter((invitation) => {
-      const status = normalizeInvitationStatus(invitation.status);
+      const status = invitationStatus(invitation);
       return status === "pending" || status === "expired";
     })
     .map(invitationDtoToRow)
@@ -59,7 +59,7 @@ export function fetchInvitation(id: string): Promise<AdminUserRow> {
 
 export function fetchAdminUserDetail(id: string): Promise<UserDetailDto> {
   return apiData<UserDetailDto>(`${USERS}/${encodeURIComponent(id)}`, {
-    query: { relations: ["staff", "roles"] },
+    query: { detail: true },
   });
 }
 

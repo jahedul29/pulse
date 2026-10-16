@@ -27,8 +27,13 @@ import { useRetained } from "@/lib/use-retained";
 import { StatusBadge } from "@/components/common/status-badge";
 import { ProfileCell } from "@/components/common/profile-cell";
 import { DetailList } from "@/components/common/detail-list";
+import { Chip } from "@/components/common/chip";
+import { RecordLink } from "@/components/common/record-link";
+import { ActionTargetName, ReferenceValue, RoleNameChips } from "@/components/admin/record-refs";
+import { isHttpRoute, recordHref, targetRecordKind } from "@/lib/record-links";
+import { humanizeCode, meaningfulInputs } from "@/lib/admin-actions/dto";
 import { AdminUserFilter } from "@/components/admin/admin-user-filter";
-import { useAdminActions } from "@/lib/admin-actions/queries";
+import { useActionFilterOptions, useAdminActions } from "@/lib/admin-actions/queries";
 import { getAdminAction, exportAdminActionsCsv } from "@/lib/admin-actions/audit-api";
 import { CsvExportButton } from "@/components/admin/csv-export-button";
 import { actionServerStateToParams } from "@/lib/admin-actions/list-params";
@@ -36,6 +41,22 @@ import type { AdminAction } from "@/lib/admin-actions/types";
 
 const RESULTS: string[] = ["SUCCESS", "PARTIAL", "FAILURE"];
 const SEVERITIES: string[] = ["INFO", "WARNING", "CRITICAL"];
+
+function NameChips({ title, names }: { title: string; names: string[] }) {
+  if (names.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{title}</h4>
+      <div className="flex flex-wrap gap-1.5">
+        {names.map((name, index) => (
+          <Chip key={`${name}-${index}`} className="leading-snug whitespace-normal">
+            {name}
+          </Chip>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function ActionLog() {
   const t = useTranslations("actionLog");
@@ -47,8 +68,23 @@ export function ActionLog() {
     (value: string) => (t.has(`result_${value}`) ? t(`result_${value}`) : value),
     [t],
   );
+  const refFallbacks = useMemo(
+    () => ({
+      admin: t("refAdminAccount"),
+      template: t("refTemplate"),
+      alertRoute: t("refAlertRoute"),
+      region: t("refRegion"),
+      country: t("refCountry"),
+    }),
+    [t],
+  );
   const severityLabel = useCallback(
     (value: string) => (t.has(`severity_${value}`) ? t(`severity_${value}`) : value),
+    [t],
+  );
+  const targetFallback = useCallback(
+    (action: AdminAction) =>
+      action.payloadName ?? (targetRecordKind(action.targetType) === "securityPolicy" ? t("targetSecurityPolicy") : "-"),
     [t],
   );
 
@@ -58,6 +94,15 @@ export function ActionLog() {
   const [server, setServer] = useState<ServerTableState | null>(null);
   const params = useMemo(() => actionServerStateToParams(server), [server]);
   const actionsQuery = useAdminActions(params);
+  const filterOptionsQuery = useActionFilterOptions();
+  const actionCodeOptions = useMemo(
+    () => (filterOptionsQuery.data?.actionCodes ?? []).map((code) => ({ value: code, label: code })),
+    [filterOptionsQuery.data],
+  );
+  const targetTypeOptions = useMemo(
+    () => (filterOptionsQuery.data?.targetTypes ?? []).map((type) => ({ value: type, label: humanizeCode(type) })),
+    [filterOptionsQuery.data],
+  );
   const rows = useMemo(() => actionsQuery.data?.data ?? [], [actionsQuery.data]);
   const total = actionsQuery.data?.meta?.total ?? rows.length;
   const onServerStateChange = useCallback((state: ServerTableState) => setServer(state), []);
@@ -97,6 +142,7 @@ export function ActionLog() {
         accessorFn: (action) => action.createdAt,
         size: 168,
         header: t("colTimestamp"),
+        meta: { filter: "dateRange", filterLabel: t("colTimestamp") },
         cell: ({ row }) => {
           const { date, time } = fmtDateTimeParts(row.original.createdAt, locale);
           return (
@@ -105,6 +151,23 @@ export function ActionLog() {
             </span>
           );
         },
+      },
+      {
+        id: "result",
+        accessorFn: (action) => action.result,
+        size: 130,
+        header: t("colResult"),
+        enableSorting: false,
+        meta: {
+          filter: "select",
+          filterOptions: RESULTS.map((result) => ({ value: result, label: resultLabel(result) })),
+          filterLabel: t("colResult"),
+        },
+        cell: ({ row }) => (
+          <StatusBadge tone={auditTone(row.original.result)} equalWidth={false} className="min-w-[5.5rem]">
+            {resultLabel(row.original.result)}
+          </StatusBadge>
+        ),
       },
       {
         id: "actor",
@@ -126,43 +189,27 @@ export function ActionLog() {
         accessorFn: (action) => action.actionName,
         size: 210,
         header: t("colActionCode"),
+        meta: { filter: "select", filterOptions: actionCodeOptions, filterLabel: t("colActionCode") },
         cell: ({ row }) => <span className="block truncate text-sm font-medium">{row.original.actionName}</span>,
       },
       {
+        id: "targetType",
+        accessorFn: (action) => humanizeCode(action.targetType),
+        size: 170,
+        header: t("detailTargetType"),
+        meta: { filter: "select", filterOptions: targetTypeOptions, filterLabel: t("detailTargetType") },
+        cell: ({ row }) => <span className="block truncate text-sm">{humanizeCode(row.original.targetType) || "-"}</span>,
+      },
+      {
         id: "target",
-        accessorFn: (action) => `${action.targetType ?? ""} ${action.summary}`,
-        size: 280,
+        accessorFn: (action) => action.targetUser?.name ?? action.payloadName ?? "",
+        size: 220,
         header: t("colTarget"),
-        cell: ({ row }) => (
-          <div className="flex min-w-0 flex-col">
-            <span className="truncate font-medium">{row.original.targetType || "-"}</span>
-            <span className="truncate text-xs text-muted-foreground">{row.original.summary}</span>
-          </div>
-        ),
-      },
-      {
-        id: "service",
-        accessorFn: (action) => action.service,
-        size: 180,
-        header: t("colService"),
         enableSorting: false,
-        cell: ({ row }) => <span className="block truncate text-sm">{row.original.service}</span>,
-      },
-      {
-        id: "result",
-        accessorFn: (action) => action.result,
-        size: 130,
-        header: t("colResult"),
-        enableSorting: false,
-        meta: {
-          filter: "select",
-          filterOptions: RESULTS.map((result) => ({ value: result, label: resultLabel(result) })),
-          filterLabel: t("colResult"),
-        },
         cell: ({ row }) => (
-          <StatusBadge tone={auditTone(row.original.result)} equalWidth={false} className="min-w-[5.5rem]">
-            {resultLabel(row.original.result)}
-          </StatusBadge>
+          <span className="block truncate text-sm font-medium">
+            <ActionTargetName action={row.original} fallback={targetFallback(row.original)} />
+          </span>
         ),
       },
       {
@@ -183,7 +230,7 @@ export function ActionLog() {
         ),
       },
     ],
-    [t, tc, locale, resultLabel, severityLabel],
+    [t, tc, locale, resultLabel, severityLabel, actionCodeOptions, targetTypeOptions, targetFallback],
   );
 
   return (
@@ -223,7 +270,7 @@ export function ActionLog() {
               rowClassName={(action) => (action.id === selectedId ? "bg-accent" : undefined)}
               toolbar={<CsvExportButton onExport={onExport} />}
               getSearchText={(action) =>
-                `${action.actionName} ${action.summary} ${action.actorName} ${action.service}`
+                `${action.actionName} ${action.summary} ${action.actorName} ${action.targetUser?.name ?? ""}`
               }
               filterLabels={{
                 filter: t("filter"),
@@ -300,12 +347,46 @@ export function ActionLog() {
                     items={[
                       {
                         label: t("colActor"),
-                        value: <ProfileCell name={detail.actorName} subtitle={detail.adminEmail || undefined} />,
+                        value: detail.actorId ? (
+                          <RecordLink href={recordHref("adminAccount", detail.actorId)} label={t("openAccount", { name: detail.actorName })}>
+                            <ProfileCell name={detail.actorName} subtitle={detail.adminEmail || undefined} />
+                          </RecordLink>
+                        ) : (
+                          <ProfileCell name={detail.actorName} subtitle={detail.adminEmail || undefined} />
+                        ),
                       },
-                      { label: t("detailTargetType"), value: detail.targetType || "-" },
-                      { label: t("detailTargetId"), value: detail.targetId || "-" },
-                      { label: t("detailSummary"), value: detail.summary || "-" },
-                      { label: t("colService"), value: detail.service || "-" },
+                      { label: t("detailTargetType"), value: humanizeCode(detail.targetType) || "-" },
+                      {
+                        label: t("colTarget"),
+                        value: (() => {
+                          const targetUser = detail.targetUser;
+                          if (targetUser) {
+                            const cell = (
+                              <ProfileCell
+                                name={targetUser.name}
+                                subtitle={[targetUser.username, targetUser.email].filter(Boolean).join(" · ") || undefined}
+                              />
+                            );
+                            return targetUser.id ? (
+                              <RecordLink href={recordHref("adminAccount", targetUser.id)} label={t("openAccount", { name: targetUser.name })}>
+                                {cell}
+                              </RecordLink>
+                            ) : (
+                              cell
+                            );
+                          }
+                          const kind = targetRecordKind(detail.targetType);
+                          const name = <ActionTargetName action={detail} fallback={targetFallback(detail)} />;
+                          return kind && detail.targetId ? (
+                            <RecordLink href={recordHref(kind, detail.targetId)}>{name}</RecordLink>
+                          ) : (
+                            name
+                          );
+                        })(),
+                      },
+                      ...(detail.summary && !isHttpRoute(detail.summary)
+                        ? [{ label: t("detailSummary"), value: detail.summary }]
+                        : []),
                       {
                         label: t("colTimestamp"),
                         value: (() => {
@@ -313,20 +394,41 @@ export function ActionLog() {
                           return `${date} ${time}`;
                         })(),
                       },
-                      { label: t("detailCorrelation"), value: detail.correlationId || "-" },
                       { label: t("detailDevice"), value: detail.device || "-" },
                     ]}
                   />
+                  <NameChips
+                    title={t("detailPermissions", { count: detail.permissionNames.length })}
+                    names={detail.permissionNames}
+                  />
+                  {detail.roleNames.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                        {t("detailRoles", { count: detail.roleNames.length })}
+                      </h4>
+                      <RoleNameChips names={detail.roleNames} />
+                    </div>
+                  )}
                   <div className="flex flex-col gap-2">
                     <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                      {t("detailInputs")}
+                      {t("detailPayload")}
                     </h4>
                     <div className="rounded-lg border bg-muted/30 p-3">
-                      {detail.inputs.length === 0 ? (
-                        <p className="py-2 text-center text-sm text-muted-foreground">{t("noInputs")}</p>
+                      {meaningfulInputs(detail).length === 0 ? (
+                        <p className="py-2 text-center text-sm text-muted-foreground">{t("noPayload")}</p>
                       ) : (
                         <DetailList
-                          items={detail.inputs.map((input) => ({ label: input.label, value: input.value }))}
+                          items={meaningfulInputs(detail).map((input) => ({
+                            label: input.label,
+                            value: (
+                              <ReferenceValue
+                                fieldKey={input.key}
+                                value={input.value}
+                                locale={locale}
+                                fallbacks={refFallbacks}
+                              />
+                            ),
+                          }))}
                         />
                       )}
                     </div>

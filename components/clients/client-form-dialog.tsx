@@ -152,7 +152,7 @@ export function ClientFormDialog({
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
           <DialogBody className="grid gap-4 sm:grid-cols-2">
-          <Field reserveMessage={false} label={t("fullName")} error={errors.fullName?.message} className="sm:col-span-2">
+          <Field reserveMessage={false} label={t("fullName")} required error={errors.fullName?.message} className="sm:col-span-2">
             <Controller
               control={control}
               name="fullName"
@@ -171,7 +171,7 @@ export function ClientFormDialog({
             />
           </Field>
 
-          <Field reserveMessage={false} label={t("email")} error={errors.email?.message}>
+          <Field reserveMessage={false} label={t("email")} required error={errors.email?.message}>
             <Controller
               control={control}
               name="email"
@@ -192,7 +192,7 @@ export function ClientFormDialog({
             />
           </Field>
 
-          <Field reserveMessage={false} label={t("phone")} error={errors.phone?.message}>
+          <Field reserveMessage={false} label={t("phone")} required error={errors.phone?.message}>
             <Controller
               control={control}
               name="phone"
@@ -212,7 +212,7 @@ export function ClientFormDialog({
             />
           </Field>
 
-          <Field reserveMessage={false} label={t("gender")} error={errors.gender?.message}>
+          <Field reserveMessage={false} label={t("gender")} required error={errors.gender?.message}>
             <Controller
               control={control}
               name="gender"
@@ -230,7 +230,7 @@ export function ClientFormDialog({
             />
           </Field>
 
-          <Field reserveMessage={false} label={t("dob")} error={errors.dob?.message}>
+          <Field reserveMessage={false} label={t("dob")} required error={errors.dob?.message}>
             <Controller
               control={control}
               name="dob"
@@ -238,7 +238,7 @@ export function ClientFormDialog({
             />
           </Field>
 
-          <Field reserveMessage={false} label={t("nationality")} error={errors.nationality?.message}>
+          <Field reserveMessage={false} label={t("nationality")} required error={errors.nationality?.message}>
             <Controller
               control={control}
               name="nationality"
@@ -248,7 +248,7 @@ export function ClientFormDialog({
             />
           </Field>
 
-          <Field reserveMessage={false} label={t("region")} error={errors.region?.message}>
+          <Field reserveMessage={false} label={t("region")} required error={errors.region?.message}>
             <Controller
               control={control}
               name="region"
@@ -260,6 +260,7 @@ export function ClientFormDialog({
 
           <Field
             label={t("country")}
+            required
             error={errors.countryRegistration?.message}
             className="sm:col-span-2"
           >

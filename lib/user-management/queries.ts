@@ -8,11 +8,12 @@ import {
 import type { QueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { Paginated } from "@/lib/api/client";
-import { useAuthStore } from "@/lib/auth/store";
+import { useAuthed } from "@/lib/auth/use-authed";
 import {
   assignUserRoles,
   fetchAdminUserDetail,
   fetchInvitableStaff,
+  fetchInvitation,
   fetchPendingInvitations,
   fetchUserDevices,
   listAdminUsers,
@@ -27,10 +28,6 @@ import type { AdminUserRow, AdminUserStatus } from "./types";
 
 const ADMIN_USERS = ["admin-users"] as const;
 const PENDING_INVITATIONS = ["pending-invitations"] as const;
-
-function useAuthed() {
-  return useAuthStore((state) => Boolean(state.session?.accessToken ?? state.session?.token));
-}
 
 export function useAdminUsers(params: ListParams) {
   const authed = useAuthed();
@@ -81,6 +78,15 @@ export function useAdminUser(id: string | null) {
   return useQuery({
     queryKey: queryKeys.adminUser(id ?? ""),
     queryFn: () => fetchAdminUserDetail(id as string),
+    enabled: authed && Boolean(id),
+  });
+}
+
+export function useInvitation(id: string | null) {
+  const authed = useAuthed();
+  return useQuery({
+    queryKey: [...PENDING_INVITATIONS, "detail", id ?? ""],
+    queryFn: () => fetchInvitation(id as string),
     enabled: authed && Boolean(id),
   });
 }

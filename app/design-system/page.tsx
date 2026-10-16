@@ -1286,10 +1286,10 @@ export default function DesignSystemPage() {
                 <CardDescription>Text, numeric, choice, date, and long-form inputs.</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-5 sm:grid-cols-2">
-                <Field label="Full name" htmlFor="f-name">
+                <Field required label="Full name" htmlFor="f-name">
                   <Input id="f-name" placeholder="Jane Doe" />
                 </Field>
-                <Field label="Email" htmlFor="f-email">
+                <Field required label="Email" htmlFor="f-email">
                   <IconInput
                     id="f-email"
                     type="email"
@@ -1298,7 +1298,7 @@ export default function DesignSystemPage() {
                     placeholder="jane@mail.com"
                   />
                 </Field>
-                <Field label="Password" htmlFor="f-pw" hint="At least 8 characters.">
+                <Field required label="Password" htmlFor="f-pw" hint="At least 8 characters.">
                   <PasswordInput id="f-pw" defaultValue="secret123" />
                 </Field>
                 <Field label="Phone" htmlFor="f-phone">

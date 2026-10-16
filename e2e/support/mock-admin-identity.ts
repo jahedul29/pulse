@@ -7,7 +7,22 @@ const OWNER = {
   preferred_language: "en",
   status: "active",
   roles: ["superadmin"],
-  permissions: [],
+  permissions: [
+    "USER_MANAGEMENT.user_management.VIEW",
+    "USER_MANAGEMENT.user_management.EDIT",
+    "USER_MANAGEMENT.invitations.VIEW",
+    "USER_MANAGEMENT.invitations.EDIT",
+    "ROLES.roles.VIEW",
+    "ROLES.roles.EDIT",
+    "ROLES.security_policy.VIEW",
+    "ROLES.security_policy.EDIT",
+    "NOTIFICATIONS.notification_templates.VIEW",
+    "NOTIFICATIONS.notification_templates.EDIT",
+    "NOTIFICATIONS.alert_routes.VIEW",
+    "NOTIFICATIONS.alert_routes.EDIT",
+    "TECHNICAL.technical.VIEW",
+    "TECHNICAL.technical.EDIT",
+  ],
 };
 
 function authToken() {
@@ -135,10 +150,12 @@ export async function mockAdminIdentity(page: Page, password = "abapro") {
       admin_account_id: "u-dana",
       admin_account: account("dana.okonkwo@abapro.health", "Dana", "Okonkwo"),
       action_code: "CLIENT_REFUND",
-      target_service: "billing",
       target_type: "Order",
       target_id: "ord-88",
       target_summary: "Refund client order",
+      target_user: null,
+      permission_names: ["Manage Orders module."],
+      role_names: [],
       request_payload: { amount: 120, reason: "duplicate charge", items: ["invoice", "fee"] },
       result: "SUCCESS",
       severity: "INFO",
@@ -158,9 +175,26 @@ export async function mockAdminIdentity(page: Page, password = "abapro") {
       old_data: { status: "paid" },
       new_data: { status: "refunded" },
       changed_columns: ["status"],
+      prev_row_hash: "a".repeat(64),
+      row_hash: "b".repeat(64),
       actor_admin_id: "u-dana",
       actor: account("dana.okonkwo@abapro.health", "Dana", "Okonkwo"),
       admin_action_log_id: "act-1",
+      admin_action_log: {
+        id: "act-1",
+        action_code: "CLIENT_REFUND",
+        action_label: "Refunded a client order",
+        target_type: "Order",
+        target_id: "ord-88",
+        target_summary: "Refund client order",
+        target_user: null,
+        permission_names: [],
+        role_names: [],
+        result: "SUCCESS",
+        severity: "INFO",
+        user_agent: UA_MAC,
+        created_at: "2026-09-01T10:00:00Z",
+      },
       created_at: "2026-09-01T10:00:05Z",
     },
   ];
@@ -260,6 +294,16 @@ export async function mockAdminIdentity(page: Page, password = "abapro") {
     if (pathname === "/staff" && method === "GET") return json(list(staff));
 
     if (pathname === "/admin-action-logs" && method === "GET") return json(list(actions));
+    if (pathname === "/admin-action-logs/filter-options" && method === "GET") {
+      return json(
+        ok({
+          action_codes: ["CLIENT_REFUND"],
+          target_types: ["Order"],
+          results: ["SUCCESS"],
+          severities: ["INFO"],
+        }),
+      );
+    }
     const actionMatch = pathname.match(/^\/admin-action-logs\/([^/]+)$/);
     if (actionMatch && method === "GET") {
       const action = actions.find((entry) => entry.id === actionMatch[1]) ?? actions[0];

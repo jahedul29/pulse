@@ -29,6 +29,12 @@ export interface RoleDto {
   updated_at?: string;
 }
 
+export interface GrantedPermissionDto extends PermissionDto {
+  granted_by_admin_id?: string | null;
+  granted_at?: string | null;
+  expires_at?: string | null;
+}
+
 export interface GrantedRoleDto extends RoleDto {
   granted_by_admin_id?: string | null;
   granted_at?: string | null;
@@ -39,7 +45,7 @@ export interface AdminAccountAssignmentDto {
   id: string;
   email: string;
   roles: RoleDto[];
-  direct_permissions: PermissionDto[];
+  direct_permissions: GrantedPermissionDto[];
   effective_permissions: (PermissionDto | string)[];
 }
 

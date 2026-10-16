@@ -237,6 +237,7 @@ export function EdrMapping() {
                     </label>
                     <Field
                       label={t("mapping.templateLabel")}
+                      required={notifies}
                       error={formState.errors.templateByRole?.[role]?.message}
                       reserveMessage={false}
                     >

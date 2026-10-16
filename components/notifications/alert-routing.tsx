@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
@@ -50,8 +51,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { SwitchField } from "@/components/common/switch-field";
-import { StatusBadge } from "@/components/common/status-badge";
+import { StatusBadge, StatusDot } from "@/components/common/status-badge";
 import { Chip } from "@/components/common/chip";
+import { ChipLink, RecordLink } from "@/components/common/record-link";
+import { recordHref } from "@/lib/record-links";
 import { MultiSelect } from "@/components/common/multi-select";
 import { DetailList } from "@/components/common/detail-list";
 import {
@@ -70,10 +73,11 @@ import {
   SEVERITY_ORDER,
   audienceCount,
   buildAudienceFilter,
+  isSeverityCode,
   normalizeAudienceFilter,
   severityTone,
 } from "@/lib/notifications/dto";
-import type { AudienceType, NotificationAlertRouteDto } from "@/lib/notifications/dto";
+import type { AudienceType, DeliverySeverityCode, NotificationAlertRouteDto } from "@/lib/notifications/dto";
 import {
   useAlertRoute,
   useAlertRoutes,
@@ -85,6 +89,7 @@ import {
 } from "@/lib/notifications/queries";
 import { useRoles } from "@/lib/rbac/queries";
 import { useAllAdminUsers } from "@/lib/user-management/queries";
+import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 
 const EMPTY_FORM: AlertRouteForm = {
   code: "",
@@ -94,12 +99,14 @@ const EMPTY_FORM: AlertRouteForm = {
   audienceType: "ALL_ADMINS",
   audienceIds: [],
   priority: 0,
+  severity: "MEDIUM",
   isActive: true,
 };
 
 export function AlertRoutingEditor() {
   const t = useTranslations("notifications");
   const tc = useTranslations("common");
+  const canEdit = useHasPermission(PERMISSIONS.ALERT_ROUTES_EDIT);
   const te = useTranslations("apiErrors");
   const locale = useLocale();
 
@@ -133,17 +140,25 @@ export function AlertRoutingEditor() {
     [userOptions],
   );
   const audienceMembers = useCallback(
-    (route: NotificationAlertRouteDto): string[] => {
+    (route: NotificationAlertRouteDto): { key: string; name: string; href: string }[] => {
       const { role_ids, user_ids } = normalizeAudienceFilter(route.audience_filter);
       if (route.audience_type === "ROLE") {
-        return role_ids.map((id) => roleNameById.get(String(id)) ?? `#${id}`);
+        return role_ids.map((id) => ({
+          key: `role-${id}`,
+          name: roleNameById.get(String(id)) ?? t("routing.unknownRole"),
+          href: recordHref("role", id),
+        }));
       }
       if (route.audience_type === "USER_IDS") {
-        return user_ids.map((id) => userNameById.get(id) ?? id);
+        return user_ids.map((id) => ({
+          key: `user-${id}`,
+          name: userNameById.get(id) ?? t("routing.unknownAdmin"),
+          href: recordHref("adminAccount", id),
+        }));
       }
       return [];
     },
-    [roleNameById, userNameById],
+    [roleNameById, userNameById, t],
   );
 
   const channelName = useMemo(() => {
@@ -162,9 +177,19 @@ export function AlertRoutingEditor() {
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
   const [editing, setEditing] = useState<NotificationAlertRouteDto | null>(null);
   const [deleting, setDeleting] = useState<NotificationAlertRouteDto | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [linkedId, setLinkedId] = useState<number | null>(() => Number(searchParams.get("open")) || null);
   const [detail, setDetail] = useState<NotificationAlertRouteDto | null>(null);
-  const shownDetail = useRetained(detail);
-  const detailQuery = useAlertRoute(detail?.id ?? null);
+  const detailQuery = useAlertRoute(detail?.id ?? linkedId);
+  const linkedDetail = linkedId != null && detail == null && detailQuery.data?.id === linkedId ? detailQuery.data : null;
+  const shownDetail = useRetained(detail ?? linkedDetail);
+  const closeDetail = () => {
+    setDetail(null);
+    if (linkedId == null) return;
+    setLinkedId(null);
+    router.replace("/admin/notifications/routing");
+  };
 
   const schema = useMemo(
     () =>
@@ -215,6 +240,7 @@ export function AlertRoutingEditor() {
               ? audience.user_ids
               : [],
         priority: route.priority,
+        severity: isSeverityCode(route.severity) ? route.severity : "MEDIUM",
         isActive: route.is_active,
       });
       setEditing(route);
@@ -234,6 +260,7 @@ export function AlertRoutingEditor() {
       audience_type: values.audienceType,
       audience_filter: buildAudienceFilter(values.audienceType, values.audienceIds),
       priority: values.priority,
+      severity: values.severity,
       is_active: values.isActive,
     };
     try {
@@ -396,13 +423,15 @@ export function AlertRoutingEditor() {
                         event.stopPropagation();
                         openEdit(route);
                       }}
+                      focusableWhenDisabled
+                      disabled={!canEdit}
                       aria-label={t("routing.edit")}
                     />
                   }
                 >
                   <Pencil className="size-4" />
                 </TooltipTrigger>
-                <TooltipContent>{t("routing.edit")}</TooltipContent>
+                <TooltipContent>{canEdit ? t("routing.edit") : tc("noPermission")}</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger
@@ -414,6 +443,8 @@ export function AlertRoutingEditor() {
                         event.stopPropagation();
                         setDeleting(route);
                       }}
+                      focusableWhenDisabled
+                      disabled={!canEdit}
                       aria-label={t("routing.delete")}
                       className="hover:bg-danger/10 hover:text-danger"
                     />
@@ -421,14 +452,14 @@ export function AlertRoutingEditor() {
                 >
                   <Trash2 className="size-4" />
                 </TooltipTrigger>
-                <TooltipContent>{t("routing.delete")}</TooltipContent>
+                <TooltipContent>{canEdit ? t("routing.delete") : tc("noPermission")}</TooltipContent>
               </Tooltip>
             </div>
           );
         },
       },
     ],
-    [t, tc, channelName, templateName, audienceLabel, openEdit],
+    [t, tc, channelName, templateName, audienceLabel, openEdit, canEdit],
   );
 
   return (
@@ -480,6 +511,8 @@ export function AlertRoutingEditor() {
                       <Button
                         size="lg"
                         onClick={openCreate}
+                        focusableWhenDisabled
+                        disabled={!canEdit}
                         aria-label={t("routing.newRoute")}
                         className={toolbarIconButtonClass}
                       />
@@ -488,7 +521,7 @@ export function AlertRoutingEditor() {
                     <Plus className="size-4" />
                     <span className="hidden sm:inline">{t("routing.newRoute")}</span>
                   </TooltipTrigger>
-                  <TooltipContent>{t("routing.newRoute")}</TooltipContent>
+                  <TooltipContent>{canEdit ? t("routing.newRoute") : tc("noPermission")}</TooltipContent>
                 </Tooltip>
               }
             />
@@ -507,6 +540,7 @@ export function AlertRoutingEditor() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field
                   label={t("routing.codeLabel")}
+                  required={dialogMode === "create"}
                   htmlFor="route-code"
                   error={formState.errors.code?.message}
                   reserveMessage={false}
@@ -521,6 +555,7 @@ export function AlertRoutingEditor() {
                 </Field>
                 <Field
                   label={t("routing.nameLabel")}
+                  required
                   htmlFor="route-name"
                   error={formState.errors.name?.message}
                   reserveMessage={false}
@@ -532,6 +567,7 @@ export function AlertRoutingEditor() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field
                   label={t("routing.channelLabel")}
+                  required
                   htmlFor="route-channel"
                   error={formState.errors.channelId?.message}
                   reserveMessage={false}
@@ -555,6 +591,7 @@ export function AlertRoutingEditor() {
                 </Field>
                 <Field
                   label={t("routing.templateLabel")}
+                  required
                   htmlFor="route-template"
                   error={formState.errors.templateId?.message}
                   reserveMessage={false}
@@ -579,6 +616,60 @@ export function AlertRoutingEditor() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
+                <Field label={t("routing.severityLabel")} required htmlFor="route-severity" reserveMessage={false}>
+                  <Controller
+                    control={control}
+                    name="severity"
+                    render={({ field }) => (
+                      <Select
+                        value={field.value}
+                        onValueChange={(value) => field.onChange((value ?? "MEDIUM") as DeliverySeverityCode)}
+                      >
+                        <SelectTrigger id="route-severity" className="w-full">
+                          <SelectValue>
+                            {(value) =>
+                              value ? (
+                                <span className="flex items-center gap-2">
+                                  <StatusDot tone={severityTone(value as string)} />
+                                  {t(`deliverySeverity.${value}`)}
+                                </span>
+                              ) : (
+                                ""
+                              )
+                            }
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SEVERITY_ORDER.map((severity) => (
+                            <SelectItem key={severity} value={severity}>
+                              <span className="flex items-center gap-2">
+                                <StatusDot tone={severityTone(severity)} />
+                                {t(`deliverySeverity.${severity}`)}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </Field>
+                <Field
+                  label={t("routing.priorityLabel")}
+                  required
+                  htmlFor="route-priority"
+                  error={formState.errors.priority?.message}
+                  reserveMessage={false}
+                >
+                  <Input
+                    id="route-priority"
+                    type="number"
+                    min={0}
+                    {...register("priority", { valueAsNumber: true })}
+                  />
+                </Field>
+              </div>
+
+              <div className="grid gap-4">
                 <Field label={t("routing.audienceLabel")} reserveMessage={false}>
                   <Controller
                     control={control}
@@ -605,24 +696,12 @@ export function AlertRoutingEditor() {
                     )}
                   />
                 </Field>
-                <Field
-                  label={t("routing.priorityLabel")}
-                  htmlFor="route-priority"
-                  error={formState.errors.priority?.message}
-                  reserveMessage={false}
-                >
-                  <Input
-                    id="route-priority"
-                    type="number"
-                    min={0}
-                    {...register("priority", { valueAsNumber: true })}
-                  />
-                </Field>
               </div>
 
               {audienceType !== "ALL_ADMINS" && (
                 <Field
                   label={audienceType === "ROLE" ? t("routing.rolesLabel") : t("routing.usersLabel")}
+                  required
                   error={formState.errors.audienceIds?.message}
                   reserveMessage={false}
                 >
@@ -698,7 +777,7 @@ export function AlertRoutingEditor() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Sheet open={detail != null} onOpenChange={(open) => !open && setDetail(null)}>
+      <Sheet open={detail != null || linkedId != null} onOpenChange={(open) => !open && closeDetail()}>
         {shownDetail && (
           <SheetContent>
             <SheetHeader>
@@ -734,9 +813,13 @@ export function AlertRoutingEditor() {
                         { label: t("routing.colName"), value: record.name },
                         {
                           label: t("routing.colTemplate"),
-                          value:
-                            record.template?.name ??
-                            (record.template_id ? templateName(record.template_id) : t("routing.noTemplate")),
+                          value: record.template_id ? (
+                            <RecordLink href={recordHref("template", record.template_id)}>
+                              {record.template?.name ?? templateName(record.template_id)}
+                            </RecordLink>
+                          ) : (
+                            t("routing.noTemplate")
+                          ),
                         },
                         {
                           label: t("routing.colAudience"),
@@ -745,8 +828,10 @@ export function AlertRoutingEditor() {
                               t(`routing.audienceType.${record.audience_type}`)
                             ) : (
                               <div className="flex flex-wrap gap-1.5">
-                                {members.map((name, index) => (
-                                  <Chip key={`${name}-${index}`}>{name}</Chip>
+                                {members.map((member) => (
+                                  <ChipLink key={member.key} href={member.href}>
+                                    {member.name}
+                                  </ChipLink>
                                 ))}
                               </div>
                             ),
@@ -777,19 +862,21 @@ export function AlertRoutingEditor() {
                 })()
               )}
             </SheetBody>
-            <SheetFooter>
-              <Button
-                size="lg"
-                disabled={detailQuery.isPending || detailQuery.isError}
-                onClick={() => {
-                  const target = detailQuery.data ?? shownDetail;
-                  setDetail(null);
-                  openEdit(target);
-                }}
-              >
-                {t("routing.edit")}
-              </Button>
-            </SheetFooter>
+            {canEdit && (
+              <SheetFooter>
+                <Button
+                  size="lg"
+                  disabled={detailQuery.isPending || detailQuery.isError}
+                  onClick={() => {
+                    const target = detailQuery.data ?? shownDetail;
+                    closeDetail();
+                    openEdit(target);
+                  }}
+                >
+                  {t("routing.edit")}
+                </Button>
+              </SheetFooter>
+            )}
           </SheetContent>
         )}
       </Sheet>

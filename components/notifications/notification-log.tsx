@@ -19,6 +19,12 @@ import { StatusBadge } from "@/components/common/status-badge";
 import { ProfileCell } from "@/components/common/profile-cell";
 import { Chip } from "@/components/common/chip";
 import { DetailList } from "@/components/common/detail-list";
+import {
+  alertRouteItems,
+  campaignItem,
+  recipientItem,
+  templateItem,
+} from "@/components/notifications/delivery-references";
 import { fmtDateTimeParts } from "@/lib/format";
 import { useRetained } from "@/lib/use-retained";
 import { useDeliveries, useDelivery } from "@/lib/notifications/queries";
@@ -231,7 +237,9 @@ export function NotificationLog() {
                 <StatusBadge tone={deliveryStatusTone(shown.status)} equalWidth={false}>
                   {t(`deliveryStatus.${shown.status}`)}
                 </StatusBadge>
-                <Chip>{shown.channel?.name ?? `#${shown.channel_id ?? "-"}`}</Chip>
+                {(shown.channel?.name || shown.channel?.code) && (
+                  <Chip>{shown.channel?.name || shown.channel?.code}</Chip>
+                )}
               </div>
             </SheetHeader>
             <SheetBody className="flex flex-col gap-4">
@@ -261,20 +269,10 @@ export function NotificationLog() {
                     <>
                       <DetailList
                         items={[
-                          {
-                            label: t("log.colRecipient"),
-                            value: (
-                              <ProfileCell
-                                name={recipientName(record)}
-                                subtitle={record.admin_account?.email ?? undefined}
-                              />
-                            ),
-                          },
-                          { label: t("log.colTemplate"), value: record.template?.name ?? record.template?.code ?? "-" },
-                          {
-                            label: t("log.colCampaign"),
-                            value: record.campaign?.name ?? (record.campaign_id ? shortId(record.campaign_id) : "-"),
-                          },
+                          recipientItem(record, t),
+                          templateItem(record, t),
+                          ...alertRouteItems(record, t),
+                          campaignItem(record, t),
                           {
                             label: t("log.colSeverity"),
                             value: record.severity ? (

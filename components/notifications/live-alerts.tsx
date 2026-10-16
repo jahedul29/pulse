@@ -13,6 +13,13 @@ import { StatusBadge } from "@/components/common/status-badge";
 import { ProfileCell } from "@/components/common/profile-cell";
 import { Chip } from "@/components/common/chip";
 import { DetailList } from "@/components/common/detail-list";
+import {
+  alertRouteItems,
+  campaignItem,
+  channelItem,
+  recipientItem,
+  templateItem,
+} from "@/components/notifications/delivery-references";
 import { fmtDateTimeParts } from "@/lib/format";
 import { useRetained } from "@/lib/use-retained";
 import { useLiveAlerts, useDelivery } from "@/lib/notifications/queries";
@@ -23,7 +30,6 @@ import {
   deliveryStatusTone,
   recipientName,
   severityTone,
-  shortId,
 } from "@/lib/notifications/dto";
 import type { NotificationDeliveryDto } from "@/lib/notifications/dto";
 import { ChannelFilter } from "@/components/notifications/channel-select";
@@ -235,21 +241,11 @@ export function LiveAlerts() {
                     <>
                       <DetailList
                         items={[
-                          {
-                            label: t("log.colRecipient"),
-                            value: (
-                              <ProfileCell
-                                name={recipientName(record)}
-                                subtitle={record.admin_account?.email ?? undefined}
-                              />
-                            ),
-                          },
-                          { label: t("log.colChannel"), value: record.channel?.name ?? `#${record.channel_id ?? "-"}` },
-                          { label: t("log.colTemplate"), value: record.template?.name ?? record.template?.code ?? "-" },
-                          {
-                            label: t("log.colCampaign"),
-                            value: record.campaign?.name ?? (record.campaign_id ? shortId(record.campaign_id) : "-"),
-                          },
+                          recipientItem(record, t),
+                          channelItem(record, t),
+                          templateItem(record, t),
+                          ...alertRouteItems(record, t),
+                          campaignItem(record, t),
                           {
                             label: t("log.colTimestamp"),
                             value: stamp

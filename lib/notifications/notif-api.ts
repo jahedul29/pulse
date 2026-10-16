@@ -74,7 +74,7 @@ export async function listDeliveries(params: ListParams = {}): Promise<Paginated
 
 export function getDelivery(id: string): Promise<NotificationDeliveryDto> {
   return apiData<NotificationDeliveryDto>(`${DELIVERIES}/${encodeURIComponent(id)}`, {
-    query: { relations: ["channel", "template", "campaign"] },
+    query: { relations: ["channel", "template", "campaign", "alertRoute"] },
   });
 }
 

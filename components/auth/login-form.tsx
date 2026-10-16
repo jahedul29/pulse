@@ -13,9 +13,13 @@ import { Field } from "@/components/ui/field";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuthStore } from "@/lib/auth/store";
+import { useRetained } from "@/lib/use-retained";
+import { cn } from "@/lib/utils";
+import type { ServerErrorInfo } from "@/lib/auth/server-error";
 
 import { AccountLockout } from "@/components/common/account-lockout";
 import { AuthShell } from "./auth-shell";
+import { LoginErrorBanner } from "./login-error-banner";
 import { MfaStep } from "./mfa-step";
 import { StatusNotice } from "./status-notice";
 
@@ -39,9 +43,12 @@ export function LoginForm({ returnTo }: { returnTo?: string | null }) {
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [emailError, setEmailError] = useState(false);
-  const [credError, setCredError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [lockedUntil, setLockedUntil] = useState(0);
+  const [serverError, setServerError] = useState<ServerErrorInfo | null>(null);
+  const [errorCount, setErrorCount] = useState(0);
+  const shownError = useRetained(serverError);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const pwRef = useRef<HTMLInputElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
@@ -53,9 +60,14 @@ export function LoginForm({ returnTo }: { returnTo?: string | null }) {
     router.replace(safeDest(returnTo ?? null));
   }, [router, returnTo, t]);
 
+  const raiseServerError = (info: ServerErrorInfo) => {
+    setServerError(info);
+    setErrorCount((count) => count + 1);
+  };
+
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setCredError(false);
+    setServerError(null);
     if (!EMAIL_RE.test(email.trim())) {
       setEmailError(true);
       emailRef.current?.focus();
@@ -74,7 +86,7 @@ export function LoginForm({ returnTo }: { returnTo?: string | null }) {
         setView("mfa");
         break;
       case "INVALID_CREDENTIALS":
-        setCredError(true);
+        raiseServerError({ kind: "credentials" });
         pwRef.current?.focus();
         break;
       case "ACCOUNT_LOCKED":
@@ -91,14 +103,14 @@ export function LoginForm({ returnTo }: { returnTo?: string | null }) {
         setView("deactivated");
         break;
       case "SERVER_ERROR":
-        toast.error(t("serverError"));
+        raiseServerError(outcome.serverError ?? { kind: "unknown" });
         break;
     }
   };
 
   const backToForm = () => {
     setView("form");
-    setCredError(false);
+    setServerError(null);
     setPassword("");
   };
 
@@ -168,9 +180,32 @@ export function LoginForm({ returnTo }: { returnTo?: string | null }) {
       subtitle={t("subtitle")}
       animationKey={view}
     >
-      <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+      <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+        <div
+          inert={!serverError}
+          aria-hidden={!serverError || undefined}
+          className={cn(
+            "-mb-4 grid transition-[grid-template-rows,opacity] motion-reduce:transition-none",
+            serverError
+              ? "grid-rows-[1fr] opacity-100 duration-200 ease-out"
+              : "grid-rows-[0fr] opacity-0 duration-150 ease-in",
+          )}
+        >
+          <div className="min-h-0 overflow-hidden">
+            {shownError && (
+              <div className="pb-4">
+                <LoginErrorBanner
+                  key={errorCount}
+                  error={shownError}
+                  onRetry={() => formRef.current?.requestSubmit()}
+                />
+              </div>
+            )}
+          </div>
+        </div>
         <Field
           label={t("email")}
+          required
           htmlFor="email"
           reserveMessage={false}
           error={emailError ? t("invalidEmail") : undefined}
@@ -196,6 +231,7 @@ export function LoginForm({ returnTo }: { returnTo?: string | null }) {
               onChange={(event) => {
                 setEmail(event.target.value);
                 if (emailError) setEmailError(false);
+                if (serverError) setServerError(null);
               }}
               onBlur={() => {
                 if (email.trim() && !EMAIL_RE.test(email.trim())) setEmailError(true);
@@ -206,9 +242,9 @@ export function LoginForm({ returnTo }: { returnTo?: string | null }) {
 
         <Field
           label={t("password")}
+          required
           htmlFor="password"
           reserveMessage={false}
-          error={credError ? t("invalidCredentials") : undefined}
         >
           <PasswordInput
             id="password"
@@ -221,11 +257,9 @@ export function LoginForm({ returnTo }: { returnTo?: string | null }) {
             data-lpignore="true"
             placeholder={t("passwordPlaceholder")}
             value={password}
-            aria-invalid={credError || undefined}
-            aria-describedby={credError ? "password-error" : undefined}
             onChange={(event) => {
               setPassword(event.target.value);
-              if (credError) setCredError(false);
+              if (serverError) setServerError(null);
             }}
           />
         </Field>

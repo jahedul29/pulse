@@ -1,4 +1,7 @@
 import {
+  fmtCoordinate,
+  fmtCount,
+  fmtList,
   fmtDate,
   fmtMoney,
   fmtNumber,
@@ -47,6 +50,26 @@ describe("format helpers", () => {
   it("fmtDateTimeParts keeps latin digits under the Arabic locale", () => {
     const ms = new Date(2026, 7, 17, 9, 5).getTime();
     expect(fmtDateTimeParts(ms, "ar").time).toBe("09:05");
+  });
+});
+
+describe("fmtCount and fmtCoordinate", () => {
+  it("groups counts with latin digits in both locales", () => {
+    expect(fmtCount(61528, "en")).toBe("61,528");
+    expect(fmtCount(61528, "ar")).toMatch(/^61.528$/);
+  });
+
+  it("shows coordinates with four decimals", () => {
+    expect(fmtCoordinate(24.45390123, "en")).toBe("24.4539");
+    expect(fmtCoordinate(54.3, "ar")).toMatch(/^54.3000$/);
+  });
+});
+
+describe("fmtList", () => {
+  it("joins names the way each language does", () => {
+    expect(fmtList(["Dubai", "Sharjah"], "en")).toBe("Dubai and Sharjah");
+    expect(fmtList(["+3 added", "−2 dropped"], "en", "unit")).toBe("+3 added, −2 dropped");
+    expect(fmtList(["دبي", "الشارقة", "عجمان"], "ar")).toBe("دبي والشارقة وعجمان");
   });
 });
 

@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { UserManagement } from "@/components/admin/user-management";
 
-export const metadata: Metadata = { title: "Admin accounts" };
+export const metadata: Metadata = { title: "User accounts" };
 
 export default function Page() {
-  return <UserManagement />;
+  return (
+    <Suspense>
+      <UserManagement />
+    </Suspense>
+  );
 }
