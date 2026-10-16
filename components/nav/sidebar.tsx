@@ -14,13 +14,12 @@ export function Sidebar() {
 
   return (
     <aside
-      data-no-os
       className={cn(
-        "sticky top-0 hidden h-screen shrink-0 flex-col overflow-y-auto border-e bg-sidebar transition-[width] duration-200 lg:flex",
+        "sticky top-0 hidden h-screen shrink-0 flex-col border-e bg-sidebar transition-[width] duration-200 lg:flex",
         collapsed ? "w-16" : "w-64",
       )}
     >
-      <div className={cn("flex items-center gap-2.5 py-5", collapsed ? "justify-center px-0" : "px-5")}>
+      <div className={cn("flex shrink-0 items-center gap-2.5 py-5", collapsed ? "justify-center px-0" : "px-5")}>
         <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-xl bg-primary">
           <Logo className="h-7 w-auto" />
         </span>
@@ -32,9 +31,13 @@ export function Sidebar() {
         )}
       </div>
 
-      <NavItems collapsed={collapsed} />
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div>
+          <NavItems collapsed={collapsed} />
+        </div>
+      </div>
 
-      <div className={cn("border-t py-3", collapsed ? "px-2" : "px-3")}>
+      <div className={cn("shrink-0 border-t py-3", collapsed ? "px-2" : "px-3")}>
         <button
           type="button"
           onClick={toggleCollapsed}

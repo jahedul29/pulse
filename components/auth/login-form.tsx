@@ -19,6 +19,7 @@ import type { ServerErrorInfo } from "@/lib/auth/server-error";
 
 import { AccountLockout } from "@/components/common/account-lockout";
 import { AuthShell } from "./auth-shell";
+import { IdleSignOutNotice } from "./idle-sign-out-notice";
 import { LoginErrorBanner } from "./login-error-banner";
 import { MfaStep } from "./mfa-step";
 import { StatusNotice } from "./status-notice";
@@ -33,7 +34,13 @@ function safeDest(raw: string | null) {
   return DEFAULT_DEST;
 }
 
-export function LoginForm({ returnTo }: { returnTo?: string | null }) {
+export function LoginForm({
+  returnTo,
+  signedOutForInactivity = false,
+}: {
+  returnTo?: string | null;
+  signedOutForInactivity?: boolean;
+}) {
   const t = useTranslations("auth");
   const router = useRouter();
   const attempt = useAuthStore((state) => state.attempt);
@@ -181,6 +188,7 @@ export function LoginForm({ returnTo }: { returnTo?: string | null }) {
       animationKey={view}
     >
       <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+        {signedOutForInactivity ? <IdleSignOutNotice /> : null}
         <div
           inert={!serverError}
           aria-hidden={!serverError || undefined}

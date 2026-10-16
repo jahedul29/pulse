@@ -24,12 +24,12 @@ export function MobileNav() {
       />
       <aside
         className={cn(
-          "fixed inset-y-0 start-0 z-50 flex w-64 flex-col overflow-y-auto border-e bg-sidebar transition-transform duration-200",
+          "fixed inset-y-0 start-0 z-50 flex w-64 flex-col border-e bg-sidebar transition-transform duration-200",
           open ? "translate-x-0" : "ltr:-translate-x-full rtl:translate-x-full",
         )}
         aria-hidden={!open}
       >
-        <div className="flex items-center gap-2.5 px-5 py-5">
+        <div className="flex shrink-0 items-center gap-2.5 px-5 py-5">
           <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-xl bg-primary">
             <Logo className="h-7 w-auto" />
           </span>
@@ -47,9 +47,11 @@ export function MobileNav() {
           </button>
         </div>
 
-        <NavItems onNavigate={() => setMobileOpen(false)} />
-
-        <div className="border-t px-5 py-4 text-xs text-muted-foreground">{t("nav.demoNote")}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div>
+            <NavItems onNavigate={() => setMobileOpen(false)} />
+          </div>
+        </div>
       </aside>
     </div>
   );

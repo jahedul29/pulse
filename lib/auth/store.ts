@@ -2,11 +2,11 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { verifyMfa, REMEMBER_DAYS } from "./mock";
 import { login } from "./api";
-import { currentDeviceLabel } from "@/lib/device";
 import { registerAuthBridge } from "@/lib/api/auth-bridge";
 import { isApiError } from "@/lib/api/errors";
 import { describeServerError } from "./server-error";
-import type { AttemptOutcome, AuditEntry, AuthToken, LoginResult, Session } from "./types";
+import type { AttemptOutcome, AuthToken, LoginResult, Session } from "./types";
+import { writeLastActivity } from "./idle";
 
 const SESSION_COOKIE = "abapro_session";
 const DAY = 86_400_000;
@@ -15,10 +15,6 @@ const SESSION_TTL_MS = 7 * DAY;
 function id() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   return `a-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
-}
-
-function mockIp() {
-  return `203.0.113.${Math.floor(Math.random() * 254) + 1}`;
 }
 
 function writeSessionCookie() {
@@ -34,34 +30,16 @@ function clearSessionCookie() {
 
 interface AuthState {
   session: Session | null;
-  audit: AuditEntry[];
   rememberedUntil: Record<string, number>;
   attempt: (email: string, password: string, remember?: boolean) => Promise<AttemptOutcome>;
   verify: (email: string, code: string, remember: boolean) => Promise<AttemptOutcome>;
   isRemembered: (email: string) => boolean;
-  recordUnlock: (targetEmail: string) => void;
   signOut: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => {
-      const log = (email: string, result: LoginResult, stage: "password" | "mfa" | "admin") =>
-        set((state) => ({
-          audit: [
-            {
-              id: id(),
-              email: email.trim().toLowerCase(),
-              result,
-              stage,
-              at: Date.now(),
-              ip: mockIp(),
-              device: currentDeviceLabel(),
-            },
-            ...state.audit,
-          ].slice(0, 200),
-        }));
-
       const establish = (outcome: AttemptOutcome) => {
         const token = id();
         const session: Session = {
@@ -72,6 +50,7 @@ export const useAuthStore = create<AuthState>()(
           issuedAt: Date.now(),
         };
         writeSessionCookie();
+        writeLastActivity(Date.now());
         set({ session });
       };
 
@@ -89,6 +68,7 @@ export const useAuthStore = create<AuthState>()(
           permissions: Array.isArray(tok.user.permissions) ? tok.user.permissions : [],
         };
         writeSessionCookie();
+        writeLastActivity(Date.now());
         set({ session });
         if (remember) {
           set((state) => ({
@@ -135,7 +115,6 @@ export const useAuthStore = create<AuthState>()(
 
       return {
         session: null,
-        audit: [],
         rememberedUntil: {},
 
         isRemembered: (email) => {
@@ -143,12 +122,9 @@ export const useAuthStore = create<AuthState>()(
           return typeof until === "number" && until > Date.now();
         },
 
-        recordUnlock: (targetEmail) => log(targetEmail, "ACCOUNT_UNLOCKED", "admin"),
-
         attempt: async (email, password, remember = false) => {
           try {
             const tok = await login({ email, password, remember });
-            log(email, "SUCCESS", "password");
             establishReal(tok, remember);
             return {
               result: "SUCCESS",
@@ -158,14 +134,12 @@ export const useAuthStore = create<AuthState>()(
             };
           } catch (error) {
             const result = mapLoginError(error);
-            log(email, result, "password");
             return result === "SERVER_ERROR" ? { result, email, serverError: describeServerError(error) } : { result, email };
           }
         },
 
         verify: async (email, code, remember) => {
           const outcome = await verifyMfa(email, code);
-          log(email, outcome.result, "mfa");
           if (outcome.result === "SUCCESS") {
             if (remember) {
               set((state) => ({
@@ -190,7 +164,6 @@ export const useAuthStore = create<AuthState>()(
       name: "abapro-auth",
       partialize: (state) => ({
         session: state.session,
-        audit: state.audit,
         rememberedUntil: state.rememberedUntil,
       }),
       onRehydrateStorage: () => (state) => {

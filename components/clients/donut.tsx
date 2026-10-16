@@ -1,7 +1,9 @@
 "use client";
 
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { Cell, Pie, PieChart, Tooltip } from "recharts";
 import type { SplitDatum } from "@/lib/types";
+
+const DONUT_SIZE = 132;
 
 function DonutTooltip({ active, payload }: { active?: boolean; payload?: { payload: SplitDatum }[] }) {
   if (!active || !payload?.length) return null;
@@ -28,26 +30,24 @@ export function Donut({ data, unit = "%" }: { data: SplitDatum[]; unit?: string 
             {top.name}
           </span>
         </div>
-        <ResponsiveContainer width="100%" height="100%" className="relative z-10">
-          <PieChart>
-            <Pie
-              data={data}
-              dataKey="value"
-              nameKey="name"
-              innerRadius={46}
-              outerRadius={66}
-              paddingAngle={3}
-              cornerRadius={6}
-              strokeWidth={0}
-              isAnimationActive={false}
-            >
-              {data.map((datum) => (
-                <Cell key={datum.name} fill={datum.fill} />
-              ))}
-            </Pie>
-            <Tooltip content={<DonutTooltip />} wrapperStyle={{ zIndex: 20, outline: "none" }} />
-          </PieChart>
-        </ResponsiveContainer>
+        <PieChart width={DONUT_SIZE} height={DONUT_SIZE} className="relative z-10">
+          <Pie
+            data={data}
+            dataKey="value"
+            nameKey="name"
+            innerRadius={46}
+            outerRadius={66}
+            paddingAngle={3}
+            cornerRadius={6}
+            strokeWidth={0}
+            isAnimationActive={false}
+          >
+            {data.map((datum) => (
+              <Cell key={datum.name} fill={datum.fill} />
+            ))}
+          </Pie>
+          <Tooltip content={<DonutTooltip />} wrapperStyle={{ zIndex: 20, outline: "none" }} />
+        </PieChart>
       </div>
       <ul className="flex min-w-0 flex-1 flex-col gap-1.5">
         {data.map((datum) => (

@@ -58,8 +58,12 @@ test("rolls back an optimistic status change when the API fails", async ({ page 
   await expect(row).toBeVisible();
 
   await row.getByRole("button", { name: "Suspend" }).click();
-  await page.getByRole("alertdialog").getByRole("button", { name: "Suspend" }).click();
+  const confirm = page.getByRole("alertdialog");
+  await confirm.getByRole("button", { name: "Suspend" }).click();
 
   await expect(page.getByText("Couldn't apply the change. Reverted.")).toBeVisible();
+  await expect(confirm).toBeVisible();
+  await confirm.getByRole("button", { name: "Cancel" }).click();
+  await expect(confirm).toBeHidden();
   await expect(row.getByText("Active")).toBeVisible();
 });

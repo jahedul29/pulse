@@ -29,6 +29,7 @@ import { DetailList } from "@/components/common/detail-list";
 import { DiffViewer } from "@/components/common/diff-viewer";
 import { Chip } from "@/components/common/chip";
 import { RecordLink } from "@/components/common/record-link";
+import { ReferenceCode } from "@/components/common/reference-code";
 import { ActionTargetName, ReferenceValue, RoleNameChips } from "@/components/admin/record-refs";
 import { recordHref, tableRecordKind, targetRecordKind } from "@/lib/record-links";
 import { humanizeCode, humanizeLabel } from "@/lib/admin-actions/dto";
@@ -488,6 +489,7 @@ export function ChangeLog() {
                         })(),
                       },
                       { label: t("colTable"), value: tableLabel(detail.table) },
+                      { label: t("detailId"), value: <span className="tabular">{detail.id}</span> },
                       { label: t("colSchema"), value: detail.schema || "-" },
                       {
                         label: t("colRecord"),
@@ -501,11 +503,19 @@ export function ChangeLog() {
                         })(),
                       },
                       {
-                        label: t("hashChain"),
-                        value: (
-                          <StatusBadge tone={detail.chain === "missing" ? "warning" : "neutral"} equalWidth={false}>
-                            {t(`hashChain_${detail.chain ?? "missing"}`)}
-                          </StatusBadge>
+                        label: t("prevRowHash"),
+                        value: detail.prevRowHash ? (
+                          <ReferenceCode value={detail.prevRowHash} />
+                        ) : (
+                          <span className="font-normal text-muted-foreground">{t("prevRowHashNone")}</span>
+                        ),
+                      },
+                      {
+                        label: t("rowHash"),
+                        value: detail.rowHash ? (
+                          <ReferenceCode value={detail.rowHash} />
+                        ) : (
+                          <span className="font-normal text-muted-foreground">{t("rowHashNone")}</span>
                         ),
                       },
                     ]}

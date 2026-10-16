@@ -23,7 +23,7 @@ const SCROLL_SELECTOR = [
   '[class*="overflow-x-scroll"]',
 ].join(",");
 
-const DENY_SELECTOR = ".leaflet-container,.recharts-wrapper,[data-no-os]";
+const DENY_SELECTOR = ".maplibregl-map,.recharts-wrapper,[data-no-os]";
 
 function initEl(el: HTMLElement) {
   if (el.closest(DENY_SELECTOR)) return;

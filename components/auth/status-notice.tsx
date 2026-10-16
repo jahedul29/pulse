@@ -7,7 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-const SUPPORT_EMAIL = "it-support@abapro.health";
+const SUPPORT_EMAIL = "abapro.ai@gmail.com";
 
 const TONE = {
   primary: { halo: "bg-primary/25", ring: "bg-primary/10 text-primary ring-primary/15" },

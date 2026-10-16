@@ -37,16 +37,6 @@ export interface AttemptOutcome {
   role?: string;
 }
 
-export interface AuditEntry {
-  id: string;
-  email: string;
-  result: LoginResult;
-  stage: "password" | "mfa" | "admin";
-  at: number;
-  ip: string;
-  device: string;
-}
-
 export interface Session {
   email: string;
   name: string;

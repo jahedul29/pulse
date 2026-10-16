@@ -98,10 +98,10 @@ describe("AdminAccess", () => {
   it("links the picked admin and the admin who granted each role", async () => {
     render(<AdminAccess />);
 
-    await userEvent.click(screen.getByRole("button", { name: /Choose an admin/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Choose a user/ }));
     await userEvent.click(await screen.findByRole("button", { name: /Dana Okonkwo/ }));
 
-    expect(await screen.findByRole("link", { name: "Open admin account Dana Okonkwo" })).toHaveAttribute(
+    expect(await screen.findByRole("link", { name: "Open user account Dana Okonkwo" })).toHaveAttribute(
       "href",
       "/admin/user-management?open=u1",
     );
@@ -113,7 +113,7 @@ describe("AdminAccess", () => {
   it("shows each permission overlay with its grant date, granter and expiry after loading", async () => {
     render(<AdminAccess />);
 
-    await userEvent.click(screen.getByRole("button", { name: /Choose an admin/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Choose a user/ }));
     await userEvent.click(await screen.findByRole("button", { name: /Dana Okonkwo/ }));
 
     expect(await screen.findByText("View Clients module.")).toBeInTheDocument();
@@ -125,7 +125,7 @@ describe("AdminAccess", () => {
   it("uses labelled actions, links the role, shows No expiry, and confirms before removing an overlay", async () => {
     render(<AdminAccess />);
 
-    await userEvent.click(screen.getByRole("button", { name: /Choose an admin/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Choose a user/ }));
     await userEvent.click(await screen.findByRole("button", { name: /Dana Okonkwo/ }));
 
     expect(await screen.findByRole("link", { name: "Administrator" })).toHaveAttribute("href", "/admin/roles/3");

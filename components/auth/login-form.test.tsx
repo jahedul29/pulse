@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import mockMessages from "../../messages/en.json";
 import type { AttemptOutcome } from "@/lib/auth/types";
+import { IDLE_TIMEOUT_MINUTES } from "@/lib/auth/idle";
 import { LoginForm } from "./login-form";
 
 const mockAttempt = jest.fn<Promise<AttemptOutcome>, [string, string, boolean?]>();
@@ -18,17 +19,11 @@ jest.mock("../../lib/auth/store", () => ({
 }));
 
 jest.mock("next-intl", () => {
-  const messages = mockMessages as Record<string, Record<string, unknown>>;
-  const resolve = (ns: string, key: string): unknown =>
-    key.split(".").reduce<unknown>((node, segment) => (node as Record<string, unknown>)?.[segment], messages[ns]);
+  const { translate } = jest.requireActual("../locations/test-intl");
   return {
     useLocale: () => "en",
-    useTranslations: (ns: string) => (key: string, vars?: Record<string, unknown>) => {
-      const value = resolve(ns, key);
-      let str = typeof value === "string" ? value : key;
-      if (vars) for (const [name, val] of Object.entries(vars)) str = str.replace(`{${name}}`, String(val));
-      return str;
-    },
+    useTranslations: (ns: string) => (key: string, values?: Record<string, unknown>) =>
+      translate(mockMessages, `${ns}.${key}`, values),
   };
 });
 
@@ -126,3 +121,22 @@ describe("LoginForm server errors", () => {
     expect(screen.getByLabelText(/^Password/)).toHaveFocus();
   });
 });
+
+describe("LoginForm after an idle sign-out", () => {
+  it("explains why the admin was signed out", () => {
+    render(<LoginForm signedOutForInactivity />);
+    const notice = screen.getByRole("status");
+    expect(within(notice).getByText("Signed out for inactivity")).toBeInTheDocument();
+    const minutes: number = IDLE_TIMEOUT_MINUTES;
+    const unit = minutes === 1 ? "minute" : "minutes";
+    expect(
+      within(notice).getByText(`You were signed out after ${minutes} ${unit} of inactivity. Sign in again to continue.`),
+    ).toBeInTheDocument();
+  });
+
+  it("shows no notice on a normal visit", () => {
+    render(<LoginForm />);
+    expect(screen.queryByText("Signed out for inactivity")).not.toBeInTheDocument();
+  });
+});
+
