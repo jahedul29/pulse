@@ -1,4 +1,6 @@
 export type ActionResult = "success" | "failure" | "partial";
+
+export const TARGET_SERVICES = ["USER_MANAGEMENT", "ORDERS", "FINANCIAL", "NOTIFICATIONS", "CONTENT", "SELF"] as const;
 export type ActionSeverity = "info" | "warning" | "critical";
 
 export interface ActionInput {
@@ -23,6 +25,8 @@ export interface AdminAction {
   entity: string;
   targetType?: string;
   targetId?: string;
+  service?: string;
+  serviceLabel?: string;
   targetUser: TargetUser | null;
   summary: string;
   payloadName?: string | null;
@@ -31,12 +35,11 @@ export interface AdminAction {
   result: string;
   severity: string;
   correlationId?: string;
+  ipHash?: string;
   adminEmail?: string;
   device?: string;
   inputs: ActionInput[];
 }
-
-export type HashChainStatus = "first" | "linked" | "missing";
 
 export type ChangeOp = "insert" | "update" | "delete";
 
@@ -61,7 +64,8 @@ export interface ChangeLogEntry {
   recordId: string;
   operation: string;
   changes: ColumnChange[];
-  chain?: HashChainStatus;
+  prevRowHash: string | null;
+  rowHash: string | null;
 }
 
 export interface ActionQuery {

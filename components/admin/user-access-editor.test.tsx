@@ -99,8 +99,8 @@ describe("UserAccessEditor", () => {
   it("page variant renders card headers with the action on the title row", () => {
     render(<UserAccessEditor userId="u-5" userName="Test Operator" variant="page" canEdit />);
 
-    expect(screen.getByText("Permission overlays")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add overlay" }).closest("[data-slot=card-action]")).not.toBeNull();
+    expect(screen.getByText("Direct permissions")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add permission" }).closest("[data-slot=card-action]")).not.toBeNull();
     expect(screen.getByRole("button", { name: "Grant a role" })).toBeInTheDocument();
   });
 });

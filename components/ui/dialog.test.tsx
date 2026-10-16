@@ -21,13 +21,13 @@ describe("Dialog inside a drawer", () => {
           <SheetTitle>User details</SheetTitle>
           <Dialog open>
             <DialogContent>
-              <DialogTitle>Add a permission overlay</DialogTitle>
+              <DialogTitle>Add a direct permission</DialogTitle>
             </DialogContent>
           </Dialog>
         </SheetContent>
       </Sheet>,
     );
-    expect(await screen.findByRole("dialog", { name: "Add a permission overlay" })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Add a direct permission" })).toBeInTheDocument();
     expect(document.querySelectorAll('[data-slot="dialog-overlay"]')).toHaveLength(1);
   });
 });

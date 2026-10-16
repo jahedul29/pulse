@@ -1,23 +1,16 @@
 import type { Feature, FeatureCollection, Geometry } from "geojson";
-import {
-  getVersion,
-  Map as MapLibreMap,
-  Marker,
-  setWorkerUrl,
-  type ErrorEvent,
-  type GeoJSONSource,
-} from "maplibre-gl";
+import { Map as MapLibreMap, Marker, type ErrorEvent, type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { GeoBounds, LngLat, RingLookup } from "@/lib/mgrs/grid";
 import { gridLines } from "@/lib/region-builder/grid-lines";
 import type { CellChange } from "@/lib/region-builder/selection";
 import type { MapBackground } from "@/lib/region-builder/backgrounds";
-import { startAttributionCollapsed } from "./attribution";
+import { startAttributionCollapsed } from "@/components/maps/attribution";
+import { styleFor } from "@/components/maps/styles";
+import { configureMaplibreWorker } from "@/components/maps/worker";
 import { addOverlay, GRID_MIN_ZOOM, SOURCES } from "./layers";
 import type { MapPalette } from "./palette";
-import { styleFor } from "./styles";
 
-const WORKER_PATH = "/vendor/maplibre-gl-worker.mjs";
 const START_TIMEOUT_MS = 20000;
 const STYLE_TIMEOUT_MS = 10000;
 const GRID_REFRESH_MS = 150;
@@ -73,14 +66,6 @@ export interface RegionMapController {
   destroy(): void;
 }
 
-let workerConfigured = false;
-
-function configureWorker() {
-  if (workerConfigured) return;
-  setWorkerUrl(`${WORKER_PATH}?v=${getVersion()}`);
-  workerConfigured = true;
-}
-
 function collection(features: Feature[]): FeatureCollection {
   return { type: "FeatureCollection", features };
 }
@@ -131,7 +116,7 @@ function createCentreElement(): HTMLElement {
 
 export async function createRegionMap(options: RegionMapOptions): Promise<RegionMapController> {
   if (options.signal?.aborted) throw abortError();
-  configureWorker();
+  configureMaplibreWorker();
   const { rings } = options;
   let palette = options.palette;
   const map = new MapLibreMap({

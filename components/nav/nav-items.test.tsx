@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import mockMessages from "../../messages/en.json";
+import { useUiStore } from "@/lib/ui-store";
 import { NavItems } from "./nav-items";
 
 jest.mock("next/navigation", () => ({ usePathname: () => "/admin/roles" }));
@@ -15,6 +16,10 @@ jest.mock("next-intl", () => {
       return typeof value === "string" ? value : key;
     },
   };
+});
+
+beforeEach(() => {
+  useUiStore.setState({ openNavGroups: [] });
 });
 
 describe("NavItems parent group", () => {
@@ -32,19 +37,40 @@ describe("NavItems parent group", () => {
     expect(parent).toHaveClass("bg-sidebar-accent");
   });
 
-  it("keeps only one group open at a time", async () => {
+  it("lets several groups stay open at once", async () => {
     render(<NavItems />);
 
     const rbac = screen.getByRole("button", { name: /RBAC & Audit/i });
     const notifications = screen.getByRole("button", { name: /Notifications/i });
+    const locations = screen.getByRole("button", { name: /Locations/i });
 
     expect(rbac).toHaveAttribute("aria-expanded", "true");
     expect(notifications).toHaveAttribute("aria-expanded", "false");
 
     await userEvent.click(notifications);
+    await userEvent.click(locations);
 
+    expect(rbac).toHaveAttribute("aria-expanded", "true");
     expect(notifications).toHaveAttribute("aria-expanded", "true");
-    expect(rbac).toHaveAttribute("aria-expanded", "false");
-    expect(rbac).toHaveClass("bg-sidebar-accent");
+    expect(locations).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("remembers which groups are open, including the current page's group", async () => {
+    const { unmount } = render(<NavItems />);
+    await userEvent.click(screen.getByRole("button", { name: /Notifications/i }));
+    expect(useUiStore.getState().openNavGroups).toEqual(expect.arrayContaining(["rbacGroup", "notificationsGroup"]));
+    unmount();
+
+    render(<NavItems />);
+    expect(screen.getByRole("button", { name: /Notifications/i })).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("lists the notification deliveries screen under Notifications", async () => {
+    render(<NavItems />);
+    await userEvent.click(screen.getByRole("button", { name: /Notifications/i }));
+    expect(screen.getByRole("link", { name: "Notification deliveries" })).toHaveAttribute(
+      "href",
+      "/admin/notifications/log",
+    );
   });
 });

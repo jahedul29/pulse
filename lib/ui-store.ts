@@ -39,6 +39,8 @@ interface UiState {
   setMobileOpen: (open: boolean) => void;
   regionEditor: RegionEditorPrefs;
   setRegionEditor: (patch: Partial<RegionEditorPrefs>) => void;
+  openNavGroups: string[];
+  setNavGroupOpen: (group: string, open: boolean) => void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -50,16 +52,34 @@ export const useUiStore = create<UiState>()(
       setMobileOpen: (open) => set({ mobileOpen: open }),
       regionEditor: DEFAULT_REGION_EDITOR_PREFS,
       setRegionEditor: (patch) => set((state) => ({ regionEditor: { ...state.regionEditor, ...patch } })),
+      openNavGroups: [],
+      setNavGroupOpen: (group, open) =>
+        set((state) => {
+          const isOpen = state.openNavGroups.includes(group);
+          if (isOpen === open) return state;
+          return {
+            openNavGroups: open
+              ? [...state.openNavGroups, group]
+              : state.openNavGroups.filter((openGroup) => openGroup !== group),
+          };
+        }),
     }),
     {
       name: "abapro-ui",
-      partialize: (state) => ({ collapsed: state.collapsed, regionEditor: state.regionEditor }),
+      partialize: (state) => ({
+        collapsed: state.collapsed,
+        regionEditor: state.regionEditor,
+        openNavGroups: state.openNavGroups,
+      }),
       merge: (persisted, current) => {
-        const saved = (persisted ?? {}) as Partial<Pick<UiState, "collapsed" | "regionEditor">>;
+        const saved = (persisted ?? {}) as Partial<Pick<UiState, "collapsed" | "regionEditor" | "openNavGroups">>;
         return {
           ...current,
           collapsed: typeof saved.collapsed === "boolean" ? saved.collapsed : current.collapsed,
           regionEditor: regionEditorPrefs(saved.regionEditor),
+          openNavGroups: Array.isArray(saved.openNavGroups)
+            ? [...new Set(saved.openNavGroups.filter((group): group is string => typeof group === "string"))]
+            : current.openNavGroups,
         };
       },
     },

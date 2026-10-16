@@ -1,4 +1,5 @@
 import type { Page, Route } from "@playwright/test";
+import { LAST_ACTIVITY_KEY } from "../../lib/auth/idle";
 
 const OWNER = {
   id: "00000000-0000-4000-8000-000000000001",
@@ -83,6 +84,9 @@ function fail(messages: string[], status = 422) {
 }
 
 export async function mockAdminIdentity(page: Page, password = "abapro") {
+  await page.addInitScript((key) => {
+    window.localStorage.setItem(key, String(Date.now()));
+  }, LAST_ACTIVITY_KEY);
   const roles = [
     { id: 1, name: "Superadmin", description: "Full access", is_system: true, permissions: [] },
     { id: 2, name: "Admin", description: "Admin", is_system: true, permissions: [] },
@@ -150,6 +154,7 @@ export async function mockAdminIdentity(page: Page, password = "abapro") {
       admin_account_id: "u-dana",
       admin_account: account("dana.okonkwo@abapro.health", "Dana", "Okonkwo"),
       action_code: "CLIENT_REFUND",
+      target_service: "FINANCIAL",
       target_type: "Order",
       target_id: "ord-88",
       target_summary: "Refund client order",
@@ -162,6 +167,8 @@ export async function mockAdminIdentity(page: Page, password = "abapro") {
       correlation_id: "corr-1",
       user_agent: UA_MAC,
       created_at: "2026-09-01T10:00:00Z",
+      main: { target_service_label: "Financial" },
+      extended: { ip_hash: "c".repeat(64) },
     },
   ];
 

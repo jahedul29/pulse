@@ -1,6 +1,7 @@
 import { useAuthStore } from "./store";
 import { login } from "./api";
 import { ApiError } from "@/lib/api/errors";
+import { LAST_ACTIVITY_KEY } from "./idle";
 
 jest.mock("./api", () => ({ login: jest.fn() }));
 
@@ -36,6 +37,14 @@ describe("auth store real login", () => {
       "USER_MANAGEMENT.user_management.EDIT",
       "ROLES.roles.VIEW",
     ]);
+  });
+
+  it("starts the inactivity clock fresh at sign-in", async () => {
+    localStorage.setItem(LAST_ACTIVITY_KEY, "1");
+    (login as jest.Mock).mockResolvedValueOnce(token({}));
+    const before = Date.now();
+    await useAuthStore.getState().attempt("admin@ababro.ai", "secret");
+    expect(Number(localStorage.getItem(LAST_ACTIVITY_KEY))).toBeGreaterThanOrEqual(before);
   });
 
   it("falls back to the email when full_name is missing", async () => {

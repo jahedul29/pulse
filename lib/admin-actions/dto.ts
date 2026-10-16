@@ -1,7 +1,7 @@
 import { accountName, toEpoch, type AdminAccountRef } from "@/lib/audit/dto";
 import { maskColumnValue, maskInputValue } from "@/lib/audit/mask";
 import { deviceLabelFromUA } from "@/lib/device";
-import type { ActionInput, AdminAction, ChangeLogEntry, ColumnChange, HashChainStatus, TargetUser } from "./types";
+import type { ActionInput, AdminAction, ChangeLogEntry, ColumnChange, TargetUser } from "./types";
 
 export interface TargetUserDto {
   id?: string;
@@ -17,6 +17,7 @@ export interface AdminActionLogDto {
   admin_account?: AdminAccountRef | null;
   action_code: string;
   action_label?: string | null;
+  target_service?: string | null;
   target_type?: string | null;
   target_id?: string | null;
   target_summary?: string | null;
@@ -29,6 +30,8 @@ export interface AdminActionLogDto {
   correlation_id?: string | null;
   user_agent?: string | null;
   created_at?: string | null;
+  main?: { target_service_label?: string | null } | null;
+  extended?: { ip_hash?: string | null } | null;
 }
 
 export interface ChangeLogDto {
@@ -163,6 +166,8 @@ export function actionDtoToRow(dto: AdminActionLogDto): AdminAction {
     entity: entityLabel(dto),
     targetType: dto.target_type ?? "",
     targetId: dto.target_id ?? "",
+    service: dto.target_service ?? "",
+    serviceLabel: dto.main?.target_service_label?.trim() || humanizeCode(dto.target_service),
     targetUser: targetUserOf(dto.target_user),
     summary: dto.target_summary ?? "",
     payloadName: payloadName(dto.request_payload),
@@ -171,6 +176,7 @@ export function actionDtoToRow(dto: AdminActionLogDto): AdminAction {
     result: dto.result,
     severity: dto.severity,
     correlationId: dto.correlation_id ?? "",
+    ipHash: dto.extended?.ip_hash ?? "",
     adminEmail: dto.admin_account?.email ?? "",
     device: dto.user_agent ? deviceLabelFromUA(dto.user_agent) : "",
     inputs: [],
@@ -215,11 +221,6 @@ function deriveChanges(dto: ChangeLogDto): ColumnChange[] {
   }));
 }
 
-export function hashChainStatus(dto: Pick<ChangeLogDto, "prev_row_hash" | "row_hash">): HashChainStatus {
-  if (!dto.row_hash) return "missing";
-  return dto.prev_row_hash ? "linked" : "first";
-}
-
 function cellValue(value: unknown): string | null {
   if (value === null || value === undefined) return null;
   return typeof value === "object" ? JSON.stringify(value) : String(value);
@@ -242,7 +243,8 @@ export function changeDtoToRow(dto: ChangeLogDto): ChangeLogEntry {
     recordId: dto.row_pk,
     operation: dto.operation,
     changes: deriveChanges(dto),
-    chain: hashChainStatus(dto),
+    prevRowHash: dto.prev_row_hash ?? null,
+    rowHash: dto.row_hash ?? null,
   };
 }
 

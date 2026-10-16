@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Activity,
   Bell,
@@ -30,6 +30,7 @@ import { usePathname } from "next/navigation";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { BUILDER_PATH, COUNTRIES_PATH, REGIONS_PATH } from "@/lib/locations/routes";
 import { SECTIONS } from "@/lib/nav";
+import { useUiStore } from "@/lib/ui-store";
 import { cn } from "@/lib/utils";
 
 type NavGroupItem = { href: string; key: string; icon: LucideIcon };
@@ -218,8 +219,25 @@ export function NavItems({
         : LOCATION_ITEMS.some((i) => isActive(pathname, i.href))
           ? "locationsGroup"
           : null;
-  const [openGroup, setOpenGroup] = useState<string | null>(activeGroup);
-  const toggleGroup = (key: string) => setOpenGroup((previous) => (previous === key ? null : key));
+  const openNavGroups = useUiStore((state) => state.openNavGroups);
+  const setNavGroupOpen = useUiStore((state) => state.setNavGroupOpen);
+  const [closedActive, setClosedActive] = useState<string | null>(null);
+  const [seenActive, setSeenActive] = useState(activeGroup);
+  if (seenActive !== activeGroup) {
+    setSeenActive(activeGroup);
+    setClosedActive(null);
+  }
+
+  useEffect(() => {
+    if (activeGroup) setNavGroupOpen(activeGroup, true);
+  }, [activeGroup, setNavGroupOpen]);
+
+  const isOpen = (key: string) => (key === activeGroup ? closedActive !== key : openNavGroups.includes(key));
+  const toggleGroup = (key: string) => {
+    const open = isOpen(key);
+    setNavGroupOpen(key, !open);
+    if (key === activeGroup) setClosedActive(open ? key : null);
+  };
 
   return (
     <nav className="flex flex-1 flex-col gap-0.5 px-3 py-2">
@@ -253,7 +271,7 @@ export function NavItems({
         icon={Users}
         items={USER_MGMT_ITEMS}
         collapsed={collapsed}
-        open={openGroup === "userMgmtGroup"}
+        open={isOpen("userMgmtGroup")}
         onToggle={() => toggleGroup("userMgmtGroup")}
         onNavigate={onNavigate}
       />
@@ -262,7 +280,7 @@ export function NavItems({
         icon={Shield}
         items={RBAC_ITEMS}
         collapsed={collapsed}
-        open={openGroup === "rbacGroup"}
+        open={isOpen("rbacGroup")}
         onToggle={() => toggleGroup("rbacGroup")}
         onNavigate={onNavigate}
       />
@@ -271,7 +289,7 @@ export function NavItems({
         icon={Bell}
         items={NOTIFICATION_ITEMS}
         collapsed={collapsed}
-        open={openGroup === "notificationsGroup"}
+        open={isOpen("notificationsGroup")}
         onToggle={() => toggleGroup("notificationsGroup")}
         onNavigate={onNavigate}
       />
@@ -280,7 +298,7 @@ export function NavItems({
         icon={Earth}
         items={LOCATION_ITEMS}
         collapsed={collapsed}
-        open={openGroup === "locationsGroup"}
+        open={isOpen("locationsGroup")}
         onToggle={() => toggleGroup("locationsGroup")}
         onNavigate={onNavigate}
       />

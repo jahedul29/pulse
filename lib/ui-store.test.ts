@@ -9,14 +9,16 @@ describe("ui store persistence", () => {
       JSON.stringify({
         state: {
           collapsed: "yes",
+          openNavGroups: ["rbacGroup", 7, "rbacGroup", "locationsGroup"],
           regionEditor: { background: "satellite", showGrid: "yes", panelOpen: false, expandedSections: ["map", 4] },
         },
         version: 0,
       }),
     );
     await useUiStore.persist.rehydrate();
-    const { collapsed, regionEditor } = useUiStore.getState();
+    const { collapsed, regionEditor, openNavGroups } = useUiStore.getState();
     expect(collapsed).toBe(false);
+    expect(openNavGroups).toEqual(["rbacGroup", "locationsGroup"]);
     expect(regionEditor).toEqual({
       ...DEFAULT_REGION_EDITOR_PREFS,
       panelOpen: false,

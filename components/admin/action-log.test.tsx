@@ -14,6 +14,8 @@ const mockAction: AdminAction = {
   entity: "USERS · u-5",
   targetType: "USERS",
   targetId: "u-5",
+  service: "SELF",
+  serviceLabel: "Self",
   targetUser: { id: "u-5", name: "Test Administrator", username: "SUID-0005", email: "administrator@ababro.ai" },
   summary: "PUT users/u-5/permissions",
   permissionNames: ["Manage User Management invitations.", "View User Management invitations."],
@@ -21,6 +23,7 @@ const mockAction: AdminAction = {
   result: "SUCCESS",
   severity: "INFO",
   correlationId: "corr-1",
+  ipHash: "f".repeat(64),
   adminEmail: "admin@ababro.ai",
   device: "",
   inputs: [],
@@ -95,12 +98,12 @@ describe("ActionLog", () => {
   it("follows the spec column order and shows the target user in the Target column", () => {
     render(<ActionLog />);
 
-    expect(screen.queryByRole("columnheader", { name: /Service/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: /Timestamp/ })).not.toBeInTheDocument();
     const headers = screen.getAllByRole("columnheader").map((header) => header.textContent?.trim());
-    expect(headers).toEqual(["Created at", "Result", "User", "Action", "Target type", "Target", "Importance"]);
+    expect(headers).toEqual(["Created at", "Result", "User", "Action", "Target type", "Target", "Service", "Importance"]);
     const row = screen.getByRole("link", { name: "Updated direct permissions" });
     expect(within(row).getByText("Users")).toBeInTheDocument();
+    expect(within(row).getByText("Self")).toBeInTheDocument();
     expect(within(row).getByText("Test Administrator")).toBeInTheDocument();
     expect(within(row).queryByText("PUT users/u-5/permissions")).not.toBeInTheDocument();
   });
@@ -155,10 +158,9 @@ describe("ActionLog", () => {
     expect(within(drawer).getByText("Manage User Management invitations.")).toBeInTheDocument();
     expect(within(drawer).getByText("View User Management invitations.")).toBeInTheDocument();
     expect(within(drawer).queryByText(/^Roles \(/)).not.toBeInTheDocument();
-    expect(within(drawer).queryByText("Service")).not.toBeInTheDocument();
   });
 
-  it("links the admin and target user to their accounts, renames labels and hides raw ids", async () => {
+  it("links the admin and target user to their accounts and shows the extended info", async () => {
     render(<ActionLog />);
 
     await userEvent.click(screen.getByRole("link", { name: "Updated direct permissions" }));
@@ -173,11 +175,13 @@ describe("ActionLog", () => {
       "/admin/user-management?open=u-5",
     );
     expect(within(drawer).getByText("Created at")).toBeInTheDocument();
-    expect(within(drawer).getByText("Request payload")).toBeInTheDocument();
-    expect(within(drawer).getByText("No request payload recorded.")).toBeInTheDocument();
+    expect(within(drawer).getByText("Request details")).toBeInTheDocument();
+    expect(within(drawer).getByText("No request details recorded.")).toBeInTheDocument();
+    expect(within(drawer).getByText("Service").nextElementSibling).toHaveTextContent("Self");
+    expect(within(drawer).getByText("ID").nextElementSibling).toHaveTextContent("36");
+    expect(within(drawer).getByText("Correlation ID").nextElementSibling).toHaveTextContent("corr-1");
+    expect(within(drawer).getByText("IP hash").nextElementSibling).toHaveTextContent("f".repeat(64));
     expect(within(drawer).queryByText("Target id")).not.toBeInTheDocument();
-    expect(within(drawer).queryByText("Correlation ID")).not.toBeInTheDocument();
-    expect(within(drawer).queryByText("corr-1")).not.toBeInTheDocument();
   });
 
   it("hides a raw route summary and resolves payload ids to linked names, dropping duplicates", async () => {
@@ -214,6 +218,7 @@ describe("ActionLog", () => {
     expect(within(drawer).queryByText("PUT users/u-5/permissions")).not.toBeInTheDocument();
     expect(within(drawer).queryByText("Permission IDs")).not.toBeInTheDocument();
     expect(within(drawer).queryByText("Role IDs")).not.toBeInTheDocument();
-    expect(within(drawer).queryByText("ID")).not.toBeInTheDocument();
+    expect(within(drawer).getAllByText("ID")).toHaveLength(1);
+    expect(within(drawer).queryByText("u-5")).not.toBeInTheDocument();
   });
 });

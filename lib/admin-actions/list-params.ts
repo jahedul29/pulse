@@ -28,6 +28,7 @@ const ACTION_FILTER: Record<string, string> = {
   actor: "admin_account_id",
   actionCode: "action_code",
   targetType: "target_type",
+  service: "target_service",
 };
 
 function applyFilter(value: unknown, field: string, filters: Filters) {

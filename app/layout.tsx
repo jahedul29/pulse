@@ -7,6 +7,7 @@ import "./globals.css";
 import { AppScroll } from "@/components/scrollbars";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { IdleLogout } from "@/components/auth/idle-logout";
 import { dirFor, type Locale } from "@/i18n/routing";
 
 const manrope = Manrope({
@@ -53,6 +54,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <QueryProvider>
             <AppScroll>{children}</AppScroll>
             <Toaster />
+            <IdleLogout />
           </QueryProvider>
         </LocaleProvider>
       </body>

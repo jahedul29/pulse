@@ -4,7 +4,6 @@ import {
   changeDtoToDetail,
   changeDtoToRow,
   flattenPayload,
-  hashChainStatus,
   humanizeCode,
   payloadName,
   type AdminActionLogDto,
@@ -271,13 +270,29 @@ describe("payloadName", () => {
   });
 });
 
-describe("hashChainStatus", () => {
-  it("follows the spec: no previous hash means the first change, otherwise linked", () => {
-    expect(hashChainStatus({ prev_row_hash: null, row_hash: "a".repeat(64) })).toBe("first");
-    expect(hashChainStatus({ prev_row_hash: "b".repeat(64), row_hash: "a".repeat(64) })).toBe("linked");
+describe("audit extended info", () => {
+  it("maps the target service with the backend label, falling back to a readable code", () => {
+    const base: AdminActionLogDto = { id: "7", action_code: "ROLES_CREATE", result: "SUCCESS", severity: "INFO" };
+    const labelled = actionDtoToRow({ ...base, target_service: "SELF", main: { target_service_label: "Self" } });
+    expect(labelled.service).toBe("SELF");
+    expect(labelled.serviceLabel).toBe("Self");
+    expect(actionDtoToRow({ ...base, target_service: "USER_MANAGEMENT" }).serviceLabel).toBe("User management");
+    expect(actionDtoToRow(base).serviceLabel).toBe("");
   });
 
-  it("flags a change with no row hash, which the spec says must always exist", () => {
-    expect(hashChainStatus({ prev_row_hash: null, row_hash: null })).toBe("missing");
+  it("reads the IP hash from the extended block", () => {
+    const base: AdminActionLogDto = { id: "7", action_code: "ROLES_CREATE", result: "SUCCESS", severity: "INFO" };
+    expect(actionDtoToRow({ ...base, extended: { ip_hash: "f".repeat(64) } }).ipHash).toBe("f".repeat(64));
+    expect(actionDtoToRow({ ...base, extended: { ip_hash: null } }).ipHash).toBe("");
+  });
+
+  it("keeps both change-log hashes, with null when the backend sends none", () => {
+    const base: ChangeLogDto = { id: "6", table_name: "admin_invitations", row_pk: "inv-1", operation: "INSERT" };
+    const first = changeDtoToRow({ ...base, prev_row_hash: null, row_hash: "a".repeat(64) });
+    expect(first.prevRowHash).toBeNull();
+    expect(first.rowHash).toBe("a".repeat(64));
+    const linked = changeDtoToRow({ ...base, prev_row_hash: "b".repeat(64), row_hash: "a".repeat(64) });
+    expect(linked.prevRowHash).toBe("b".repeat(64));
+    expect(changeDtoToRow(base).rowHash).toBeNull();
   });
 });

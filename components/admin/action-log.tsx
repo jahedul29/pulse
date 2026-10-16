@@ -29,6 +29,7 @@ import { ProfileCell } from "@/components/common/profile-cell";
 import { DetailList } from "@/components/common/detail-list";
 import { Chip } from "@/components/common/chip";
 import { RecordLink } from "@/components/common/record-link";
+import { ReferenceCode } from "@/components/common/reference-code";
 import { ActionTargetName, ReferenceValue, RoleNameChips } from "@/components/admin/record-refs";
 import { isHttpRoute, recordHref, targetRecordKind } from "@/lib/record-links";
 import { humanizeCode, meaningfulInputs } from "@/lib/admin-actions/dto";
@@ -37,7 +38,7 @@ import { useActionFilterOptions, useAdminActions } from "@/lib/admin-actions/que
 import { getAdminAction, exportAdminActionsCsv } from "@/lib/admin-actions/audit-api";
 import { CsvExportButton } from "@/components/admin/csv-export-button";
 import { actionServerStateToParams } from "@/lib/admin-actions/list-params";
-import type { AdminAction } from "@/lib/admin-actions/types";
+import { TARGET_SERVICES, type AdminAction } from "@/lib/admin-actions/types";
 
 const RESULTS: string[] = ["SUCCESS", "PARTIAL", "FAILURE"];
 const SEVERITIES: string[] = ["INFO", "WARNING", "CRITICAL"];
@@ -213,6 +214,19 @@ export function ActionLog() {
         ),
       },
       {
+        id: "service",
+        accessorFn: (action) => action.serviceLabel ?? "",
+        size: 160,
+        header: t("colService"),
+        enableSorting: false,
+        meta: {
+          filter: "select",
+          filterOptions: TARGET_SERVICES.map((service) => ({ value: service, label: humanizeCode(service) })),
+          filterLabel: t("colService"),
+        },
+        cell: ({ row }) => <span className="block truncate text-sm">{row.original.serviceLabel || "-"}</span>,
+      },
+      {
         id: "severity",
         accessorFn: (action) => action.severity,
         size: 130,
@@ -384,6 +398,7 @@ export function ActionLog() {
                           );
                         })(),
                       },
+                      { label: t("colService"), value: detail.serviceLabel || "-" },
                       ...(detail.summary && !isHttpRoute(detail.summary)
                         ? [{ label: t("detailSummary"), value: detail.summary }]
                         : []),
@@ -395,6 +410,15 @@ export function ActionLog() {
                         })(),
                       },
                       { label: t("detailDevice"), value: detail.device || "-" },
+                      { label: t("detailId"), value: <span className="tabular">{detail.id}</span> },
+                      {
+                        label: t("detailCorrelationId"),
+                        value: detail.correlationId ? <ReferenceCode value={detail.correlationId} /> : "-",
+                      },
+                      {
+                        label: t("detailIpHash"),
+                        value: detail.ipHash ? <ReferenceCode value={detail.ipHash} /> : "-",
+                      },
                     ]}
                   />
                   <NameChips

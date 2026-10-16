@@ -38,7 +38,8 @@ const mockEntry: ChangeLogEntry = {
   table: "admin_invitations",
   recordId: "inv-1",
   operation: "INSERT",
-  chain: "first",
+  prevRowHash: null,
+  rowHash: "a".repeat(64),
   changes: [
     { column: "status", before: null, after: "PENDING" },
     { column: "invited_by_admin_id", before: null, after: "u-9" },
@@ -136,13 +137,14 @@ describe("ChangeLog table", () => {
     expect(within(row).queryByText("inv-1")).not.toBeInTheDocument();
   });
 
-  it("shows a linked change in the hash chain status", async () => {
-    mockDetail = { ...mockEntry, chain: "linked" };
+  it("shows the previous row hash when the change is linked to an earlier one", async () => {
+    mockDetail = { ...mockEntry, prevRowHash: "b".repeat(64) };
     render(<ChangeLog />);
     await userEvent.click(screen.getByRole("link", { name: "Insert · Invitations" }));
     const drawer = await screen.findByRole("dialog", { name: "Sent an invitation" });
 
-    expect(await within(drawer).findByText("Linked to the previous change")).toBeInTheDocument();
+    expect(await within(drawer).findByText("b".repeat(64))).toBeInTheDocument();
+    expect(within(drawer).queryByText("None, first change to this record")).not.toBeInTheDocument();
     mockDetail = mockEntry;
   });
 });
@@ -167,8 +169,11 @@ describe("ChangeLog detail drawer", () => {
     expect(within(drawer).getByText("Invitations")).toBeInTheDocument();
     expect(within(drawer).getByText("Schema").nextElementSibling).toHaveTextContent("admin");
     expect(within(drawer).getByText("Changed row")).toBeInTheDocument();
-    expect(within(drawer).getByText("Hash chain")).toBeInTheDocument();
-    expect(within(drawer).getByText("First change to this record")).toBeInTheDocument();
+    expect(within(drawer).getByText("ID").nextElementSibling).toHaveTextContent("5");
+    expect(within(drawer).getByText("Previous row hash").nextElementSibling).toHaveTextContent(
+      "None, first change to this record",
+    );
+    expect(within(drawer).getByText("Row hash").nextElementSibling).toHaveTextContent("a".repeat(64));
     expect(within(drawer).getByText("Omar Haddad")).toBeInTheDocument();
     expect(within(drawer).queryByRole("link", { name: "Omar Haddad" })).not.toBeInTheDocument();
     expect(within(drawer).getByRole("link", { name: "Open action log entry Sent an invitation" })).toHaveAttribute(
