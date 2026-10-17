@@ -25,4 +25,18 @@ describe("ui store persistence", () => {
       expandedSections: ["map"],
     });
   });
+
+  it("keeps a valid last map view and drops a broken one", async () => {
+    const view = { center: [54.9, 24.1], zoom: 11, countryId: 1, owner: "u-1" };
+    localStorage.setItem("abapro-ui", JSON.stringify({ state: { lastMapView: view }, version: 0 }));
+    await useUiStore.persist.rehydrate();
+    expect(useUiStore.getState().lastMapView).toEqual(view);
+
+    localStorage.setItem(
+      "abapro-ui",
+      JSON.stringify({ state: { lastMapView: { ...view, center: [54.9, 120] } }, version: 0 }),
+    );
+    await useUiStore.persist.rehydrate();
+    expect(useUiStore.getState().lastMapView).toBeNull();
+  });
 });

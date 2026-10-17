@@ -40,6 +40,7 @@ import { getChangeLog, exportChangeLogCsv } from "@/lib/admin-actions/audit-api"
 import { CsvExportButton } from "@/components/admin/csv-export-button";
 import { changeServerStateToParams } from "@/lib/admin-actions/list-params";
 import type { AdminAction, ChangeLogEntry } from "@/lib/admin-actions/types";
+import { LoadError } from "@/components/common/load-error";
 
 const OPS: string[] = ["INSERT", "UPDATE", "DELETE"];
 const FIELD_PREVIEW = 2;
@@ -148,6 +149,7 @@ export function ChangeLog() {
     data: detail,
     loading: detailLoading,
     error: detailError,
+    cause: detailCause,
     reload,
   } = useRecordDetail(selected?.id ?? null, getChangeLog);
   useEffect(() => {
@@ -362,12 +364,7 @@ export function ChangeLog() {
             </div>
           )}
           {changeQuery.isError ? (
-            <div className="flex flex-col items-center gap-3 py-16 text-center">
-              <p className="text-sm text-muted-foreground">{t("loadError")}</p>
-              <Button variant="outline" size="sm" onClick={() => changeQuery.refetch()}>
-                {tc("retry")}
-              </Button>
-            </div>
+            <LoadError error={changeQuery.error} message={t("loadError")} onRetry={() => changeQuery.refetch()} />
           ) : changeQuery.isPending ? (
             <div className="flex flex-col gap-2">
               {Array.from({ length: 6 }).map((_, index) => (
@@ -450,12 +447,7 @@ export function ChangeLog() {
                   <Skeleton className="h-28 w-full" />
                 </div>
               ) : detailError || !detail ? (
-                <div className="flex flex-col items-center gap-3 py-10 text-center">
-                  <p className="text-sm text-muted-foreground">{t("loadError")}</p>
-                  <Button variant="outline" size="sm" onClick={reload}>
-                    {tc("retry")}
-                  </Button>
-                </div>
+                <LoadError error={detailCause} message={t("loadError")} onRetry={reload} className="py-10" />
               ) : (
                 <>
                   <DetailList

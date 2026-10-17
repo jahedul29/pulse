@@ -1,6 +1,7 @@
 import type { FeatureCollection } from "geojson";
 import type { AddLayerObject, Map as MapLibreMap } from "maplibre-gl";
 import type { MapPalette } from "./palette";
+import { CELL_ZOOM } from "@/lib/region-builder/initial-view";
 
 export const SOURCES = {
   others: "rb-others",
@@ -10,7 +11,7 @@ export const SOURCES = {
   draft: "rb-draft",
 } as const;
 
-export const GRID_MIN_ZOOM = 9;
+export const GRID_MIN_ZOOM = CELL_ZOOM;
 export const OUTLINE_MIN_ZOOM = 10;
 const CELL_SOURCE_MAX_ZOOM = 12;
 

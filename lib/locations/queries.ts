@@ -1,6 +1,6 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/api/query-keys";
-import { useAuthed } from "@/lib/auth/use-authed";
+import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 import type { LngLat } from "@/lib/mgrs/grid";
 import { fetchCoverageFile, type CoverageFile } from "./coverage-file";
 import { coverageBody } from "./coverage-payload";
@@ -28,22 +28,22 @@ const LOCATIONS_STALE_MS = 5 * 60 * 1000;
 const COVERAGE_GC_MS = 30 * 60 * 1000;
 
 export function useAllCities({ enabled = true }: { enabled?: boolean } = {}) {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.TECHNICAL_VIEW);
   return useQuery({
     queryKey: queryKeys.cities(),
     queryFn: listAllCities,
     staleTime: LOCATIONS_STALE_MS,
-    enabled: authed && enabled,
+    enabled: allowed && enabled,
   });
 }
 
 export function useAllCountries({ enabled = true }: { enabled?: boolean } = {}) {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.TECHNICAL_VIEW);
   return useQuery({
     queryKey: queryKeys.countries(),
     queryFn: listAllCountries,
     staleTime: LOCATIONS_STALE_MS,
-    enabled: authed && enabled,
+    enabled: allowed && enabled,
   });
 }
 

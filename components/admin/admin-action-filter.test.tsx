@@ -2,6 +2,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AdminActionFilter } from "./admin-action-filter";
 
+jest.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
+
 jest.mock("../../lib/admin-actions/queries", () => ({
   useAdminActionSearch: () => ({
     data: {

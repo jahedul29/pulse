@@ -1,6 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import mockMessages from "../../messages/en.json";
+import { PERMISSIONS } from "@/lib/auth/permissions";
+import { ADMIN_ACTION_LOGS_PATH, CHANGE_LOGS_PATH } from "@/lib/api/audit-paths";
+import { useAccessProbes } from "@/lib/auth/access-probes";
+import { useAuthStore } from "@/lib/auth/store";
 import { useUiStore } from "@/lib/ui-store";
 import { NavItems } from "./nav-items";
 
@@ -18,8 +22,16 @@ jest.mock("next-intl", () => {
   };
 });
 
+function signIn(permissions: string[]) {
+  useAuthStore.setState({
+    session: { email: "admin@abapro.ai", name: "Admin", role: "admin", token: "t", issuedAt: 0, permissions },
+  });
+}
+
 beforeEach(() => {
   useUiStore.setState({ openNavGroups: [] });
+  useAccessProbes.setState({ owner: null, results: {} });
+  signIn(Object.values(PERMISSIONS));
 });
 
 describe("NavItems parent group", () => {
@@ -72,5 +84,32 @@ describe("NavItems parent group", () => {
       "href",
       "/admin/notifications/log",
     );
+  });
+
+  it("hides items the user can't open and groups left empty", async () => {
+    signIn([PERMISSIONS.ROLES_VIEW, PERMISSIONS.NOTIFICATION_TEMPLATES_VIEW]);
+    render(<NavItems />);
+
+    expect(screen.queryByRole("link", { name: "Specialists" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /User management/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Locations/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Roles" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Security policy" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Action log" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Notifications/i }));
+    expect(screen.getByRole("link", { name: "Message templates" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Notification deliveries" })).not.toBeInTheDocument();
+  });
+
+  it("shows the audit logs only after the backend allows them", () => {
+    useAccessProbes.setState({
+      owner: "admin@abapro.ai",
+      results: { [ADMIN_ACTION_LOGS_PATH]: true, [CHANGE_LOGS_PATH]: false },
+    });
+    render(<NavItems />);
+    expect(screen.getByRole("link", { name: "Action log" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Change log" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Login audit" })).not.toBeInTheDocument();
   });
 });

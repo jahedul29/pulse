@@ -22,6 +22,7 @@ export function MultiSelect({
   emptyLabel = "-",
   maxChips = 2,
   className,
+  disabledReason,
 }: {
   options: MultiSelectOption[];
   value: string[];
@@ -31,6 +32,7 @@ export function MultiSelect({
   emptyLabel?: string;
   maxChips?: number;
   className?: string;
+  disabledReason?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -54,16 +56,20 @@ export function MultiSelect({
             type="button"
             variant="outline"
             size="lg"
+            focusableWhenDisabled
+            disabled={Boolean(disabledReason)}
             className={cn("w-full justify-between font-normal", className)}
           />
         }
       >
-        {value.length === 0 ? (
+        {disabledReason ? (
+          <span className="truncate text-muted-foreground">{disabledReason}</span>
+        ) : value.length === 0 ? (
           <span className="text-muted-foreground">{placeholder}</span>
         ) : (
           <span className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
             {chips.map((chipValue) => (
-              <Chip key={chipValue}>{labelOf.get(chipValue) ?? chipValue}</Chip>
+              <Chip key={chipValue}>{labelOf.get(chipValue) ?? "-"}</Chip>
             ))}
             {extra > 0 && <Chip variant="soft">+{extra}</Chip>}
           </span>

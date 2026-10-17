@@ -27,6 +27,7 @@ import type { RegionForm } from "@/lib/locations/schemas";
 import type { CityDto } from "@/lib/locations/types";
 import type { LngLat } from "@/lib/mgrs/grid";
 import { nearestNeighbours } from "@/lib/region-builder/neighbours";
+import { countryMiddle, UAE_CENTRE } from "@/lib/region-builder/initial-view";
 import { useRetained } from "@/lib/use-retained";
 import { cn } from "@/lib/utils";
 import { FULL_BLEED_HEIGHT } from "./full-bleed";
@@ -34,6 +35,7 @@ import { RegionEditor } from "./region-editor/region-editor";
 import { StageState } from "./region-editor/stage-state";
 import { RegionFormDialog } from "./region-form-dialog";
 import { useCountryOptions } from "./use-country-options";
+import { isForbidden } from "@/lib/api/errors";
 
 const DEFAULT_COUNTRY_CODE = "AE";
 const SAVING_VERSION = Number.MAX_SAFE_INTEGER;
@@ -70,6 +72,7 @@ export function RegionBuilder() {
   const t = useTranslations("locations.editor");
   const tr = useTranslations("locations.regions");
   const te = useTranslations("apiErrors");
+  const taccess = useTranslations("access");
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -127,7 +130,19 @@ export function RegionBuilder() {
   const tilesUrl = pinned ? pinned.tilesUrl : (region?.tiles_url ?? null);
 
   const coverageQuery = useCoverageFile(tilesUrl);
-  const others = useMemo(() => (region ? nearestNeighbours(region, cities) : []), [cities, region]);
+  const regionCountryId = region?.country_id ?? null;
+  const regionCountryCode = countries.find((country) => country.id === regionCountryId)?.code ?? null;
+  const middle = useMemo(
+    () =>
+      regionCountryId === null
+        ? null
+        : (countryMiddle(cities, regionCountryId) ?? (regionCountryCode === DEFAULT_COUNTRY_CODE ? UAE_CENTRE : null)),
+    [cities, regionCountryId, regionCountryCode],
+  );
+  const others = useMemo(
+    () => (region ? nearestNeighbours(region, cities, middle ? { lng: middle[0], lat: middle[1] } : null) : []),
+    [cities, region, middle],
+  );
   const otherData = useQueries({
     queries: others.map((city) => ({
       ...coverageFileQueryOptions(city.tiles_url),
@@ -213,6 +228,17 @@ export function RegionBuilder() {
     />
   );
 
+  if (
+    (isForbidden(citiesQuery.error) && !citiesQuery.data) ||
+    (isForbidden(countriesQuery.error) && !countriesQuery.data)
+  ) {
+    return (
+      <FullBleed>
+        <StageState message={taccess("contentDenied")} />
+      </FullBleed>
+    );
+  }
+
   if ((citiesQuery.isError && !citiesQuery.data) || (countriesQuery.isError && !countriesQuery.data)) {
     return (
       <FullBleed>
@@ -270,6 +296,8 @@ export function RegionBuilder() {
           code: region.code,
           active: region.is_active !== false,
           centre,
+          countryId: region.country_id,
+          countryMiddle: middle,
           lastSavedAt: region.updated_at ? new Date(region.updated_at).getTime() : null,
         }}
         picker={{

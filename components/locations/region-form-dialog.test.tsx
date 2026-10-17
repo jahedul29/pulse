@@ -53,7 +53,7 @@ describe("RegionFormDialog", () => {
     );
     await userEvent.type(screen.getByLabelText(/^Name \(English\)/), "  Al Ain  ");
     await userEvent.type(screen.getByLabelText("Name (Arabic)"), "العين");
-    await userEvent.type(screen.getByLabelText("Code (optional)"), "AD-02");
+    await userEvent.type(screen.getByLabelText("Code"), "AD-02");
     fireEvent.click(screen.getByRole("button", { name: "Create region" }));
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith({ countryId: "1", code: "AD-02", nameEn: "Al Ain", nameAr: "العين", isActive: true }),

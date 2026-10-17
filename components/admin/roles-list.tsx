@@ -46,11 +46,13 @@ import { useCreateRole, useDeleteRole, useRoles, useUpdateRole } from "@/lib/rba
 import { serverStateToParams } from "@/lib/rbac/list-params";
 import { roleSchema, type RoleForm } from "@/lib/rbac/schemas";
 import type { RoleDto } from "@/lib/rbac/dto";
+import { LoadError } from "@/components/common/load-error";
 
 export function RolesList() {
   const t = useTranslations("rbac");
   const tc = useTranslations("common");
   const canEdit = useHasPermission(PERMISSIONS.ROLES_EDIT);
+  const canOpenMatrix = useHasPermission(PERMISSIONS.PERMISSIONS_VIEW);
   const te = useTranslations("apiErrors");
   const locale = useLocale();
   const router = useRouter();
@@ -110,7 +112,7 @@ export function RolesList() {
       const created = await createRole.mutateAsync({ name: values.name, description: values.description });
       toast.success(t("createdToast", { name: values.name }));
       closeDialog();
-      router.push(`/admin/roles/${created.id}`);
+      if (canOpenMatrix) router.push(`/admin/roles/${created.id}`);
     } catch (error) {
       toast.error(apiErrorMessage(error, te));
     }
@@ -281,12 +283,7 @@ export function RolesList() {
         </CardHeader>
         <CardContent>
           {rolesQuery.isError ? (
-            <div className="flex flex-col items-center gap-3 py-16 text-center">
-              <p className="text-sm text-muted-foreground">{t("loadError")}</p>
-              <Button variant="outline" size="sm" onClick={() => rolesQuery.refetch()}>
-                {tc("retry")}
-              </Button>
-            </div>
+            <LoadError error={rolesQuery.error} message={t("loadError")} onRetry={() => rolesQuery.refetch()} />
           ) : rolesQuery.isPending ? (
             <div className="flex flex-col gap-2">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -304,8 +301,8 @@ export function RolesList() {
               searchPlaceholder={t("search")}
               emptyLabel={t("empty")}
               itemsLabel={t("items")}
-              onRowClick={(role) => router.push(`/admin/roles/${role.id}`)}
-              rowAriaLabel={(role) => role.name}
+              onRowClick={canOpenMatrix ? (role) => router.push(`/admin/roles/${role.id}`) : undefined}
+              rowAriaLabel={canOpenMatrix ? (role) => role.name : undefined}
               getSearchText={(role) => `${role.name} ${role.description ?? ""}`}
               filterLabels={{
                 filter: t("filter"),

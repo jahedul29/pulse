@@ -19,6 +19,7 @@ import { apiErrorMessage } from "@/lib/api/error-message";
 import { usePermissionModules, usePermissions, useRole, useSyncRolePermissions } from "@/lib/rbac/queries";
 import { permissionCode, permissionLabel, type PermissionDto } from "@/lib/rbac/dto";
 import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
+import { firstError, LoadError } from "@/components/common/load-error";
 
 interface ModuleGroup {
   key: string;
@@ -142,22 +143,17 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
     return (
       <div className="mx-auto flex max-w-4xl flex-col gap-6">
         <Card>
-          <CardContent className="flex flex-col items-center gap-4 py-16 text-center">
-            <p className="text-sm text-muted-foreground">{t("permLoadError")}</p>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  roleQuery.refetch();
-                  modulesQuery.refetch();
-                  permissionsQuery.refetch();
-                }}
-              >
-                {tc("retry")}
-              </Button>
-              {backBtn}
-            </div>
+          <CardContent>
+            <LoadError
+              error={firstError(roleQuery.error, modulesQuery.error, permissionsQuery.error)}
+              message={t("permLoadError")}
+              onRetry={() => {
+                roleQuery.refetch();
+                modulesQuery.refetch();
+                permissionsQuery.refetch();
+              }}
+              action={backBtn}
+            />
           </CardContent>
         </Card>
       </div>

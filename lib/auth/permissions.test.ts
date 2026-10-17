@@ -32,6 +32,30 @@ describe("sessionHasPermission", () => {
       "NOTIFICATIONS.alert_routes.EDIT",
       "TECHNICAL.technical.VIEW",
       "TECHNICAL.technical.EDIT",
+      "USER_MANAGEMENT.user_management.VIEW",
+      "USER_MANAGEMENT.invitations.VIEW",
+      "ROLES.roles.VIEW",
+      "PERMISSIONS.permissions.VIEW",
+      "ROLES.security_policy.VIEW",
+      "NOTIFICATIONS.notification_templates.VIEW",
+      "NOTIFICATIONS.notification_deliveries.VIEW",
+      "NOTIFICATIONS.notification_channels.VIEW",
+      "NOTIFICATIONS.notification_campaigns.VIEW",
+      "NOTIFICATIONS.alert_routes.VIEW",
+      "NOTIFICATIONS.live_alerts.VIEW",
+      "NOTIFICATIONS.edr_event_types.VIEW",
+      "PERSONNEL.staff.VIEW",
+      "SPECIALISTS.specialists.VIEW",
+      "CLIENTS.clients.VIEW",
+      "ORDERS.orders.VIEW",
+      "CONTENT.content.VIEW",
+      "DISCOUNTS_CAMPAIGNS.discounts_campaigns.VIEW",
+      "EVENTS_TICKETS.events_tickets.VIEW",
     ]);
+  });
+
+  it("doesn't treat inherited object keys as role names", () => {
+    expect(sessionHasPermission({ role: "constructor" }, PERMISSIONS.ROLES_VIEW)).toBe(false);
+    expect(sessionHasPermission({ role: "toString" }, PERMISSIONS.ROLES_VIEW)).toBe(false);
   });
 });

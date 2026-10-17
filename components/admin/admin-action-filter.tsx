@@ -4,6 +4,9 @@ import { useMemo } from "react";
 
 import { AsyncMultiFilter, type AsyncOptionsResult } from "@/components/common/async-select";
 import { useAdminActionSearch } from "@/lib/admin-actions/queries";
+import { useTranslations } from "next-intl";
+import { ADMIN_ACTION_LOGS_PATH } from "@/lib/api/audit-paths";
+import { useProbeDenied } from "@/lib/auth/access-probes";
 
 export function useAdminActionOptions(search: string, enabled: boolean): AsyncOptionsResult {
   const actionsQuery = useAdminActionSearch(search, enabled);
@@ -19,7 +22,7 @@ export function useAdminActionOptions(search: string, enabled: boolean): AsyncOp
   );
   return {
     options,
-    isPending: actionsQuery.isPending,
+    isPending: actionsQuery.isLoading,
     hasNextPage: Boolean(actionsQuery.hasNextPage),
     isFetchingNextPage: actionsQuery.isFetchingNextPage,
     fetchNextPage: actionsQuery.fetchNextPage,
@@ -32,5 +35,13 @@ export function AdminActionFilter(props: {
   searchLabel?: string;
   emptyLabel?: string;
 }) {
-  return <AsyncMultiFilter useOptions={useAdminActionOptions} {...props} />;
+  const denied = useProbeDenied(ADMIN_ACTION_LOGS_PATH);
+  const tc = useTranslations("common");
+  return (
+    <AsyncMultiFilter
+      useOptions={useAdminActionOptions}
+      {...props}
+      emptyLabel={denied ? tc("noPermission") : props.emptyLabel}
+    />
+  );
 }

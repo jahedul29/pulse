@@ -6,7 +6,6 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import { fmtDateTimeParts } from "@/lib/format";
 import { downloadCsvText } from "@/lib/export/csv";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataTable, type ServerTableState } from "@/components/common/data-table";
@@ -20,6 +19,7 @@ import { exportLoginAuditCsv } from "@/lib/audit/audit-api";
 import { CsvExportButton } from "@/components/admin/csv-export-button";
 import { serverStateToParams } from "@/lib/audit/list-params";
 import type { LoginAuditEntry } from "@/lib/audit/types";
+import { LoadError } from "@/components/common/load-error";
 
 const RESULTS: string[] = [
   "SUCCESS",
@@ -176,12 +176,7 @@ export function LoginAuditLog() {
         </CardHeader>
         <CardContent>
           {auditQuery.isError ? (
-            <div className="flex flex-col items-center gap-3 py-16 text-center">
-              <p className="text-sm text-muted-foreground">{t("loadError")}</p>
-              <Button variant="outline" size="sm" onClick={() => auditQuery.refetch()}>
-                {tc("retry")}
-              </Button>
-            </div>
+            <LoadError error={auditQuery.error} message={t("loadError")} onRetry={() => auditQuery.refetch()} />
           ) : auditQuery.isPending ? (
             <div className="flex flex-col gap-2">
               {Array.from({ length: 8 }).map((_, index) => (

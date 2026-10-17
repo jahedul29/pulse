@@ -9,8 +9,9 @@ import type { CellChange, Selection, Stroke } from "@/lib/region-builder/selecti
 import { closeRing, ellipseRing, rectangleRing } from "@/lib/region-builder/shapes";
 import { isShapeTool, toolForKeyCode, type EditorTool } from "@/lib/region-builder/tools";
 import type { RegionMapController } from "./map/load-region-map";
+import { CELL_ZOOM } from "@/lib/region-builder/initial-view";
 
-export const PAINT_MIN_ZOOM = 9;
+export const PAINT_MIN_ZOOM = CELL_ZOOM;
 const TAP_TOLERANCE_PX = 6;
 const TAP_MAX_MS = 500;
 const SHAPE_MIN_PX = 4;

@@ -13,6 +13,7 @@ const mockDelete = jest.fn();
 let mockSearch = "";
 let mockCities = CITIES;
 let mockCitiesRefetchFailed = false;
+let mockCitiesForbidden: "none" | "initial" | "refetch" = "none";
 let lastEditorProps: RegionEditorProps | null = null;
 
 jest.mock("next/navigation", () => ({
@@ -43,10 +44,18 @@ jest.mock("../../lib/locations/queries", () => {
   const ready = (data: unknown) => ({ data, isPending: false, isError: false, isSuccess: true, refetch: jest.fn() });
   return {
     useAllCountries: () => ready(fixtures.COUNTRIES),
-    useAllCities: () =>
-      mockCitiesRefetchFailed
+    useAllCities: () => {
+      if (mockCitiesForbidden !== "none") {
+        const { ApiError } = jest.requireActual("../../lib/api/errors");
+        const error = new ApiError("forbidden", 403, "Forbidden");
+        return mockCitiesForbidden === "initial"
+          ? { data: undefined, error, isPending: false, isError: true, isSuccess: false, refetch: jest.fn() }
+          : { data: mockCities, error, isPending: false, isError: true, isRefetchError: true, isSuccess: false, refetch: jest.fn() };
+      }
+      return mockCitiesRefetchFailed
         ? { data: mockCities, isPending: false, isError: true, isRefetchError: true, isSuccess: false, refetch: jest.fn() }
-        : ready(mockCities),
+        : ready(mockCities);
+    },
     coverageFileQueryOptions: (url: string | null) => ({ queryKey: ["coverage-file", url] }),
     useCoverageFile: (url: string | null) => (url ? ready({ version: 4, codes: ["39RZJ0001"] }) : ready(undefined)),
     useCreateCity: () => ({ mutateAsync: jest.fn(), isPending: false }),
@@ -76,6 +85,7 @@ beforeEach(() => {
   mockSearch = "";
   mockCities = CITIES;
   mockCitiesRefetchFailed = false;
+  mockCitiesForbidden = "none";
   lastEditorProps = null;
   useAuthStore.setState({
     session: {
@@ -159,5 +169,26 @@ describe("RegionBuilder", () => {
     expect(screen.getByRole("heading", { name: "Abu Dhabi" })).toBeInTheDocument();
     expect(screen.queryByText("Couldn't load regions.")).not.toBeInTheDocument();
     expect(jest.requireMock("sonner").toast.error).toHaveBeenCalledWith("Couldn't load regions.");
+  });
+
+  it("says the user isn't authorized when the regions can't be loaded at all", () => {
+    mockSearch = "region=10";
+    mockCitiesForbidden = "initial";
+    render(<RegionBuilder />);
+    expect(screen.getByText("You're not authorized to see this content.")).toBeInTheDocument();
+  });
+
+  it("keeps the editor and its unsaved cells when a background reload is refused", () => {
+    mockSearch = "region=10";
+    mockCitiesForbidden = "refetch";
+    render(<RegionBuilder />);
+    expect(screen.getByRole("heading", { name: "Abu Dhabi" })).toBeInTheDocument();
+    expect(screen.queryByText("You're not authorized to see this content.")).not.toBeInTheDocument();
+  });
+
+  it("gives the editor the middle of the country's regions", () => {
+    mockSearch = "region=10";
+    render(<RegionBuilder />);
+    expect(lastEditorProps?.region.countryMiddle).toEqual(expect.any(Array));
   });
 });

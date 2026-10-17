@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import mockMessages from "../../messages/en.json";
 import { UserAccessEditor } from "./user-access-editor";
+import { useAuthStore } from "@/lib/auth/store";
 
 const mockPermission = {
   id: 7,
@@ -71,7 +72,15 @@ jest.mock("next-intl", () => {
   };
 });
 
+function signIn(permissions?: string[]) {
+  useAuthStore.setState({
+    session: { email: "owner@abapro.health", name: "Owner", role: "Owner", token: "t", issuedAt: 0, permissions },
+  });
+}
+
 describe("UserAccessEditor", () => {
+  beforeEach(() => signIn());
+
   it("drawer variant without edit rights shows full access details but no edit controls", () => {
     render(<UserAccessEditor userId="u-5" userName="Test Operator" variant="drawer" canEdit={false} />);
 
@@ -91,9 +100,17 @@ describe("UserAccessEditor", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Grant a role" }));
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("Expiry (optional)")).toBeInTheDocument();
+    expect(within(dialog).getByText("Expiry")).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: /No expiry/ })).toBeInTheDocument();
     expect(within(dialog).queryByRole("button", { name: "Remove expiry" })).not.toBeInTheDocument();
+  });
+
+  it("disables Grant a role when the user can't view the roles catalogue", () => {
+    signIn(["USER_MANAGEMENT.user_management.EDIT", "PERMISSIONS.permissions.VIEW"]);
+    render(<UserAccessEditor userId="u-5" userName="Test Operator" variant="page" canEdit />);
+
+    expect(screen.getByRole("button", { name: "Grant a role" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "Add permission" })).not.toHaveAttribute("aria-disabled");
   });
 
   it("page variant renders card headers with the action on the title row", () => {

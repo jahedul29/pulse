@@ -8,6 +8,8 @@ import { AppScroll } from "@/components/scrollbars";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { IdleLogout } from "@/components/auth/idle-logout";
+import { PermissionSync } from "@/components/auth/permission-sync";
+import { AuthTabSync } from "@/components/auth/auth-tab-sync";
 import { dirFor, type Locale } from "@/i18n/routing";
 
 const manrope = Manrope({
@@ -55,6 +57,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <AppScroll>{children}</AppScroll>
             <Toaster />
             <IdleLogout />
+            <PermissionSync />
+            <AuthTabSync />
           </QueryProvider>
         </LocaleProvider>
       </body>

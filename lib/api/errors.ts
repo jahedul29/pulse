@@ -38,3 +38,7 @@ export function codeForStatus(status: number): ApiErrorCode {
 export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
 }
+
+export function isForbidden(error: unknown): boolean {
+  return isApiError(error) && error.status === 403;
+}

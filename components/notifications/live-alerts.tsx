@@ -4,7 +4,6 @@ import { useCallback, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { ColumnDef } from "@tanstack/react-table";
 
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -34,6 +33,8 @@ import {
 import type { NotificationDeliveryDto } from "@/lib/notifications/dto";
 import { ChannelFilter } from "@/components/notifications/channel-select";
 import { AdminUserFilter } from "@/components/admin/admin-user-filter";
+import { LoadError } from "@/components/common/load-error";
+import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 
 export function LiveAlerts() {
   const t = useTranslations("notifications");
@@ -51,6 +52,7 @@ export function LiveAlerts() {
   const [selected, setSelected] = useState<NotificationDeliveryDto | null>(null);
   const shown = useRetained(selected);
   const detailQuery = useDelivery(selected?.id ?? null);
+  const canViewDelivery = useHasPermission(PERMISSIONS.NOTIFICATION_DELIVERIES_VIEW);
 
   const columns = useMemo<ColumnDef<NotificationDeliveryDto, unknown>[]>(
     () => [
@@ -136,7 +138,7 @@ export function LiveAlerts() {
             <ChannelFilter value={value} onChange={setValue} searchLabel={searchLabel} emptyLabel={tc("noResults")} />
           ),
         },
-        cell: ({ row }) => <Chip>{row.original.channel?.name ?? `#${row.original.channel_id ?? "-"}`}</Chip>,
+        cell: ({ row }) => <Chip>{row.original.channel?.name ?? "-"}</Chip>,
       },
       {
         id: "status",
@@ -167,12 +169,7 @@ export function LiveAlerts() {
         </CardHeader>
         <CardContent>
           {alertsQuery.isError ? (
-            <div className="flex flex-col items-center gap-3 py-16 text-center">
-              <p className="text-sm text-muted-foreground">{t("alerts.loadError")}</p>
-              <Button variant="outline" size="sm" onClick={() => alertsQuery.refetch()}>
-                {tc("retry")}
-              </Button>
-            </div>
+            <LoadError error={alertsQuery.error} message={t("alerts.loadError")} onRetry={() => alertsQuery.refetch()} />
           ) : alertsQuery.isPending ? (
             <div className="flex flex-col gap-2">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -217,25 +214,20 @@ export function LiveAlerts() {
                 <StatusBadge tone={deliveryStatusTone(shown.status)} equalWidth={false}>
                   {t(`deliveryStatus.${shown.status}`)}
                 </StatusBadge>
-                <Chip>{shown.channel?.name ?? `#${shown.channel_id ?? "-"}`}</Chip>
+                <Chip>{shown.channel?.name ?? "-"}</Chip>
               </div>
             </SheetHeader>
             <SheetBody className="flex flex-col gap-4">
               {detailQuery.isError ? (
-                <div className="flex flex-col items-center gap-3 py-16 text-center">
-                  <p className="text-sm text-muted-foreground">{t("alerts.detailLoadError")}</p>
-                  <Button variant="outline" size="sm" onClick={() => detailQuery.refetch()}>
-                    {tc("retry")}
-                  </Button>
-                </div>
-              ) : detailQuery.isPending ? (
+                <LoadError error={detailQuery.error} message={t("alerts.detailLoadError")} onRetry={() => detailQuery.refetch()} />
+              ) : canViewDelivery && detailQuery.isPending ? (
                 <div className="flex flex-col gap-4">
                   <Skeleton className="h-40 w-full" />
                   <Skeleton className="h-24 w-full" />
                 </div>
               ) : (
                 (() => {
-                  const record = detailQuery.data;
+                  const record = detailQuery.data ?? shown;
                   const stamp = record.sent_at ?? record.created_at;
                   return (
                     <>

@@ -24,6 +24,7 @@ import { isCentreInside, middleOfCells } from "@/lib/region-builder/centre";
 import type { SelectionMode } from "@/lib/region-builder/modes";
 import type { MapBackground } from "@/lib/region-builder/backgrounds";
 import { createSelection, type CellChange } from "@/lib/region-builder/selection";
+import { CELL_ZOOM, initialRegionView, REGION_CENTRE_ZOOM } from "@/lib/region-builder/initial-view";
 import type { EditorTool } from "@/lib/region-builder/tools";
 import { useUiStore } from "@/lib/ui-store";
 import { useRetained } from "@/lib/use-retained";
@@ -48,11 +49,10 @@ import { StageState } from "./stage-state";
 import { PolygonBar, ToolDock } from "./tool-dock";
 import { useMapInteractions, type InteractionNotice } from "./use-map-interactions";
 import { useRegionMap } from "./use-region-map";
+import { sessionOwner, useAuthStore } from "@/lib/auth/store";
 
-const DEFAULT_VIEW = { center: [54.4, 24.3] as LngLat, zoom: 7 };
-const EMPTY_REGION_ZOOM = 10;
 const NOTICE_MS = 4000;
-const GRID_NOTICE_ZOOM = 9;
+const ZOOM_HINT_MIN_ZOOM = 5;
 const PANEL_INSET_PX = 384;
 const DOCK_INSET_PX = 72;
 const MOBILE_BOTTOM_INSET_PX = 150;
@@ -65,6 +65,8 @@ export interface RegionEditorRegion {
   code: string | null;
   active: boolean;
   centre: LngLat | null;
+  countryId: number;
+  countryMiddle: LngLat | null;
   lastSavedAt: number | null;
 }
 
@@ -157,7 +159,16 @@ export function RegionEditor({
 
   const rootRef = useRef<HTMLDivElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
-  const [initialView] = useState(() => (region.centre ? { center: region.centre, zoom: EMPTY_REGION_ZOOM } : DEFAULT_VIEW));
+  const owner = useAuthStore((state) => sessionOwner(state.session));
+  const [initialView] = useState(() =>
+    initialRegionView({
+      centre: region.centre,
+      countryId: region.countryId,
+      owner,
+      lastView: useUiStore.getState().lastMapView,
+      middle: region.countryMiddle,
+    }),
+  );
   const mapLabels = useMemo(
     () => ({
       "Map.Title": t("mapLabel"),
@@ -222,8 +233,15 @@ export function RegionEditor({
 
   useEffect(() => {
     if (!controller) return;
-    return controller.onViewChange(setZoom);
-  }, [controller]);
+    return controller.onViewChange((nextZoom) => {
+      setZoom(nextZoom);
+      if (owner) {
+        useUiStore
+          .getState()
+          .setLastMapView({ center: controller.centre(), zoom: nextZoom, countryId: region.countryId, owner });
+      }
+    });
+  }, [controller, owner, region.countryId]);
 
   useEffect(() => {
     if (!controller) return;
@@ -421,7 +439,21 @@ export function RegionEditor({
   };
 
   const disabledReason = !canEdit ? tc("noPermission") : !ready ? t("loadingCells") : saving ? t("savingCells") : null;
-  const showGridNotice = prefs.showGrid && zoom !== null && zoom < GRID_NOTICE_ZOOM;
+  const zoomedOut = zoom !== null && zoom < CELL_ZOOM;
+  const showZoomNotice = zoomedOut && (prefs.showGrid || canEdit);
+  const zoomToPaint = controller && canEdit && zoom !== null && zoom >= ZOOM_HINT_MIN_ZOOM ? (
+    <Button
+      size="xs"
+      variant="outline"
+      className="shrink-0 rounded-full"
+      onClick={() => {
+        controller.zoomBy(Math.max(0, REGION_CENTRE_ZOOM - controller.zoom()));
+        controller.canvas.focus({ preventScroll: true });
+      }}
+    >
+      {t("zoomToPaint")}
+    </Button>
+  ) : undefined;
   const inside = isCentreInside(snapshot.centre, (code) => selection.has(code));
   const panelOpen = prefs.panelOpen;
   const lockReason = disabledReason;
@@ -499,9 +531,9 @@ export function RegionEditor({
   const transientNotice: NoticeContent | null = busy
     ? { text: t("workingOut") }
     : notice
-      ? { text: t(NOTICE_KEYS[notice]), tone: "warning" }
-      : showGridNotice
-        ? { text: t("gridNotice") }
+      ? { text: t(NOTICE_KEYS[notice]), tone: "warning", action: notice === "paintZoom" ? zoomToPaint : undefined }
+      : showZoomNotice
+        ? { text: prefs.showGrid ? t("gridNotice") : t("paintNotice"), action: zoomToPaint }
         : ready && snapshot.count === 0 && canEdit
           ? { text: t("emptyRegion") }
           : null;

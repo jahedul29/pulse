@@ -2,10 +2,11 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { isApiError } from "@/lib/api/errors";
-import { useAuthStore } from "@/lib/auth/store";
-import type { Session } from "@/lib/auth/types";
+import { queryKeys } from "@/lib/api/query-keys";
+import { refreshProfileAfterForbidden, registerProfileRefresh, resetProfileRefresh } from "@/lib/auth/profile-refresh";
+import { sessionOwner, useAuthStore } from "@/lib/auth/store";
 
 const Devtools =
   process.env.NODE_ENV === "production"
@@ -18,8 +19,16 @@ const Devtools =
         { ssr: false },
       );
 
+const ACCESS_PROBE_KEY = queryKeys.accessProbe("", "", "")[0];
+
 function makeQueryClient() {
   return new QueryClient({
+    queryCache: new QueryCache({
+      onError: (error, query) => {
+        if (query.queryKey[0] !== queryKeys.me()[0]) refreshProfileAfterForbidden(error);
+      },
+    }),
+    mutationCache: new MutationCache({ onError: (error) => refreshProfileAfterForbidden(error) }),
     defaultOptions: {
       queries: {
         staleTime: 30_000,
@@ -38,18 +47,25 @@ function makeQueryClient() {
   });
 }
 
-function sessionOwner(session: Session | null): string | null {
-  return session ? (session.adminId ?? session.email) : null;
-}
-
 export function QueryProvider({ children }: { children: ReactNode }) {
   const [client] = useState(makeQueryClient);
+
+  useEffect(() => {
+    registerProfileRefresh(() => {
+      void client.invalidateQueries({ queryKey: queryKeys.me() });
+      void client.invalidateQueries({ queryKey: [ACCESS_PROBE_KEY] });
+    });
+    return () => registerProfileRefresh(null);
+  }, [client]);
 
   useEffect(
     () =>
       useAuthStore.subscribe((state, previous) => {
         const before = sessionOwner(previous.session);
-        if (before && before !== sessionOwner(state.session)) client.clear();
+        if (before && before !== sessionOwner(state.session)) {
+          client.clear();
+          resetProfileRefresh();
+        }
       }),
     [client],
   );

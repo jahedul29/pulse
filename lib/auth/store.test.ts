@@ -73,4 +73,61 @@ describe("auth store real login", () => {
     expect(outcome.result).toBe("INVALID_CREDENTIALS");
     expect(outcome.serverError).toBeUndefined();
   });
+
+  it("refreshes permissions, name, role and landing page from the profile of the same admin", async () => {
+    (login as jest.Mock).mockResolvedValueOnce(token({ full_name: "System Admin", permissions: ["ROLES.roles.VIEW"] }));
+    await useAuthStore.getState().attempt("admin@ababro.ai", "secret");
+
+    useAuthStore.getState().syncProfile({
+      id: "u-1",
+      email: "admin@ababro.ai",
+      full_name: "Renamed Admin",
+      roles: ["admin"],
+      permissions: ["ROLES.roles.VIEW", "ROLES.roles.EDIT"],
+      landing_page: "/admin/roles",
+    });
+    expect(useAuthStore.getState().session).toMatchObject({
+      name: "Renamed Admin",
+      role: "admin",
+      permissions: ["ROLES.roles.VIEW", "ROLES.roles.EDIT"],
+      landingPage: "/admin/roles",
+    });
+  });
+
+  it("ignores a profile that belongs to another admin", async () => {
+    (login as jest.Mock).mockResolvedValueOnce(token({ permissions: ["ROLES.roles.VIEW"] }));
+    await useAuthStore.getState().attempt("admin@ababro.ai", "secret");
+
+    useAuthStore.getState().syncProfile({ id: "u-2", email: "other@ababro.ai", permissions: [] });
+    expect(useAuthStore.getState().session?.permissions).toEqual(["ROLES.roles.VIEW"]);
+  });
+
+  it("ignores a profile for a session without an id unless the email matches", () => {
+    useAuthStore.setState({
+      session: { email: "admin@ababro.ai", name: "Admin", role: "admin", token: "t", issuedAt: 0, permissions: ["A"] },
+    });
+    useAuthStore.getState().syncProfile({ id: "u-9", email: "someone@else.ai", permissions: ["B"] });
+    expect(useAuthStore.getState().session?.permissions).toEqual(["A"]);
+    useAuthStore.getState().syncProfile({ id: "u-9", email: "ADMIN@ababro.ai", permissions: ["B"] });
+    expect(useAuthStore.getState().session?.permissions).toEqual(["B"]);
+  });
+
+  it("doesn't write a session back when another tab has already replaced it in storage", () => {
+    const session = { email: "admin@ababro.ai", name: "Admin", role: "admin", token: "t", issuedAt: 0, adminId: "u-1", permissions: ["A"] };
+    useAuthStore.setState({ session });
+    localStorage.setItem("abapro-auth", JSON.stringify({ state: { session: null }, version: 0 }));
+    useAuthStore.getState().syncProfile({ id: "u-1", email: "admin@ababro.ai", permissions: ["B"] });
+    expect(useAuthStore.getState().session?.permissions).toEqual(["A"]);
+    expect(JSON.parse(localStorage.getItem("abapro-auth") ?? "{}").state.session).toBeNull();
+  });
+
+  it("skips the write when the profile matches the session", () => {
+    const session = { email: "admin@ababro.ai", name: "Admin", role: "admin", token: "t", issuedAt: 0, adminId: "u-1", permissions: ["A"], landingPage: null };
+    useAuthStore.setState({ session });
+    const listener = jest.fn();
+    const unsubscribe = useAuthStore.subscribe(listener);
+    useAuthStore.getState().syncProfile({ id: "u-1", email: "admin@ababro.ai", full_name: "Admin", roles: ["admin"], permissions: ["A"] });
+    expect(listener).not.toHaveBeenCalled();
+    unsubscribe();
+  });
 });

@@ -39,6 +39,7 @@ import { getAdminAction, exportAdminActionsCsv } from "@/lib/admin-actions/audit
 import { CsvExportButton } from "@/components/admin/csv-export-button";
 import { actionServerStateToParams } from "@/lib/admin-actions/list-params";
 import { TARGET_SERVICES, type AdminAction } from "@/lib/admin-actions/types";
+import { LoadError } from "@/components/common/load-error";
 
 const RESULTS: string[] = ["SUCCESS", "PARTIAL", "FAILURE"];
 const SEVERITIES: string[] = ["INFO", "WARNING", "CRITICAL"];
@@ -120,6 +121,7 @@ export function ActionLog() {
     data: detail,
     loading: detailLoading,
     error: detailError,
+    cause: detailCause,
     reload,
   } = useRecordDetail(selectedId, getAdminAction);
   const liveHead = (index >= 0 ? rows[index] : null) ?? detail ?? null;
@@ -256,12 +258,7 @@ export function ActionLog() {
         </CardHeader>
         <CardContent>
           {actionsQuery.isError ? (
-            <div className="flex flex-col items-center gap-3 py-16 text-center">
-              <p className="text-sm text-muted-foreground">{t("loadError")}</p>
-              <Button variant="outline" size="sm" onClick={() => actionsQuery.refetch()}>
-                {tc("retry")}
-              </Button>
-            </div>
+            <LoadError error={actionsQuery.error} message={t("loadError")} onRetry={() => actionsQuery.refetch()} />
           ) : actionsQuery.isPending ? (
             <div className="flex flex-col gap-2">
               {Array.from({ length: 6 }).map((_, index) => (
@@ -349,12 +346,7 @@ export function ActionLog() {
                   <Skeleton className="h-24 w-full" />
                 </div>
               ) : detailError || !detail ? (
-                <div className="flex flex-col items-center gap-3 py-10 text-center">
-                  <p className="text-sm text-muted-foreground">{t("loadError")}</p>
-                  <Button variant="outline" size="sm" onClick={reload}>
-                    {tc("retry")}
-                  </Button>
-                </div>
+                <LoadError error={detailCause} message={t("loadError")} onRetry={reload} className="py-10" />
               ) : (
                 <>
                   <DetailList

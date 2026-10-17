@@ -1,6 +1,5 @@
 import { apiData, apiList } from "@/lib/api/client";
 import type { Paginated } from "@/lib/api/client";
-import { ADMIN_IDENTITY } from "@/lib/api/config";
 import { buildListQuery, fetchCsvExport, type ListParams } from "@/lib/api/list-query";
 import {
   actionDtoToDetail,
@@ -11,21 +10,20 @@ import {
   type ChangeLogDto,
 } from "./dto";
 import type { AdminAction, ChangeLogEntry } from "./types";
+import { ADMIN_ACTION_LOGS_PATH, CHANGE_LOGS_PATH } from "@/lib/api/audit-paths";
 
 export type { ListParams };
 
-const ADMIN_ACTIONS = `${ADMIN_IDENTITY}/admin-action-logs`;
-const CHANGE_LOGS = `${ADMIN_IDENTITY}/change-logs`;
 
 export async function listAdminActions(params: ListParams): Promise<Paginated<AdminAction>> {
-  const { data, meta } = await apiList<AdminActionLogDto>(ADMIN_ACTIONS, {
+  const { data, meta } = await apiList<AdminActionLogDto>(ADMIN_ACTION_LOGS_PATH, {
     query: buildListQuery(params),
   });
   return { data: data.map(actionDtoToRow), meta };
 }
 
 export function getAdminAction(id: string): Promise<AdminAction> {
-  return apiData<AdminActionLogDto>(`${ADMIN_ACTIONS}/${encodeURIComponent(id)}`).then(actionDtoToDetail);
+  return apiData<AdminActionLogDto>(`${ADMIN_ACTION_LOGS_PATH}/${encodeURIComponent(id)}`).then(actionDtoToDetail);
 }
 
 export interface ActionFilterOptions {
@@ -35,28 +33,28 @@ export interface ActionFilterOptions {
 
 export async function getActionFilterOptions(): Promise<ActionFilterOptions> {
   const data = await apiData<{ action_codes?: string[] | null; target_types?: string[] | null }>(
-    `${ADMIN_ACTIONS}/filter-options`,
+    `${ADMIN_ACTION_LOGS_PATH}/filter-options`,
   );
   return { actionCodes: data?.action_codes ?? [], targetTypes: data?.target_types ?? [] };
 }
 
 export function exportAdminActionsCsv(params: ListParams): Promise<string> {
-  return fetchCsvExport(ADMIN_ACTIONS, params);
+  return fetchCsvExport(ADMIN_ACTION_LOGS_PATH, params);
 }
 
 export async function listChangeLog(params: ListParams): Promise<Paginated<ChangeLogEntry>> {
-  const { data, meta } = await apiList<ChangeLogDto>(CHANGE_LOGS, {
+  const { data, meta } = await apiList<ChangeLogDto>(CHANGE_LOGS_PATH, {
     query: { ...buildListQuery(params), relations: ["actor", "adminActionLog"] },
   });
   return { data: data.map(changeDtoToRow), meta };
 }
 
 export function getChangeLog(id: string): Promise<ChangeLogEntry> {
-  return apiData<ChangeLogDto>(`${CHANGE_LOGS}/${encodeURIComponent(id)}`, {
+  return apiData<ChangeLogDto>(`${CHANGE_LOGS_PATH}/${encodeURIComponent(id)}`, {
     query: { relations: ["actor", "adminActionLog"] },
   }).then(changeDtoToDetail);
 }
 
 export function exportChangeLogCsv(params: ListParams): Promise<string> {
-  return fetchCsvExport(CHANGE_LOGS, params);
+  return fetchCsvExport(CHANGE_LOGS_PATH, params);
 }

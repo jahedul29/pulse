@@ -8,6 +8,8 @@ import {
   type AsyncOptionsResult,
 } from "@/components/common/async-select";
 import { useChannelSearch, useTemplateSearch } from "@/lib/notifications/queries";
+import { useTranslations } from "next-intl";
+import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 
 export const TEMPLATE_NONE = "none";
 
@@ -22,7 +24,7 @@ export function useChannelOptions(search: string, enabled: boolean): AsyncOption
   );
   return {
     options,
-    isPending: channelQuery.isPending,
+    isPending: channelQuery.isLoading,
     hasNextPage: Boolean(channelQuery.hasNextPage),
     isFetchingNextPage: channelQuery.isFetchingNextPage,
     fetchNextPage: channelQuery.fetchNextPage,
@@ -40,7 +42,7 @@ export function useTemplateOptions(search: string, enabled: boolean): AsyncOptio
   );
   return {
     options,
-    isPending: templateQuery.isPending,
+    isPending: templateQuery.isLoading,
     hasNextPage: Boolean(templateQuery.hasNextPage),
     isFetchingNextPage: templateQuery.isFetchingNextPage,
     fetchNextPage: templateQuery.fetchNextPage,
@@ -89,5 +91,13 @@ export function ChannelFilter(props: {
   searchLabel?: string;
   emptyLabel?: string;
 }) {
-  return <AsyncMultiFilter useOptions={useChannelOptions} {...props} />;
+  const allowed = useHasPermission(PERMISSIONS.NOTIFICATION_CHANNELS_VIEW);
+  const tc = useTranslations("common");
+  return (
+    <AsyncMultiFilter
+      useOptions={useChannelOptions}
+      {...props}
+      emptyLabel={allowed ? props.emptyLabel : tc("noPermission")}
+    />
+  );
 }

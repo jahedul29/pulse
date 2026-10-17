@@ -42,7 +42,8 @@
     "to": "To",
     "lang_RU": "Russian",
     "required": "required",
-    "noPermission": "You don't have permission to do this."
+    "noPermission": "You don't have permission to do this.",
+    "noPermissionShort": "No permission"
   },
   "pagination": {
     "range": "{start}–{end} of {total} {label}",
@@ -562,7 +563,7 @@
     "staffEmpty": "No matching staff without an existing user account.",
     "emailLabel": "Email",
     "emailPlaceholder": "name@abapro.health",
-    "rolesLabel": "Proposed roles (optional)",
+    "rolesLabel": "Proposed roles",
     "rolesPlaceholder": "Select one or more roles",
     "rolesSearchPlaceholder": "Search roles",
     "rolesEmpty": "No matching roles.",
@@ -600,7 +601,7 @@
     "suspendTitle": "Suspend account?",
     "suspendBody": "{name} won't be able to sign in until the account is reactivated.",
     "suspendConfirm": "Suspend",
-    "statusReasonLabel": "Reason (optional)",
+    "statusReasonLabel": "Reason",
     "statusReasonPlaceholder": "Add a note other admins will see on this account",
     "statusReasonRow": "Status reason"
   },
@@ -729,7 +730,7 @@
     "addRole": "Grant a role",
     "addOverlay": "Add permission",
     "role": "Role",
-    "expiryOptional": "Expiry (optional)",
+    "expiryOptional": "Expiry",
     "temporaryHint": "For temporary or covering access.",
     "noExpiry": "No expiry",
     "grantedByOn": "Granted by {name} · {date}",
@@ -1344,7 +1345,7 @@
       "countryLabel": "Country",
       "newRegion": "New region",
       "noRegionsInCountry": "No regions in this country yet.",
-      "notMapped": "Not mapped",
+      "notMapped": "No cells yet",
       "panelLabel": "Region panel",
       "editDetailsShort": "Edit details",
       "centreNotSet": "Not set",
@@ -1372,7 +1373,8 @@
       "createTitle": "Start a new region?",
       "createBody": "The new region opens in the builder, so your unsaved changes to {name} will be lost.",
       "createConfirm": "Continue",
-      "centreMoved": "Centre moved"
+      "centreMoved": "Centre moved",
+      "zoomToPaint": "Zoom in to paint"
     },
     "regions": {
       "title": "Regions",
@@ -1388,7 +1390,7 @@
       "colStatus": "Status",
       "colUpdated": "Last updated",
       "mapped": "Mapped",
-      "notMapped": "Not mapped",
+      "notMapped": "No cells yet",
       "mapVersion": "Version {version}",
       "active": "Active",
       "inactive": "Inactive",
@@ -1401,7 +1403,7 @@
       "countryLabel": "Country",
       "countryPlaceholder": "Select a country",
       "countryRequired": "Choose a country.",
-      "codeLabel": "Code (optional)",
+      "codeLabel": "Code",
       "codePlaceholder": "e.g. AD-01",
       "nameEnLabel": "Name (English)",
       "nameEnPlaceholder": "e.g. Abu Dhabi",
@@ -1477,5 +1479,13 @@
       "deleteNamed": "Delete: {name}",
       "deleteChecking": "Checking its regions first."
     }
+  },
+  "access": {
+    "pageTitle": "You're not authorized to view this page",
+    "pageBody": "Your account doesn't have permission to open this page. Ask an administrator if you need access.",
+    "goToStart": "Go to your start page",
+    "noAccessTitle": "Your account has no access yet",
+    "noAccessBody": "Ask an administrator to give you a role.",
+    "contentDenied": "You're not authorized to see this content."
   }
 }

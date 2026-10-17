@@ -36,6 +36,7 @@ import { policyToForm } from "@/lib/security-policy/dto";
 import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 import { policySchema, reasonSchema, type PolicyForm, type ReasonForm } from "@/lib/security-policy/schemas";
 import type { SecurityPolicyDto } from "@/lib/security-policy/dto";
+import { firstError, LoadError } from "@/components/common/load-error";
 
 type NumKey =
   | "max_failed_attempts"
@@ -144,18 +145,15 @@ export function SecurityPolicyEditor() {
     return (
       <div className="mx-auto max-w-5xl">
         <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
-            <p className="text-sm text-muted-foreground">{t("loadError")}</p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
+          <CardContent>
+            <LoadError
+              error={firstError(currentQuery.error, versionsQuery.error)}
+              message={t("loadError")}
+              onRetry={() => {
                 currentQuery.refetch();
                 versionsQuery.refetch();
               }}
-            >
-              {tc("retry")}
-            </Button>
+            />
           </CardContent>
         </Card>
       </div>

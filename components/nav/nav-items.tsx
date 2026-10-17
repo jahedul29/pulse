@@ -28,12 +28,16 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { accessState, canAccessPath } from "@/lib/auth/access";
+import { useAccessSnapshot } from "@/lib/auth/access-probes";
+import { Skeleton } from "@/components/ui/skeleton";
 import { BUILDER_PATH, COUNTRIES_PATH, REGIONS_PATH } from "@/lib/locations/routes";
+import { useIsClient } from "@/lib/use-is-client";
 import { SECTIONS } from "@/lib/nav";
 import { useUiStore } from "@/lib/ui-store";
 import { cn } from "@/lib/utils";
 
-type NavGroupItem = { href: string; key: string; icon: LucideIcon };
+type NavGroupItem = { href: string; key: string; icon: LucideIcon; pending?: boolean };
 
 const USER_MGMT_ITEMS: NavGroupItem[] = [
   { href: "/admin/user-management", key: "adminAccounts", icon: UserRound },
@@ -62,6 +66,8 @@ const LOCATION_ITEMS: NavGroupItem[] = [
   { href: REGIONS_PATH, key: "regions", icon: MapPinned },
   { href: COUNTRIES_PATH, key: "countries", icon: Flag },
 ];
+
+const NAV_PLACEHOLDER_ROWS = 5;
 
 const LINK_BASE =
   "group flex items-center gap-3 rounded-lg py-2 text-sm font-medium transition-colors";
@@ -125,6 +131,7 @@ function NavGroup({
           </div>
           <div className="flex flex-col gap-0.5">
             {items.map((item) => {
+              if (item.pending) return <Skeleton key={item.href} className="mx-2.5 my-1 h-7" />;
               const active = isActive(pathname, item.href);
               const Icon = item.icon;
               return (
@@ -179,6 +186,7 @@ function NavGroup({
         <div className="overflow-hidden">
           <div className="flex flex-col gap-0.5 pt-0.5" inert={!open}>
             {items.map((item) => {
+              if (item.pending) return <Skeleton key={item.href} className="ms-9 me-3 my-0.5 h-8" />;
               const active = isActive(pathname, item.href);
               const Icon = item.icon;
               return (
@@ -209,14 +217,28 @@ export function NavItems({
 }) {
   const t = useTranslations("nav");
   const pathname = usePathname();
+  const isClient = useIsClient();
+  const { session: storedSession, probes } = useAccessSnapshot();
+  const session = isClient ? storedSession : null;
+  const allowed = (href: string) => canAccessPath(session, href, probes);
+  const visible = (items: NavGroupItem[]) =>
+    items.flatMap((item) => {
+      const state = accessState(session, item.href, probes);
+      if (state === "denied") return [];
+      return [state === "unknown" ? { ...item, pending: true } : item];
+    });
+  const userMgmtItems = visible(USER_MGMT_ITEMS);
+  const rbacItems = visible(RBAC_ITEMS);
+  const notificationItems = visible(NOTIFICATION_ITEMS);
+  const locationItems = visible(LOCATION_ITEMS);
 
-  const activeGroup = USER_MGMT_ITEMS.some((i) => isActive(pathname, i.href))
+  const activeGroup = userMgmtItems.some((i) => isActive(pathname, i.href))
     ? "userMgmtGroup"
-    : RBAC_ITEMS.some((i) => isActive(pathname, i.href))
+    : rbacItems.some((i) => isActive(pathname, i.href))
       ? "rbacGroup"
-      : NOTIFICATION_ITEMS.some((i) => isActive(pathname, i.href))
+      : notificationItems.some((i) => isActive(pathname, i.href))
         ? "notificationsGroup"
-        : LOCATION_ITEMS.some((i) => isActive(pathname, i.href))
+        : locationItems.some((i) => isActive(pathname, i.href))
           ? "locationsGroup"
           : null;
   const openNavGroups = useUiStore((state) => state.openNavGroups);
@@ -239,9 +261,19 @@ export function NavItems({
     if (key === activeGroup) setClosedActive(open ? key : null);
   };
 
+  if (!session) {
+    return (
+      <nav aria-busy="true" className="flex flex-1 flex-col gap-1.5 px-3 py-2">
+        {Array.from({ length: NAV_PLACEHOLDER_ROWS }, (_, index) => (
+          <Skeleton key={index} className={cn("h-8", collapsed ? "mx-auto w-8" : "w-full")} />
+        ))}
+      </nav>
+    );
+  }
+
   return (
     <nav className="flex flex-1 flex-col gap-0.5 px-3 py-2">
-      {SECTIONS.filter((section) => section.slug === "personnel").map((section) => {
+      {SECTIONS.filter((section) => section.slug === "personnel" && allowed(`/${section.slug}`)).map((section) => {
         const href = `/${section.slug}`;
         const active = isActive(pathname, href);
         const label = t(`sections.${section.slug}`);
@@ -266,42 +298,50 @@ export function NavItems({
         );
       })}
 
-      <NavGroup
-        labelKey="userManagement"
-        icon={Users}
-        items={USER_MGMT_ITEMS}
-        collapsed={collapsed}
-        open={isOpen("userMgmtGroup")}
-        onToggle={() => toggleGroup("userMgmtGroup")}
-        onNavigate={onNavigate}
-      />
-      <NavGroup
-        labelKey="rbacGroup"
-        icon={Shield}
-        items={RBAC_ITEMS}
-        collapsed={collapsed}
-        open={isOpen("rbacGroup")}
-        onToggle={() => toggleGroup("rbacGroup")}
-        onNavigate={onNavigate}
-      />
-      <NavGroup
-        labelKey="notificationsGroup"
-        icon={Bell}
-        items={NOTIFICATION_ITEMS}
-        collapsed={collapsed}
-        open={isOpen("notificationsGroup")}
-        onToggle={() => toggleGroup("notificationsGroup")}
-        onNavigate={onNavigate}
-      />
-      <NavGroup
-        labelKey="locationsGroup"
-        icon={Earth}
-        items={LOCATION_ITEMS}
-        collapsed={collapsed}
-        open={isOpen("locationsGroup")}
-        onToggle={() => toggleGroup("locationsGroup")}
-        onNavigate={onNavigate}
-      />
+      {userMgmtItems.length > 0 && (
+        <NavGroup
+          labelKey="userManagement"
+          icon={Users}
+          items={userMgmtItems}
+          collapsed={collapsed}
+          open={isOpen("userMgmtGroup")}
+          onToggle={() => toggleGroup("userMgmtGroup")}
+          onNavigate={onNavigate}
+        />
+      )}
+      {rbacItems.length > 0 && (
+        <NavGroup
+          labelKey="rbacGroup"
+          icon={Shield}
+          items={rbacItems}
+          collapsed={collapsed}
+          open={isOpen("rbacGroup")}
+          onToggle={() => toggleGroup("rbacGroup")}
+          onNavigate={onNavigate}
+        />
+      )}
+      {notificationItems.length > 0 && (
+        <NavGroup
+          labelKey="notificationsGroup"
+          icon={Bell}
+          items={notificationItems}
+          collapsed={collapsed}
+          open={isOpen("notificationsGroup")}
+          onToggle={() => toggleGroup("notificationsGroup")}
+          onNavigate={onNavigate}
+        />
+      )}
+      {locationItems.length > 0 && (
+        <NavGroup
+          labelKey="locationsGroup"
+          icon={Earth}
+          items={locationItems}
+          collapsed={collapsed}
+          open={isOpen("locationsGroup")}
+          onToggle={() => toggleGroup("locationsGroup")}
+          onNavigate={onNavigate}
+        />
+      )}
     </nav>
   );
 }

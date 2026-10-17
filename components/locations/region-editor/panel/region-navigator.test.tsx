@@ -46,7 +46,7 @@ describe("RegionNavigator", () => {
     renderNavigator();
     expect(screen.getByRole("heading", { name: "Regions in United Arab Emirates 6" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Dubai DU-01" })).toHaveAttribute("aria-current", "true");
-    expect(screen.getByRole("button", { name: "Al Qua'a Not mapped Inactive" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Al Qua'a No cells yet Inactive" })).toBeInTheDocument();
   });
 
   it("filters regions by name or code and says when nothing matches", () => {
