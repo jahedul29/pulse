@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import mockMessages from "../../messages/en.json";
-import { Dialog, DialogContent, DialogTitle } from "./dialog";
+import { Dialog, DialogContent, DialogFooter, DialogTitle } from "./dialog";
 import { Sheet, SheetContent, SheetTitle } from "./sheet";
 
 jest.mock("next-intl", () => {
@@ -29,5 +29,29 @@ describe("Dialog inside a drawer", () => {
     );
     expect(await screen.findByRole("dialog", { name: "Add a direct permission" })).toBeInTheDocument();
     expect(document.querySelectorAll('[data-slot="dialog-overlay"]')).toHaveLength(1);
+  });
+});
+
+describe("DialogFooter alignment", () => {
+  it("puts the buttons at the end by default", () => {
+    render(
+      <DialogFooter>
+        <button type="button">Save</button>
+      </DialogFooter>,
+    );
+    const row = screen.getByRole("button", { name: "Save" }).parentElement as HTMLElement;
+    expect(row).toHaveClass("sm:ms-auto");
+    expect(row).not.toHaveClass("sm:mx-auto");
+  });
+
+  it("centers the buttons when align is center", () => {
+    render(
+      <DialogFooter align="center">
+        <button type="button">OK</button>
+      </DialogFooter>,
+    );
+    const row = screen.getByRole("button", { name: "OK" }).parentElement as HTMLElement;
+    expect(row).toHaveClass("sm:mx-auto");
+    expect(row).not.toHaveClass("sm:ms-auto");
   });
 });
