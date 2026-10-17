@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
@@ -258,7 +258,7 @@ describe("UserManagement", () => {
       expect(within(pending).queryByRole("button", { name: "Revoke invite" })).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Invite user" })).toHaveAttribute("aria-disabled", "true");
     } finally {
-      useAuthStore.setState({ session: previous });
+      act(() => useAuthStore.setState({ session: previous }));
     }
   });
 
@@ -461,7 +461,7 @@ describe("UserManagement", () => {
       try {
         await check();
       } finally {
-        useAuthStore.setState({ session: previous });
+        act(() => useAuthStore.setState({ session: previous }));
       }
     }
 
