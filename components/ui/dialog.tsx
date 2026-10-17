@@ -106,11 +106,13 @@ function DialogFooter({
   className,
   showCloseButton = false,
   layout,
+  align = "end",
   children,
   ...props
 }: React.ComponentProps<"div"> & {
   showCloseButton?: boolean
   layout?: ButtonRowLayout
+  align?: "end" | "center"
 }) {
   return (
     <div
@@ -118,7 +120,10 @@ function DialogFooter({
       className={cn("shrink-0 rounded-b-xl border-t bg-muted/50 p-4", className)}
       {...props}
     >
-      <ButtonRow layout={layout} className="sm:ms-auto">
+      <ButtonRow
+        layout={layout}
+        className={align === "center" ? "sm:mx-auto" : "sm:ms-auto"}
+      >
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close render={<Button variant="outline" />}>
