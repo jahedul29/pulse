@@ -1,4 +1,7 @@
 export const queryKeys = {
+  me: () => ["me"] as const,
+  accessProbe: (endpoint: string, owner: string, permissions: string) =>
+    ["access-probe", endpoint, owner, permissions] as const,
   adminUsers: (query?: unknown) => ["admin-users", query ?? {}] as const,
   adminUser: (id: string) => ["admin-user", id] as const,
   unlinkedStaff: () => ["unlinked-staff"] as const,

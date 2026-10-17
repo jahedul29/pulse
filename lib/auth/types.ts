@@ -48,6 +48,7 @@ export interface Session {
   expiresAt?: number;
   adminId?: string;
   permissions?: string[];
+  landingPage?: string | null;
 }
 
 export interface AuthenticatedAdmin {

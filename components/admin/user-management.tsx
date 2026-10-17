@@ -67,6 +67,8 @@ import { userDetailToDetail } from "@/lib/user-management/dto";
 import { useRoles } from "@/lib/rbac/queries";
 import { useHasPermission, PERMISSIONS } from "@/lib/auth/permissions";
 import type { AdminUserRow, AdminUserStatus, EffectiveStatus } from "@/lib/user-management/types";
+import { LoadError } from "@/components/common/load-error";
+import { isForbidden } from "@/lib/api/errors";
 
 const CONFIRM_WORD = "DEACTIVATE";
 const STATUS_REASON_MAX = 255;
@@ -95,6 +97,10 @@ export function UserManagement() {
   const selfEmail = useAuthStore((state) => state.session?.email?.toLowerCase() ?? "");
   const canManage = useHasPermission(PERMISSIONS.USER_MANAGEMENT_EDIT);
   const canInvite = useHasPermission(PERMISSIONS.INVITATIONS_EDIT);
+  const canPickStaff = useHasPermission(PERMISSIONS.STAFF_VIEW);
+  const canViewRoles = useHasPermission(PERMISSIONS.ROLES_VIEW);
+  const canViewAccounts = useHasPermission(PERMISSIONS.USER_MANAGEMENT_VIEW);
+  const canViewInvites = useHasPermission(PERMISSIONS.INVITATIONS_VIEW);
 
   const [server, setServer] = useState<ServerTableState | null>(null);
   const params = useMemo(() => serverStateToParams(server), [server]);
@@ -135,13 +141,16 @@ export function UserManagement() {
 
   const [selectedInvite, setSelectedInvite] = useState<AdminUserRow | null>(null);
   const [linkedInviteId, setLinkedInviteId] = useState<string | null>(searchParams.get("invite"));
+  const [tab, setTab] = useState(linkedInviteId ? "pending" : "accounts");
+  const activeTab = !canViewAccounts ? "pending" : !canViewInvites ? "accounts" : tab;
   const loadInvitation = useCallback((id: string) => fetchInvitation(id), []);
   const {
     data: inviteDetail,
     loading: inviteLoading,
     error: inviteError,
+    cause: inviteCause,
     reload: inviteReload,
-  } = useRecordDetail(selectedInvite?.id ?? linkedInviteId, loadInvitation);
+  } = useRecordDetail(canViewInvites ? (selectedInvite?.id ?? linkedInviteId) : null, loadInvitation);
   const linkedInvite =
     linkedInviteId && !selectedInvite && inviteDetail?.id === linkedInviteId ? inviteDetail : null;
   const shownInvite = useRetained(selectedInvite ?? linkedInvite);
@@ -156,8 +165,8 @@ export function UserManagement() {
     (id: string) => fetchAdminUserDetail(id).then(userDetailToDetail),
     [],
   );
-  const { data: detail, loading: detailLoading, error: detailError, reload } = useRecordDetail(
-    active?.id ?? linkedId ?? retained?.id ?? null,
+  const { data: detail, loading: detailLoading, error: detailError, cause: detailCause, reload } = useRecordDetail(
+    canViewAccounts ? (active?.id ?? linkedId ?? retained?.id ?? null) : null,
     loadDetail,
   );
   const linkedDetail = linkedId && detail?.id === linkedId ? detail : null;
@@ -201,7 +210,10 @@ export function UserManagement() {
     () =>
       (pendingQuery.data ?? []).map((row) => ({
         ...row,
-        roles: row.roleIds.map((roleId) => ({ id: roleId, name: roleNameById.get(roleId) ?? roleId })),
+        roles: row.roleIds.flatMap((roleId) => {
+          const name = roleNameById.get(roleId);
+          return name ? [{ id: roleId, name }] : [];
+        }),
       })),
     [pendingQuery.data, roleNameById],
   );
@@ -210,10 +222,13 @@ export function UserManagement() {
     (id: string, status: AdminUserStatus, successMsg: string) => {
       mutateStatus(
         { id, status },
-        { onSuccess: () => toast.success(successMsg), onError: () => toast.error(t("changeFailed")) },
+        {
+          onSuccess: () => toast.success(successMsg),
+          onError: (error) => toast.error(isForbidden(error) ? ta("forbidden") : t("changeFailed")),
+        },
       );
     },
-    [mutateStatus, t],
+    [mutateStatus, t, ta],
   );
 
   const confirmRevoke = async () => {
@@ -223,8 +238,8 @@ export function UserManagement() {
       await mutateRevokeAsync(target.invitationId as string);
       toast.success(t("revokedToast", { name: target.name }));
       setRevoking(null);
-    } catch {
-      toast.error(t("changeFailed"));
+    } catch (error) {
+      toast.error(isForbidden(error) ? ta("forbidden") : t("changeFailed"));
     }
   };
   const resendInvite = useCallback(
@@ -247,8 +262,8 @@ export function UserManagement() {
       toast.success(t("deactivatedToast", { name: target.name }));
       setDeactivating(null);
       setConfirmText("");
-    } catch {
-      toast.error(t("changeFailed"));
+    } catch (error) {
+      toast.error(isForbidden(error) ? ta("forbidden") : t("changeFailed"));
     }
   };
   const confirmSuspend = async () => {
@@ -258,8 +273,8 @@ export function UserManagement() {
       await mutateStatusAsync({ id: target.id, status: "suspended", reason: statusReason.trim() || undefined });
       toast.success(t("suspendedToast", { name: target.name }));
       setSuspending(null);
-    } catch {
-      toast.error(t("changeFailed"));
+    } catch (error) {
+      toast.error(isForbidden(error) ? ta("forbidden") : t("changeFailed"));
     }
   };
 
@@ -371,7 +386,7 @@ export function UserManagement() {
       size: 260,
       header: t("colRoles"),
       enableSorting: false,
-      meta: { filter: "select", filterOptions: roleOptions, filterLabel: t("colRoles") },
+      meta: canViewRoles ? { filter: "select", filterOptions: roleOptions, filterLabel: t("colRoles") } : undefined,
       cell: ({ row }) => {
         const roles = row.original.roles ?? [];
         const shown = roles.slice(0, 3);
@@ -530,7 +545,31 @@ export function UserManagement() {
       accountsColumns: [nameCol, emailCol, rolesCol, statusCol, lastLoginCol, createdCol, actionsCol],
       invitationColumns: [nameCol, emailCol, rolesCol, statusCol, invitedByCol, lastSentCol, actionsCol],
     };
-  }, [t, locale, roleOptions, actionsFor]);
+  }, [t, locale, roleOptions, actionsFor, canViewRoles]);
+
+  const canOpenInvite = canInvite && canPickStaff;
+  const inviteButton = (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            size="lg"
+            onClick={() => setInviteOpen(true)}
+            focusableWhenDisabled
+            disabled={!canOpenInvite}
+            aria-label={t("inviteAdmin")}
+            className={toolbarIconButtonClass}
+          />
+        }
+      >
+        <Plus className="size-4" />
+        <span className="hidden sm:inline">{t("inviteAdmin")}</span>
+      </TooltipTrigger>
+      <TooltipContent>
+        {canOpenInvite ? t("inviteAdmin") : canInvite ? tc("noPermission") : t("noPermission")}
+      </TooltipContent>
+    </Tooltip>
+  );
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -540,22 +579,17 @@ export function UserManagement() {
           <CardDescription>{t("subtitle")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue={linkedInviteId ? "pending" : "accounts"} className="gap-4">
+          <Tabs value={activeTab} onValueChange={(value) => setTab(String(value))} className="gap-4">
             <TabsList>
-              <TabsTrigger value="accounts">{t("tabAccounts")}</TabsTrigger>
-              <TabsTrigger value="pending">
-                {t("tabPending", { count: pendingRows.length })}
-              </TabsTrigger>
+              {canViewAccounts && <TabsTrigger value="accounts">{t("tabAccounts")}</TabsTrigger>}
+              {canViewInvites && (
+                <TabsTrigger value="pending">{t("tabPending", { count: pendingRows.length })}</TabsTrigger>
+              )}
             </TabsList>
 
             <TabsContent value="accounts">
               {error ? (
-                <div className="flex flex-col items-center gap-3 py-16 text-center">
-                  <p className="text-sm text-muted-foreground">{t("loadError")}</p>
-                  <Button variant="outline" size="sm" onClick={() => usersQuery.refetch()}>
-                    {tc("retry")}
-                  </Button>
-                </div>
+                <LoadError error={usersQuery.error} message={t("loadError")} onRetry={() => usersQuery.refetch()} />
               ) : loading ? (
                 <div className="flex flex-col gap-2">
                   {Array.from({ length: 8 }).map((_, index) => (
@@ -587,38 +621,14 @@ export function UserManagement() {
                   }}
                   enableFreeze
                   maxFreeze={2}
-                  toolbar={
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <Button
-                            size="lg"
-                            onClick={() => setInviteOpen(true)}
-                            focusableWhenDisabled
-                            disabled={!canInvite}
-                            aria-label={t("inviteAdmin")}
-                            className={toolbarIconButtonClass}
-                          />
-                        }
-                      >
-                        <Plus className="size-4" />
-                        <span className="hidden sm:inline">{t("inviteAdmin")}</span>
-                      </TooltipTrigger>
-                      <TooltipContent>{canInvite ? t("inviteAdmin") : t("noPermission")}</TooltipContent>
-                    </Tooltip>
-                  }
+                  toolbar={inviteButton}
                 />
               )}
             </TabsContent>
 
             <TabsContent value="pending">
               {pendingQuery.isError ? (
-                <div className="flex flex-col items-center gap-3 py-16 text-center">
-                  <p className="text-sm text-muted-foreground">{t("pendingLoadError")}</p>
-                  <Button variant="outline" size="sm" onClick={() => pendingQuery.refetch()}>
-                    {tc("retry")}
-                  </Button>
-                </div>
+                <LoadError error={pendingQuery.error} message={t("pendingLoadError")} onRetry={() => pendingQuery.refetch()} />
               ) : pendingQuery.isPending ? (
                 <div className="flex flex-col gap-2">
                   {Array.from({ length: 5 }).map((_, index) => (
@@ -628,6 +638,7 @@ export function UserManagement() {
               ) : (
                 <DataTable
                   columns={invitationColumns}
+                  toolbar={canViewAccounts ? undefined : inviteButton}
                   data={pendingRows}
                   pageSize={10}
                   searchPlaceholder={t("search")}
@@ -811,12 +822,7 @@ export function UserManagement() {
                   <Skeleton className="h-24 w-full" />
                 </div>
               ) : detailError || !detail ? (
-                <div className="flex flex-col items-center gap-3 py-10 text-center">
-                  <p className="text-sm text-muted-foreground">{t("loadError")}</p>
-                  <Button variant="outline" size="sm" onClick={reload}>
-                    {tc("retry")}
-                  </Button>
-                </div>
+                <LoadError error={detailCause} message={t("loadError")} onRetry={reload} className="py-10" />
               ) : (
                 <>
                   {detail.staffTerminated && (
@@ -863,12 +869,7 @@ export function UserManagement() {
                       (devicesQuery.error as ApiError)?.status === 404 ? (
                       <p className="text-sm text-muted-foreground">{t("devicesUnavailable")}</p>
                     ) : devicesQuery.isError ? (
-                      <div className="flex flex-col items-center gap-3 py-6 text-center">
-                        <p className="text-sm text-muted-foreground">{t("devicesLoadError")}</p>
-                        <Button variant="outline" size="sm" onClick={() => devicesQuery.refetch()}>
-                          {tc("retry")}
-                        </Button>
-                      </div>
+                      <LoadError error={devicesQuery.error} message={t("devicesLoadError")} onRetry={() => devicesQuery.refetch()} className="py-6" />
                     ) : (devicesQuery.data ?? []).length === 0 ? (
                       <p className="text-sm text-muted-foreground">{t("noDevices")}</p>
                     ) : (
@@ -969,10 +970,10 @@ export function UserManagement() {
           (() => {
             const record = inviteDetail ?? shownInvite;
             const cooldownActive = record.invitableAgainAt != null && record.invitableAgainAt > now;
-            const inviteRoles = (record.roleIds ?? []).map((roleId) => ({
-              id: roleId,
-              name: roleNameById.get(roleId) ?? roleId,
-            }));
+            const inviteRoles = (record.roleIds ?? []).flatMap((roleId) => {
+              const name = roleNameById.get(roleId);
+              return name ? [{ id: roleId, name }] : [];
+            });
             return (
               <SheetContent>
                 <SheetHeader>
@@ -993,12 +994,7 @@ export function UserManagement() {
                 </SheetHeader>
                 <SheetBody className="flex flex-col gap-5">
                   {inviteError ? (
-                    <div className="flex flex-col items-center gap-3 py-16 text-center">
-                      <p className="text-sm text-muted-foreground">{t("invitationLoadError")}</p>
-                      <Button variant="outline" size="sm" onClick={inviteReload}>
-                        {tc("retry")}
-                      </Button>
-                    </div>
+                    <LoadError error={inviteCause} message={t("invitationLoadError")} onRetry={inviteReload} />
                   ) : inviteLoading ? (
                     <div className="flex flex-col gap-3">
                       <Skeleton className="h-24 w-full" />

@@ -23,6 +23,19 @@ const OWNER = {
     "NOTIFICATIONS.alert_routes.EDIT",
     "TECHNICAL.technical.VIEW",
     "TECHNICAL.technical.EDIT",
+    "PERMISSIONS.permissions.VIEW",
+    "NOTIFICATIONS.notification_deliveries.VIEW",
+    "NOTIFICATIONS.notification_channels.VIEW",
+    "NOTIFICATIONS.notification_campaigns.VIEW",
+    "NOTIFICATIONS.live_alerts.VIEW",
+    "NOTIFICATIONS.edr_event_types.VIEW",
+    "PERSONNEL.staff.VIEW",
+    "SPECIALISTS.specialists.VIEW",
+    "CLIENTS.clients.VIEW",
+    "ORDERS.orders.VIEW",
+    "CONTENT.content.VIEW",
+    "DISCOUNTS_CAMPAIGNS.discounts_campaigns.VIEW",
+    "EVENTS_TICKETS.events_tickets.VIEW",
   ],
 };
 
@@ -83,7 +96,11 @@ function fail(messages: string[], status = 422) {
   return { success: false, message: "Validation failed", errors: [{ field: "status", messages }], status };
 }
 
-export async function mockAdminIdentity(page: Page, password = "abapro") {
+export async function mockAdminIdentity(
+  page: Page,
+  password = "abapro",
+  { permissions = OWNER.permissions }: { permissions?: string[] } = {},
+) {
   await page.addInitScript((key) => {
     window.localStorage.setItem(key, String(Date.now()));
   }, LAST_ACTIVITY_KEY);
@@ -214,6 +231,7 @@ export async function mockAdminIdentity(page: Page, password = "abapro") {
     const json = (body: unknown, status = 200) =>
       route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
 
+    if (pathname === "/me" && method === "GET") return json(ok({ ...OWNER, permissions }));
     if (pathname === "/login" && method === "POST") {
       const sent = request.postDataJSON() as { password?: string };
       if (sent?.password === password) return json(ok(authToken()));

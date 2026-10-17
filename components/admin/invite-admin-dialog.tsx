@@ -32,6 +32,7 @@ import { useInvitableStaff, useSendInvitation } from "@/lib/user-management/quer
 import { useRoles } from "@/lib/rbac/queries";
 import { inviteSchema, type InviteForm } from "@/lib/user-management/schemas";
 import type { StaffRecord } from "@/lib/staff/types";
+import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 
 const TRIGGER = "w-full justify-between font-normal";
 
@@ -70,6 +71,7 @@ export function InviteAdminDialog({
 
   const sendInvite = useSendInvitation();
   const rolesQuery = useRoles({ page: 1, perPage: 100 });
+  const canViewRoles = useHasPermission(PERMISSIONS.ROLES_VIEW);
   const roleOptions = useMemo(
     () => (rolesQuery.data?.data ?? []).map((role) => ({ value: String(role.id), label: role.name })),
     [rolesQuery.data],
@@ -221,6 +223,7 @@ export function InviteAdminDialog({
                 placeholder={t("rolesPlaceholder")}
                 searchPlaceholder={t("rolesSearchPlaceholder")}
                 emptyLabel={t("rolesEmpty")}
+                disabledReason={canViewRoles ? undefined : tc("noPermission")}
               />
             </Field>
           </DialogBody>

@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/api/query-keys";
-import { useAuthed } from "@/lib/auth/use-authed";
+import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 import {
   attachUserRoles,
   createRole,
@@ -20,36 +20,36 @@ import {
 import type { RoleDto, StoreRoleBody, UpdateRoleBody } from "./dto";
 
 export function useRoles(params: ListParams) {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.ROLES_VIEW);
   return useQuery({
     queryKey: [...queryKeys.roles(), params],
     queryFn: () => listRoles(params),
     placeholderData: keepPreviousData,
-    enabled: authed,
+    enabled: allowed,
   });
 }
 
 export function useRole(id: number) {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.ROLES_VIEW);
   return useQuery({
     queryKey: queryKeys.roleDetail(id),
     queryFn: () => getRole(id),
-    enabled: authed && Number.isFinite(id) && id > 0,
+    enabled: allowed && Number.isFinite(id) && id > 0,
   });
 }
 
 export function usePermissionModules() {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.PERMISSIONS_VIEW);
   return useQuery({
     queryKey: queryKeys.permissionModules(),
     queryFn: listPermissionModules,
-    enabled: authed,
+    enabled: allowed,
   });
 }
 
 export function usePermissions() {
-  const authed = useAuthed();
-  return useQuery({ queryKey: queryKeys.permissions(), queryFn: listPermissions, enabled: authed });
+  const allowed = useHasPermission(PERMISSIONS.PERMISSIONS_VIEW);
+  return useQuery({ queryKey: queryKeys.permissions(), queryFn: listPermissions, enabled: allowed });
 }
 
 export function useCreateRole() {
@@ -92,11 +92,11 @@ export function useSyncRolePermissions() {
 }
 
 export function useAdminAccess(userId: string | null) {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.USER_MANAGEMENT_VIEW);
   return useQuery({
     queryKey: queryKeys.adminAccess(userId ?? ""),
     queryFn: () => getAdminAccess(userId as string),
-    enabled: authed && Boolean(userId),
+    enabled: allowed && Boolean(userId),
   });
 }
 

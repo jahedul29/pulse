@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Chip } from "@/components/common/chip";
-import { InlineRecordLink } from "@/components/common/record-link";
+import { InlineRecordLink, useCanOpen } from "@/components/common/record-link";
 import { dbDateTimeToEpoch, recordHref } from "@/lib/record-links";
 import { fmtDate, fmtDateTimeParts } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -56,6 +56,8 @@ import {
 import { permissionCode, permissionLabel, type PermissionDto, type RoleDto } from "@/lib/rbac/dto";
 import { grantSchema, overlaySchema, type GrantForm, type OverlayForm } from "@/lib/rbac/schemas";
 import { dateKey, endOfDayIso, parseDateKey, todayKey } from "@/lib/rbac/expiry";
+import { LoadError } from "@/components/common/load-error";
+import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 
 const TRIGGER = "w-full justify-between font-normal";
 
@@ -242,6 +244,20 @@ function DrawerSection({ title, action, children }: { title: string; action?: Re
   );
 }
 
+function RoleTitle({ id, name }: { id: number | string; name: string }) {
+  const href = recordHref("role", id);
+  const canOpen = useCanOpen(href);
+  if (!canOpen) return <span className="font-medium">{name}</span>;
+  return (
+    <Link
+      href={href}
+      className="font-medium underline-offset-2 hover:text-primary hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+    >
+      {name}
+    </Link>
+  );
+}
+
 export function UserAccessEditor({
   userId,
   userName,
@@ -315,6 +331,8 @@ export function UserAccessEditor({
 
   const rolesCatalog = useRoles({ page: 1, perPage: 100 });
   const permissionsCatalog = usePermissions();
+  const canViewRoles = useHasPermission(PERMISSIONS.ROLES_VIEW);
+  const canViewPermissions = useHasPermission(PERMISSIONS.PERMISSIONS_VIEW);
 
   const attachRoles = useAttachUserRoles();
   const detachRoles = useDetachUserRoles();
@@ -439,13 +457,13 @@ export function UserAccessEditor({
 
   const removeAction = (label: string, ariaLabel: string, onClick: () => void): RowAction | undefined =>
     canEdit ? { label, ariaLabel, onClick, disabledReason: blockedReason } : undefined;
-  const addButton = (label: string, onClick: () => void) =>
+  const addButton = (label: string, onClick: () => void, catalogAllowed: boolean) =>
     canEdit ? (
       <EditButton
         label={label}
         ariaLabel={label}
         onClick={onClick}
-        disabledReason={blockedReason}
+        disabledReason={blockedReason ?? (catalogAllowed ? undefined : tc("noPermission"))}
         icon={<Plus className="size-4" />}
       />
     ) : null;
@@ -459,12 +477,7 @@ export function UserAccessEditor({
           <GrantRow
             key={role.id}
             title={
-              <Link
-                href={recordHref("role", role.id)}
-                className="font-medium underline-offset-2 hover:text-primary hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-              >
-                {role.name}
-              </Link>
+              <RoleTitle id={role.id} name={role.name} />
             }
             tags={
               role.is_system ? (
@@ -522,12 +535,7 @@ export function UserAccessEditor({
     );
 
   const loadError = (
-    <div className="flex flex-col items-center gap-3 py-10 text-center">
-      <p className="text-sm text-muted-foreground">{t("loadError")}</p>
-      <Button variant="outline" size="sm" onClick={() => accessQuery.refetch()}>
-        {tc("retry")}
-      </Button>
-    </div>
+    <LoadError error={accessQuery.error} message={t("loadError")} onRetry={() => accessQuery.refetch()} className="py-10" />
   );
   const loading = (
     <div className="flex flex-col gap-2">
@@ -547,13 +555,13 @@ export function UserAccessEditor({
         <>
           <DrawerSection
             title={t("rolesCount", { count: grantedRoles.length })}
-            action={addButton(t("addRole"), openAddRole)}
+            action={addButton(t("addRole"), openAddRole, canViewRoles)}
           >
             {rolesList}
           </DrawerSection>
           <DrawerSection
             title={t("directPermissionsCount", { count: directPermissions.length })}
-            action={addButton(t("addPermission"), openAddOverlay)}
+            action={addButton(t("addPermission"), openAddOverlay, canViewPermissions)}
           >
             {overlaysList}
             {effectivePermissionCount > 0 && (
@@ -577,7 +585,7 @@ export function UserAccessEditor({
         <Card>
           <CardHeader>
             <CardTitle className="text-base">{t("rolesGranted")}</CardTitle>
-            <CardAction>{addButton(t("addRole"), openAddRole)}</CardAction>
+            <CardAction>{addButton(t("addRole"), openAddRole, canViewRoles)}</CardAction>
           </CardHeader>
           <CardContent>{rolesList}</CardContent>
         </Card>
@@ -585,7 +593,7 @@ export function UserAccessEditor({
           <CardHeader>
             <CardTitle className="text-base">{t("overlaysTitle")}</CardTitle>
             <CardDescription>{t("overlaysHint")}</CardDescription>
-            <CardAction>{addButton(t("addOverlay"), openAddOverlay)}</CardAction>
+            <CardAction>{addButton(t("addOverlay"), openAddOverlay, canViewPermissions)}</CardAction>
           </CardHeader>
           <CardContent>{overlaysList}</CardContent>
         </Card>

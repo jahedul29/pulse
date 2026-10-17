@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { safeInternalPath } from "@/lib/auth/safe-path";
 import { COVERAGE_FILE_PROXY_PATH, coverageObjectUrl } from "@/lib/locations/coverage-origin";
 
 const SESSION_COOKIE = "abapro_session";
@@ -21,10 +22,6 @@ function coverageFileResponse(request: NextRequest): NextResponse {
   return NextResponse.rewrite(new URL(target), { headers: COVERAGE_RESPONSE_HEADERS });
 }
 
-function isSafePath(path: string | null): path is string {
-  return Boolean(path && path.startsWith("/") && !path.startsWith("//") && !path.startsWith("/\\"));
-}
-
 export function proxy(request: NextRequest) {
   const { pathname, search, searchParams } = request.nextUrl;
   if (pathname.startsWith(`${COVERAGE_FILE_PROXY_PATH}/`)) return coverageFileResponse(request);
@@ -41,9 +38,9 @@ export function proxy(request: NextRequest) {
 
   if (authed && onLogin) {
     const url = request.nextUrl.clone();
-    const returnTo = searchParams.get("returnTo");
-    url.pathname = isSafePath(returnTo) ? returnTo : DEFAULT_DEST;
-    url.search = "";
+    const destination = new URL(safeInternalPath(searchParams.get("returnTo")) ?? DEFAULT_DEST, url.origin);
+    url.pathname = destination.pathname;
+    url.search = destination.search;
     return NextResponse.redirect(url);
   }
 

@@ -2,7 +2,9 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import mockMessages from "../../../messages/en.json";
 import { cellsInBounds, type LngLat } from "@/lib/mgrs/grid";
 import { cellCode } from "@/lib/mgrs/mgrs";
+import { useAuthStore } from "@/lib/auth/store";
 import { DEFAULT_REGION_EDITOR_PREFS, useUiStore } from "@/lib/ui-store";
+import { loadRegionMap } from "./map/load-region-map";
 import { RegionEditor, type RegionEditorProps } from "./region-editor";
 
 const mockPush = jest.fn();
@@ -65,6 +67,7 @@ function createFakeController() {
   const canvas = document.createElement("div");
   canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: WIDTH, height: HEIGHT, right: WIDTH, bottom: HEIGHT, x: 0, y: 0, toJSON: () => ({}) });
   const viewListeners = new Set<(zoom: number) => void>();
+  let currentZoom = 12;
   return {
     canvas,
     unproject: (x: number, y: number): LngLat => [WEST + (x / WIDTH) * (EAST - WEST), NORTH - (y / HEIGHT) * (NORTH - SOUTH)],
@@ -72,7 +75,11 @@ function createFakeController() {
       x: ((longitude - WEST) / (EAST - WEST)) * WIDTH,
       y: ((NORTH - latitude) / (NORTH - SOUTH)) * HEIGHT,
     }),
-    zoom: () => 12,
+    zoom: () => currentZoom,
+    emitView: (zoom: number) => {
+      currentZoom = zoom;
+      for (const listener of viewListeners) listener(zoom);
+    },
     setInteraction: jest.fn(),
     setCursor: jest.fn(),
     setPicked: jest.fn(),
@@ -131,6 +138,8 @@ function renderEditor(overrides: Partial<RegionEditorProps> = {}) {
       code: "DU-01",
       active: true,
       centre: null,
+      countryId: 1,
+      countryMiddle: null,
       lastSavedAt: null,
     },
     picker: {
@@ -164,7 +173,10 @@ function renderEditor(overrides: Partial<RegionEditorProps> = {}) {
 
 describe("RegionEditor", () => {
   beforeEach(() => {
-    useUiStore.setState({ regionEditor: DEFAULT_REGION_EDITOR_PREFS });
+    useUiStore.setState({ regionEditor: DEFAULT_REGION_EDITOR_PREFS, lastMapView: null });
+    useAuthStore.setState({
+      session: { email: "admin@abapro.ai", name: "Admin", role: "superadmin", token: "t", issuedAt: 0, adminId: "u-1" },
+    });
     mockController = createFakeController();
     mockPush.mockReset();
   });
@@ -367,7 +379,7 @@ describe("RegionEditor", () => {
   });
 
   it("lets a centre moved to the middle of the cells be saved", async () => {
-    renderEditor({ region: { id: 4, name: "Dubai", alternateName: null, code: "DU-01", active: true, centre: [55.0, 25.0], lastSavedAt: null } });
+    renderEditor({ region: { id: 4, name: "Dubai", alternateName: null, code: "DU-01", active: true, centre: [55.0, 25.0], countryId: 1, countryMiddle: null, lastSavedAt: null } });
     await findCount(startingCodes.length);
     expect(screen.getByText("The centre is outside this region's cells.")).toBeInTheDocument();
     expect(within(cellsSection()).getByRole("button", { name: "Save changes" })).toHaveAttribute("aria-disabled", "true");
@@ -416,5 +428,43 @@ describe("RegionEditor", () => {
     expect(screen.getByText("3 corners")).toBeInTheDocument();
     fireEvent.keyDown(document.body, { key: "Enter", code: "Enter" });
     await waitFor(() => expect(screen.queryByText("3 corners")).not.toBeInTheDocument());
+  });
+
+  it("opens an empty region without a centre where the map was last left in the same country", async () => {
+    useUiStore.setState({ lastMapView: { center: [55.1, 25.2], zoom: 11, countryId: 1, owner: "u-1" } });
+    renderEditor({ coverage: { status: "ready", codes: [], onRetry: jest.fn() } });
+    await waitFor(() => expect(loadRegionMap).toHaveBeenCalled());
+    expect(jest.mocked(loadRegionMap).mock.calls.at(-1)?.[0].view).toEqual({ center: [55.1, 25.2], zoom: 11 });
+  });
+
+  it("remembers where the map was left", async () => {
+    renderEditor();
+    await findCount(startingCodes.length);
+    act(() => mockController.emitView(11));
+    expect(useUiStore.getState().lastMapView).toEqual({ center: [55.3, 25.07], zoom: 11, countryId: 1, owner: "u-1" });
+  });
+
+  it("offers a zoom-in button while the map is too far out to show the grid", async () => {
+    renderEditor();
+    await findCount(startingCodes.length);
+    act(() => mockController.emitView(7));
+    fireEvent.click(await screen.findByRole("button", { name: "Zoom in to paint" }));
+    expect(mockController.zoomBy).toHaveBeenCalledWith(3);
+  });
+
+  it("doesn't offer painting to view-only users while zoomed out", async () => {
+    renderEditor({ canEdit: false });
+    await findCount(startingCodes.length);
+    act(() => mockController.emitView(7));
+    expect(await screen.findByText("Zoom in to see the cell grid")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Zoom in to paint" })).not.toBeInTheDocument();
+  });
+
+  it("doesn't offer the zoom button from a world-level view", async () => {
+    renderEditor();
+    await findCount(startingCodes.length);
+    act(() => mockController.emitView(3));
+    expect(await screen.findByText("Zoom in to see the cell grid")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Zoom in to paint" })).not.toBeInTheDocument();
   });
 });

@@ -1,6 +1,7 @@
 import { act } from "react";
-import { render } from "@testing-library/react";
-import { useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { render, waitFor } from "@testing-library/react";
+import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { ApiError } from "@/lib/api/errors";
 import { useAuthStore } from "@/lib/auth/store";
 import { QueryProvider } from "./query-provider";
 
@@ -40,5 +41,23 @@ describe("QueryProvider", () => {
     expect(client!.getQueryData(["cities"])).toEqual([{ id: 1 }]);
     act(() => useAuthStore.setState({ session: null }));
     expect(client!.getQueryData(["cities"])).toBeUndefined();
+  });
+
+  it("doesn't refetch /me in a loop when /me itself answers 403", async () => {
+    const fetchMe = jest.fn(async () => {
+      throw new ApiError("forbidden", 403, "Forbidden");
+    });
+    function Profile() {
+      useQuery({ queryKey: ["me"], queryFn: fetchMe });
+      return null;
+    }
+    render(
+      <QueryProvider>
+        <Profile />
+      </QueryProvider>,
+    );
+    await waitFor(() => expect(fetchMe).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(fetchMe).toHaveBeenCalledTimes(1);
   });
 });

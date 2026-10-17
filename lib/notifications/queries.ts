@@ -6,7 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/api/query-keys";
-import { useAuthed } from "@/lib/auth/use-authed";
+import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 import {
   createAlertRoute,
   createTemplate,
@@ -35,36 +35,36 @@ import type {
 } from "./dto";
 
 export function useAllTemplates() {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.NOTIFICATION_TEMPLATES_VIEW);
   return useQuery({
     queryKey: queryKeys.notificationTemplates(),
     queryFn: listAllTemplates,
-    enabled: authed,
+    enabled: allowed,
   });
 }
 
 export function useTemplate(id: number | null) {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.NOTIFICATION_TEMPLATES_VIEW);
   return useQuery({
     queryKey: queryKeys.notificationTemplate(id ?? 0),
     queryFn: () => getTemplate(id as number),
-    enabled: authed && Number.isFinite(id) && (id as number) > 0,
+    enabled: allowed && Number.isFinite(id) && (id as number) > 0,
   });
 }
 
 export function useChannels() {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.NOTIFICATION_CHANNELS_VIEW);
   return useQuery({
     queryKey: queryKeys.notificationChannels(),
     queryFn: listAllChannels,
-    enabled: authed,
+    enabled: allowed,
   });
 }
 
 const CHANNELS_PER_PAGE = 10;
 
 export function useChannelSearch(search: string, enabled: boolean) {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.NOTIFICATION_CHANNELS_VIEW);
   return useInfiniteQuery({
     queryKey: [...queryKeys.notificationChannels(), "search", search],
     queryFn: ({ pageParam }) =>
@@ -75,7 +75,7 @@ export function useChannelSearch(search: string, enabled: boolean) {
       if (!meta) return undefined;
       return meta.current_page < meta.last_page ? meta.current_page + 1 : undefined;
     },
-    enabled: authed && enabled,
+    enabled: allowed && enabled,
     placeholderData: keepPreviousData,
   });
 }
@@ -105,7 +105,7 @@ export function useDeleteTemplate() {
 }
 
 export function useCampaignSearch(search: string, enabled: boolean) {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.NOTIFICATION_CAMPAIGNS_VIEW);
   return useInfiniteQuery({
     queryKey: ["notification-campaign-search", search],
     queryFn: ({ pageParam }) =>
@@ -116,13 +116,13 @@ export function useCampaignSearch(search: string, enabled: boolean) {
       if (!meta) return undefined;
       return meta.current_page < meta.last_page ? meta.current_page + 1 : undefined;
     },
-    enabled: authed && enabled,
+    enabled: allowed && enabled,
     placeholderData: keepPreviousData,
   });
 }
 
 export function useTemplateSearch(search: string, enabled: boolean) {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.NOTIFICATION_TEMPLATES_VIEW);
   return useInfiniteQuery({
     queryKey: [...queryKeys.notificationTemplates(), "search", search],
     queryFn: ({ pageParam }) =>
@@ -133,56 +133,56 @@ export function useTemplateSearch(search: string, enabled: boolean) {
       if (!meta) return undefined;
       return meta.current_page < meta.last_page ? meta.current_page + 1 : undefined;
     },
-    enabled: authed && enabled,
+    enabled: allowed && enabled,
     placeholderData: keepPreviousData,
   });
 }
 
 export function useDeliveries(params: ListParams) {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.NOTIFICATION_DELIVERIES_VIEW);
   return useQuery({
     queryKey: queryKeys.notificationDeliveries(params),
     queryFn: () => listDeliveries(params),
     placeholderData: keepPreviousData,
-    enabled: authed,
+    enabled: allowed,
   });
 }
 
 export function useLiveAlerts(params: ListParams) {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.LIVE_ALERTS_VIEW);
   return useQuery({
     queryKey: queryKeys.liveAlerts(params),
     queryFn: () => listLiveAlerts(params),
     placeholderData: keepPreviousData,
-    enabled: authed,
+    enabled: allowed,
   });
 }
 
 export function useDelivery(id: string | null) {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.NOTIFICATION_DELIVERIES_VIEW);
   return useQuery({
     queryKey: queryKeys.notificationDelivery(id ?? ""),
     queryFn: () => getDelivery(id as string),
-    enabled: authed && Boolean(id),
+    enabled: allowed && Boolean(id),
   });
 }
 
 export function useAlertRoutes(params: ListParams) {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.ALERT_ROUTES_VIEW);
   return useQuery({
     queryKey: queryKeys.alertRoutes(params),
     queryFn: () => listAlertRoutes(params),
     placeholderData: keepPreviousData,
-    enabled: authed,
+    enabled: allowed,
   });
 }
 
 export function useAlertRoute(id: number | null) {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.ALERT_ROUTES_VIEW);
   return useQuery({
     queryKey: queryKeys.alertRoute(id ?? 0),
     queryFn: () => getAlertRoute(id as number),
-    enabled: authed && Number.isFinite(id) && (id as number) > 0,
+    enabled: allowed && Number.isFinite(id) && (id as number) > 0,
   });
 }
 

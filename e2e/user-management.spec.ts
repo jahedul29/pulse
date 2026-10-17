@@ -46,7 +46,7 @@ test("suspends an active account with an optimistic status change", async ({ pag
 
   await row.getByRole("button", { name: "Suspend" }).click();
   const confirm = page.getByRole("alertdialog");
-  await confirm.getByLabel("Reason (optional)").fill("Leave of absence");
+  await confirm.getByLabel("Reason").fill("Leave of absence");
   await confirm.getByRole("button", { name: "Suspend" }).click();
 
   await expect(row.getByText("Suspended")).toBeVisible();

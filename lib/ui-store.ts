@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { DEFAULT_MAP_BACKGROUND, isMapBackground, type MapBackground } from "@/lib/region-builder/backgrounds";
+import { isSavedMapView, type SavedMapView } from "@/lib/region-builder/initial-view";
 
 export interface RegionEditorPrefs {
   background: MapBackground;
@@ -41,6 +42,8 @@ interface UiState {
   setRegionEditor: (patch: Partial<RegionEditorPrefs>) => void;
   openNavGroups: string[];
   setNavGroupOpen: (group: string, open: boolean) => void;
+  lastMapView: SavedMapView | null;
+  setLastMapView: (view: SavedMapView) => void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -52,6 +55,8 @@ export const useUiStore = create<UiState>()(
       setMobileOpen: (open) => set({ mobileOpen: open }),
       regionEditor: DEFAULT_REGION_EDITOR_PREFS,
       setRegionEditor: (patch) => set((state) => ({ regionEditor: { ...state.regionEditor, ...patch } })),
+      lastMapView: null,
+      setLastMapView: (view) => set({ lastMapView: view }),
       openNavGroups: [],
       setNavGroupOpen: (group, open) =>
         set((state) => {
@@ -70,9 +75,12 @@ export const useUiStore = create<UiState>()(
         collapsed: state.collapsed,
         regionEditor: state.regionEditor,
         openNavGroups: state.openNavGroups,
+        lastMapView: state.lastMapView,
       }),
       merge: (persisted, current) => {
-        const saved = (persisted ?? {}) as Partial<Pick<UiState, "collapsed" | "regionEditor" | "openNavGroups">>;
+        const saved = (persisted ?? {}) as Partial<
+          Pick<UiState, "collapsed" | "regionEditor" | "openNavGroups" | "lastMapView">
+        >;
         return {
           ...current,
           collapsed: typeof saved.collapsed === "boolean" ? saved.collapsed : current.collapsed,
@@ -80,6 +88,7 @@ export const useUiStore = create<UiState>()(
           openNavGroups: Array.isArray(saved.openNavGroups)
             ? [...new Set(saved.openNavGroups.filter((group): group is string => typeof group === "string"))]
             : current.openNavGroups,
+          lastMapView: isSavedMapView(saved.lastMapView) ? saved.lastMapView : null,
         };
       },
     },

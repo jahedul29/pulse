@@ -2,6 +2,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChannelFilter, ChannelSelect } from "./channel-select";
 
+jest.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
+
 jest.mock("../../lib/notifications/queries", () => ({
   useChannelSearch: () => ({
     data: {

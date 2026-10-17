@@ -7,16 +7,24 @@ import { LoginForm } from "./login-form";
 
 const mockAttempt = jest.fn<Promise<AttemptOutcome>, [string, string, boolean?]>();
 
+const mockReplace = jest.fn();
+let mockSession: Record<string, unknown> | null = null;
+
 jest.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: jest.fn(), push: jest.fn() }),
+  useRouter: () => ({ replace: mockReplace, push: jest.fn() }),
 }));
 
 jest.mock("./hero-panel", () => ({ HeroPanel: () => null }));
 
-jest.mock("../../lib/auth/store", () => ({
-  useAuthStore: (selector: (state: { attempt: typeof mockAttempt; verify: jest.Mock }) => unknown) =>
-    selector({ attempt: mockAttempt, verify: jest.fn() }),
-}));
+jest.mock("../../lib/auth/store", () => {
+  const actual = jest.requireActual("../../lib/auth/store");
+  const useAuthStore = Object.assign(
+    (selector: (state: { attempt: typeof mockAttempt; verify: jest.Mock }) => unknown) =>
+      selector({ attempt: mockAttempt, verify: jest.fn() }),
+    { getState: () => ({ session: mockSession }) },
+  );
+  return { ...actual, useAuthStore };
+});
 
 jest.mock("next-intl", () => {
   const { translate } = jest.requireActual("../locations/test-intl");
@@ -140,3 +148,26 @@ describe("LoginForm after an idle sign-out", () => {
   });
 });
 
+describe("LoginForm landing", () => {
+  beforeEach(() => {
+    mockAttempt.mockReset();
+    mockReplace.mockReset();
+  });
+
+  it("sends the admin to the first page they can open when the requested one is off limits", async () => {
+    mockSession = {
+      email: "admin@ababro.ai",
+      name: "Admin",
+      role: "admin",
+      token: "t",
+      issuedAt: 0,
+      adminId: "u-1",
+      permissions: ["ROLES.roles.VIEW"],
+      landingPage: null,
+    };
+    mockAttempt.mockResolvedValue({ result: "SUCCESS", email: "admin@ababro.ai", name: "Admin" });
+    render(<LoginForm returnTo="/admin/settings/security" />);
+    await submit();
+    expect(mockReplace).toHaveBeenCalledWith("/admin/roles");
+  });
+});

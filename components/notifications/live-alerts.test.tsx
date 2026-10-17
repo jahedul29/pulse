@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import mockMessages from "../../messages/en.json";
+import { useAuthStore } from "@/lib/auth/store";
 import { LiveAlerts } from "./live-alerts";
 
 const alerts = [
@@ -37,6 +38,8 @@ const alerts = [
   },
 ];
 
+let mockDeliveryAllowed = true;
+
 jest.mock("../../lib/notifications/queries", () => ({
   useLiveAlerts: () => ({
     data: { data: alerts, meta: { total: 2 }, severityCounts: { CRITICAL: 0, HIGH: 1, MEDIUM: 1, LOW: 0 } },
@@ -44,12 +47,10 @@ jest.mock("../../lib/notifications/queries", () => ({
     isError: false,
     refetch: jest.fn(),
   }),
-  useDelivery: (id: string | null) => ({
-    data: alerts.find((alert) => alert.id === id),
-    isPending: false,
-    isError: false,
-    refetch: jest.fn(),
-  }),
+  useDelivery: (id: string | null) =>
+    mockDeliveryAllowed
+      ? { data: alerts.find((alert) => alert.id === id), isPending: false, isError: false, refetch: jest.fn() }
+      : { data: undefined, isPending: true, isError: false, refetch: jest.fn() },
 }));
 
 jest.mock("next-intl", () => {
@@ -67,7 +68,18 @@ jest.mock("next-intl", () => {
   };
 });
 
+function signIn(permissions?: string[]) {
+  useAuthStore.setState({
+    session: { email: "ops@abapro.ai", name: "Ops", role: "superadmin", token: "t", issuedAt: 0, permissions },
+  });
+}
+
 describe("LiveAlerts", () => {
+  beforeEach(() => {
+    mockDeliveryAllowed = true;
+    signIn();
+  });
+
   it("lists firing alerts with severity in a server-driven table", async () => {
     render(<LiveAlerts />);
 
@@ -93,5 +105,16 @@ describe("LiveAlerts", () => {
       "/admin/notifications/routing?open=1",
     );
     expect(within(dialog).queryByText(/^#/)).not.toBeInTheDocument();
+  });
+
+  it("shows the alert's own row in the drawer when the user can't open deliveries", async () => {
+    mockDeliveryAllowed = false;
+    signIn(["NOTIFICATIONS.live_alerts.VIEW"]);
+    render(<LiveAlerts />);
+
+    await userEvent.click(await screen.findByRole("link", { name: "Session missed" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(await within(dialog).findByText("SUID-0009 · ops@abapro.ai")).toBeInTheDocument();
+    expect(within(dialog).queryByRole("link", { name: "Open admin account Ops Lead" })).not.toBeInTheDocument();
   });
 });

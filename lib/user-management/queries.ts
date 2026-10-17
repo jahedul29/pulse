@@ -8,7 +8,7 @@ import {
 import type { QueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { Paginated } from "@/lib/api/client";
-import { useAuthed } from "@/lib/auth/use-authed";
+import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 import {
   assignUserRoles,
   fetchAdminUserDetail,
@@ -30,26 +30,26 @@ const ADMIN_USERS = ["admin-users"] as const;
 const PENDING_INVITATIONS = ["pending-invitations"] as const;
 
 export function useAdminUsers(params: ListParams) {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.USER_MANAGEMENT_VIEW);
   return useQuery({
     queryKey: queryKeys.adminUsers(params),
     queryFn: () => listAdminUsers(params),
     placeholderData: keepPreviousData,
-    enabled: authed,
+    enabled: allowed,
   });
 }
 
 export function useAllAdminUsers(enabled = true) {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.USER_MANAGEMENT_VIEW);
   return useQuery({
     queryKey: ["admin-users-all"],
     queryFn: listAllAdminUsers,
-    enabled: authed && enabled,
+    enabled: allowed && enabled,
   });
 }
 
 export function useAdminUserSearch(search: string, enabled: boolean) {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.USER_MANAGEMENT_VIEW);
   return useInfiniteQuery({
     queryKey: ["admin-user-search", search],
     queryFn: ({ pageParam }) => listAdminUsers({ page: pageParam, perPage: 10, search: search || undefined }),
@@ -59,53 +59,53 @@ export function useAdminUserSearch(search: string, enabled: boolean) {
       if (!meta) return undefined;
       return meta.current_page < meta.last_page ? meta.current_page + 1 : undefined;
     },
-    enabled: authed && enabled,
+    enabled: allowed && enabled,
     placeholderData: keepPreviousData,
   });
 }
 
 export function usePendingInvitations() {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.INVITATIONS_VIEW);
   return useQuery({
     queryKey: PENDING_INVITATIONS,
     queryFn: fetchPendingInvitations,
-    enabled: authed,
+    enabled: allowed,
   });
 }
 
 export function useAdminUser(id: string | null) {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.USER_MANAGEMENT_VIEW);
   return useQuery({
     queryKey: queryKeys.adminUser(id ?? ""),
     queryFn: () => fetchAdminUserDetail(id as string),
-    enabled: authed && Boolean(id),
+    enabled: allowed && Boolean(id),
   });
 }
 
 export function useInvitation(id: string | null) {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.INVITATIONS_VIEW);
   return useQuery({
     queryKey: [...PENDING_INVITATIONS, "detail", id ?? ""],
     queryFn: () => fetchInvitation(id as string),
-    enabled: authed && Boolean(id),
+    enabled: allowed && Boolean(id),
   });
 }
 
 export function useUserDevices(id: string | null) {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.USER_MANAGEMENT_VIEW);
   return useQuery({
     queryKey: ["user-devices", id],
     queryFn: () => fetchUserDevices(id as string),
-    enabled: authed && id != null,
+    enabled: allowed && id != null,
   });
 }
 
 export function useInvitableStaff(search: string, enabled = true) {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.STAFF_VIEW);
   return useQuery({
     queryKey: [...queryKeys.unlinkedStaff(), search],
     queryFn: () => fetchInvitableStaff(search),
-    enabled: authed && enabled,
+    enabled: allowed && enabled,
     placeholderData: keepPreviousData,
   });
 }

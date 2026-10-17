@@ -4,7 +4,6 @@ import { useCallback, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { ColumnDef } from "@tanstack/react-table";
 
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -41,6 +40,7 @@ import {
   shortId,
 } from "@/lib/notifications/dto";
 import type { NotificationDeliveryDto } from "@/lib/notifications/dto";
+import { LoadError } from "@/components/common/load-error";
 
 export function NotificationLog() {
   const t = useTranslations("notifications");
@@ -107,7 +107,7 @@ export function NotificationLog() {
             <ChannelFilter value={value} onChange={setValue} searchLabel={searchLabel} emptyLabel={tc("noResults")} />
           ),
         },
-        cell: ({ row }) => <Chip>{row.original.channel?.name ?? `#${row.original.channel_id ?? "-"}`}</Chip>,
+        cell: ({ row }) => <Chip>{row.original.channel?.name ?? "-"}</Chip>,
       },
       {
         id: "template",
@@ -190,12 +190,7 @@ export function NotificationLog() {
         </CardHeader>
         <CardContent>
           {deliveriesQuery.isError ? (
-            <div className="flex flex-col items-center gap-3 py-16 text-center">
-              <p className="text-sm text-muted-foreground">{t("log.loadError")}</p>
-              <Button variant="outline" size="sm" onClick={() => deliveriesQuery.refetch()}>
-                {tc("retry")}
-              </Button>
-            </div>
+            <LoadError error={deliveriesQuery.error} message={t("log.loadError")} onRetry={() => deliveriesQuery.refetch()} />
           ) : deliveriesQuery.isPending ? (
             <div className="flex flex-col gap-2">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -244,12 +239,7 @@ export function NotificationLog() {
             </SheetHeader>
             <SheetBody className="flex flex-col gap-4">
               {detailQuery.isError ? (
-                <div className="flex flex-col items-center gap-3 py-16 text-center">
-                  <p className="text-sm text-muted-foreground">{t("log.detailLoadError")}</p>
-                  <Button variant="outline" size="sm" onClick={() => detailQuery.refetch()}>
-                    {tc("retry")}
-                  </Button>
-                </div>
+                <LoadError error={detailQuery.error} message={t("log.detailLoadError")} onRetry={() => detailQuery.refetch()} />
               ) : detailQuery.isPending ? (
                 <div className="flex flex-col gap-4">
                   <Skeleton className="h-40 w-full" />

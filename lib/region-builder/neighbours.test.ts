@@ -28,4 +28,15 @@ describe("nearestNeighbours", () => {
     ];
     expect(nearestNeighbours(region, candidates).map((entry) => entry.id)).toEqual([3, 4, 5]);
   });
+
+  it("measures from a fallback point when the region has no centre yet", () => {
+    const region = city(1, { center: null });
+    const candidates = [
+      region,
+      city(2, { center: { lat: 24, lng: 54 } }),
+      city(3, { center: { lat: 25.1, lng: 55 } }),
+    ];
+    expect(nearestNeighbours(region, candidates).map((entry) => entry.id)).toEqual([]);
+    expect(nearestNeighbours(region, candidates, { lat: 24, lng: 54 }).map((entry) => entry.id)).toEqual([2, 3]);
+  });
 });

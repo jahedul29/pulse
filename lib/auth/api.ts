@@ -1,7 +1,7 @@
 import { apiData } from "@/lib/api/client";
 import { ADMIN_IDENTITY } from "@/lib/api/config";
 import { deviceFingerprint } from "./fingerprint";
-import type { AuthToken, Platform } from "./types";
+import type { AuthenticatedAdmin, AuthToken, Platform } from "./types";
 
 const PLATFORM: Platform = "WEB";
 
@@ -23,4 +23,8 @@ export async function login({ email, password, remember }: LoginBody): Promise<A
       remember: remember ?? false,
     },
   });
+}
+
+export function fetchMe(): Promise<AuthenticatedAdmin> {
+  return apiData<AuthenticatedAdmin>(`${ADMIN_IDENTITY}/me`);
 }

@@ -4,6 +4,8 @@ import { useMemo } from "react";
 
 import { AsyncMultiFilter, type AsyncOptionsResult } from "@/components/common/async-select";
 import { useCampaignSearch } from "@/lib/notifications/queries";
+import { useTranslations } from "next-intl";
+import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 
 export function useCampaignOptions(search: string, enabled: boolean): AsyncOptionsResult {
   const campaignQuery = useCampaignSearch(search, enabled);
@@ -16,7 +18,7 @@ export function useCampaignOptions(search: string, enabled: boolean): AsyncOptio
   );
   return {
     options,
-    isPending: campaignQuery.isPending,
+    isPending: campaignQuery.isLoading,
     hasNextPage: Boolean(campaignQuery.hasNextPage),
     isFetchingNextPage: campaignQuery.isFetchingNextPage,
     fetchNextPage: campaignQuery.fetchNextPage,
@@ -29,5 +31,13 @@ export function CampaignFilter(props: {
   searchLabel?: string;
   emptyLabel?: string;
 }) {
-  return <AsyncMultiFilter useOptions={useCampaignOptions} {...props} />;
+  const allowed = useHasPermission(PERMISSIONS.NOTIFICATION_CAMPAIGNS_VIEW);
+  const tc = useTranslations("common");
+  return (
+    <AsyncMultiFilter
+      useOptions={useCampaignOptions}
+      {...props}
+      emptyLabel={allowed ? props.emptyLabel : tc("noPermission")}
+    />
+  );
 }

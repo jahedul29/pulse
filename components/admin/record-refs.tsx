@@ -14,7 +14,6 @@ import {
   type RecordKind,
 } from "@/lib/record-links";
 import { useLocale } from "next-intl";
-import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 import { localizedName } from "@/lib/locations/names";
 import { useAllCities, useAllCountries } from "@/lib/locations/queries";
 import { useAlertRoute, useAllTemplates, useChannels } from "@/lib/notifications/queries";
@@ -65,15 +64,19 @@ export function RoleNameChips({ names }: { names: string[] }) {
 
 export function RoleIdLinks({ ids }: { ids: string[] }) {
   const { nameById } = useRoleIndex();
+  const known = ids.filter((roleId) => nameById.has(roleId));
+  const unknown = ids.length - known.length;
+  if (known.length === 0) return <>-</>;
   return (
     <>
       {joined(
-        ids.map((roleId) => (
+        known.map((roleId) => (
           <InlineRecordLink key={roleId} href={recordHref("role", roleId)}>
-            {nameById.get(roleId) ?? `#${roleId}`}
+            {nameById.get(roleId)}
           </InlineRecordLink>
         )),
       )}
+      {unknown > 0 ? <span className="text-muted-foreground"> +{unknown}</span> : null}
     </>
   );
 }
@@ -128,9 +131,8 @@ function InvitationName({ id, fallback }: { id: string; fallback: string }) {
 
 function useLocationName(kind: "region" | "country", id: string): string | null {
   const locale = useLocale();
-  const canView = useHasPermission(PERMISSIONS.TECHNICAL_VIEW);
-  const citiesQuery = useAllCities({ enabled: canView && kind === "region" });
-  const countriesQuery = useAllCountries({ enabled: canView && kind === "country" });
+  const citiesQuery = useAllCities({ enabled: kind === "region" });
+  const countriesQuery = useAllCountries({ enabled: kind === "country" });
   const records = kind === "region" ? citiesQuery.data : countriesQuery.data;
   const record = (records ?? []).find((entry: { id: number }) => String(entry.id) === id);
   return record ? localizedName(record.name, record.name_translations, locale) : null;

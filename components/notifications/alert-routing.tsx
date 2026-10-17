@@ -90,6 +90,7 @@ import {
 import { useRoles } from "@/lib/rbac/queries";
 import { useAllAdminUsers } from "@/lib/user-management/queries";
 import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
+import { LoadError } from "@/components/common/load-error";
 
 const EMPTY_FORM: AlertRouteForm = {
   code: "",
@@ -107,6 +108,11 @@ export function AlertRoutingEditor() {
   const t = useTranslations("notifications");
   const tc = useTranslations("common");
   const canEdit = useHasPermission(PERMISSIONS.ALERT_ROUTES_EDIT);
+  const canViewChannels = useHasPermission(PERMISSIONS.NOTIFICATION_CHANNELS_VIEW);
+  const canViewTemplates = useHasPermission(PERMISSIONS.NOTIFICATION_TEMPLATES_VIEW);
+  const canViewRoles = useHasPermission(PERMISSIONS.ROLES_VIEW);
+  const canViewUsers = useHasPermission(PERMISSIONS.USER_MANAGEMENT_VIEW);
+  const canOpenForm = canEdit && canViewChannels && canViewTemplates;
   const te = useTranslations("apiErrors");
   const locale = useLocale();
 
@@ -163,11 +169,11 @@ export function AlertRoutingEditor() {
 
   const channelName = useMemo(() => {
     const map = new Map(channels.map((channel) => [channel.id, channel.name || channel.code]));
-    return (id: number | null | undefined) => (id == null ? "-" : map.get(id) ?? `#${id}`);
+    return (id: number | null | undefined) => (id == null ? "-" : (map.get(id) ?? "-"));
   }, [channels]);
   const templateName = useMemo(() => {
     const map = new Map(templates.map((template) => [template.id, template.name || template.code]));
-    return (id: number | null | undefined) => (id == null ? "-" : map.get(id) ?? `#${id}`);
+    return (id: number | null | undefined) => (id == null ? "-" : (map.get(id) ?? "-"));
   }, [templates]);
 
   const createRoute = useCreateAlertRoute();
@@ -424,14 +430,14 @@ export function AlertRoutingEditor() {
                         openEdit(route);
                       }}
                       focusableWhenDisabled
-                      disabled={!canEdit}
+                      disabled={!canOpenForm}
                       aria-label={t("routing.edit")}
                     />
                   }
                 >
                   <Pencil className="size-4" />
                 </TooltipTrigger>
-                <TooltipContent>{canEdit ? t("routing.edit") : tc("noPermission")}</TooltipContent>
+                <TooltipContent>{canOpenForm ? t("routing.edit") : tc("noPermission")}</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger
@@ -459,7 +465,7 @@ export function AlertRoutingEditor() {
         },
       },
     ],
-    [t, tc, channelName, templateName, audienceLabel, openEdit, canEdit],
+    [t, tc, channelName, templateName, audienceLabel, openEdit, canEdit, canOpenForm],
   );
 
   return (
@@ -471,12 +477,7 @@ export function AlertRoutingEditor() {
         </CardHeader>
         <CardContent>
           {routesQuery.isError ? (
-            <div className="flex flex-col items-center gap-3 py-16 text-center">
-              <p className="text-sm text-muted-foreground">{t("routing.loadError")}</p>
-              <Button variant="outline" size="sm" onClick={() => routesQuery.refetch()}>
-                {tc("retry")}
-              </Button>
-            </div>
+            <LoadError error={routesQuery.error} message={t("routing.loadError")} onRetry={() => routesQuery.refetch()} />
           ) : routesQuery.isPending ? (
             <div className="flex flex-col gap-2">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -512,7 +513,7 @@ export function AlertRoutingEditor() {
                         size="lg"
                         onClick={openCreate}
                         focusableWhenDisabled
-                        disabled={!canEdit}
+                        disabled={!canOpenForm}
                         aria-label={t("routing.newRoute")}
                         className={toolbarIconButtonClass}
                       />
@@ -521,7 +522,7 @@ export function AlertRoutingEditor() {
                     <Plus className="size-4" />
                     <span className="hidden sm:inline">{t("routing.newRoute")}</span>
                   </TooltipTrigger>
-                  <TooltipContent>{canEdit ? t("routing.newRoute") : tc("noPermission")}</TooltipContent>
+                  <TooltipContent>{canOpenForm ? t("routing.newRoute") : tc("noPermission")}</TooltipContent>
                 </Tooltip>
               }
             />
@@ -686,11 +687,17 @@ export function AlertRoutingEditor() {
                           <SelectValue>{(value) => (value ? t(`routing.audienceType.${value}`) : "")}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                          {AUDIENCE_TYPES.map((type) => (
-                            <SelectItem key={type} value={type}>
-                              {t(`routing.audienceType.${type}`)}
-                            </SelectItem>
-                          ))}
+                          {AUDIENCE_TYPES.map((type) => {
+                            const blocked = (type === "ROLE" && !canViewRoles) || (type === "USER_IDS" && !canViewUsers);
+                            return (
+                              <SelectItem key={type} value={type} disabled={blocked}>
+                                {t(`routing.audienceType.${type}`)}
+                                {blocked ? (
+                                  <span className="ms-auto text-xs text-muted-foreground">{tc("noPermissionShort")}</span>
+                                ) : null}
+                              </SelectItem>
+                            );
+                          })}
                         </SelectContent>
                       </Select>
                     )}
@@ -715,6 +722,11 @@ export function AlertRoutingEditor() {
                         onChange={field.onChange}
                         placeholder={t("routing.audiencePlaceholder")}
                         searchPlaceholder={tc("search")}
+                        disabledReason={
+                          (audienceType === "ROLE" && !canViewRoles) || (audienceType === "USER_IDS" && !canViewUsers)
+                            ? tc("noPermission")
+                            : undefined
+                        }
                       />
                     )}
                   />
@@ -791,12 +803,7 @@ export function AlertRoutingEditor() {
             </SheetHeader>
             <SheetBody className="flex flex-col gap-4">
               {detailQuery.isError ? (
-                <div className="flex flex-col items-center gap-3 py-16 text-center">
-                  <p className="text-sm text-muted-foreground">{t("routing.detailLoadError")}</p>
-                  <Button variant="outline" size="sm" onClick={() => detailQuery.refetch()}>
-                    {tc("retry")}
-                  </Button>
-                </div>
+                <LoadError error={detailQuery.error} message={t("routing.detailLoadError")} onRetry={() => detailQuery.refetch()} />
               ) : detailQuery.isPending ? (
                 <div className="flex flex-col gap-4">
                   <Skeleton className="h-40 w-full" />
@@ -864,17 +871,24 @@ export function AlertRoutingEditor() {
             </SheetBody>
             {canEdit && (
               <SheetFooter>
-                <Button
-                  size="lg"
-                  disabled={detailQuery.isPending || detailQuery.isError}
-                  onClick={() => {
-                    const target = detailQuery.data ?? shownDetail;
-                    closeDetail();
-                    openEdit(target);
-                  }}
-                >
-                  {t("routing.edit")}
-                </Button>
+                {canOpenForm ? (
+                  <Button
+                    size="lg"
+                    disabled={detailQuery.isPending || detailQuery.isError}
+                    onClick={() => {
+                      const target = detailQuery.data ?? shownDetail;
+                      closeDetail();
+                      openEdit(target);
+                    }}
+                  >
+                    {t("routing.edit")}
+                  </Button>
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger render={<Button size="lg" focusableWhenDisabled disabled />}>{t("routing.edit")}</TooltipTrigger>
+                    <TooltipContent>{tc("noPermission")}</TooltipContent>
+                  </Tooltip>
+                )}
               </SheetFooter>
             )}
           </SheetContent>

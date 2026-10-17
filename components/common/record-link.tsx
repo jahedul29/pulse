@@ -1,9 +1,20 @@
+"use client";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowUpRight } from "lucide-react";
 
 import { Chip } from "@/components/common/chip";
+import { accessState } from "@/lib/auth/access";
+import { useAccessSnapshot } from "@/lib/auth/access-probes";
+import { useIsClient } from "@/lib/use-is-client";
 import { cn } from "@/lib/utils";
+
+export function useCanOpen(href: string): boolean {
+  const isClient = useIsClient();
+  const { session, probes } = useAccessSnapshot();
+  return !isClient || !session || accessState(session, href, probes) !== "denied";
+}
 
 export function RecordLink({
   href,
@@ -16,6 +27,8 @@ export function RecordLink({
   children: ReactNode;
   className?: string;
 }) {
+  const canOpen = useCanOpen(href);
+  if (!canOpen) return <span className={cn("block max-w-full min-w-0", className)}>{children}</span>;
   return (
     <Link
       href={href}
@@ -32,6 +45,8 @@ export function RecordLink({
 }
 
 export function InlineRecordLink({ href, children }: { href: string; children: ReactNode }) {
+  const canOpen = useCanOpen(href);
+  if (!canOpen) return <span className="font-medium">{children}</span>;
   return (
     <Link
       href={href}
@@ -43,6 +58,8 @@ export function InlineRecordLink({ href, children }: { href: string; children: R
 }
 
 export function ChipLink({ href, children }: { href: string; children: ReactNode }) {
+  const canOpen = useCanOpen(href);
+  if (!canOpen) return <Chip className="leading-snug whitespace-normal">{children}</Chip>;
   return (
     <Link
       href={href}

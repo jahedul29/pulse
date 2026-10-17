@@ -11,8 +11,12 @@ export interface NeighbourCandidate {
 export const NEIGHBOUR_COUNT = 3;
 export const NEIGHBOUR_RADIUS_KM = 300;
 
-export function nearestNeighbours<T extends NeighbourCandidate>(region: T, candidates: T[]): T[] {
-  const centre = region.center;
+export function nearestNeighbours<T extends NeighbourCandidate>(
+  region: T,
+  candidates: T[],
+  fallbackOrigin: { lat: number; lng: number } | null = null,
+): T[] {
+  const centre = region.center ?? fallbackOrigin;
   return candidates
     .filter((city) => city.id !== region.id && city.country_id === region.country_id && city.tiles_url)
     .map((city) => ({ city, distance: centre && city.center ? distanceKm(centre, city.center) : Number.POSITIVE_INFINITY }))

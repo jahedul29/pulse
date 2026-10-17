@@ -5,16 +5,46 @@ import { login } from "./api";
 import { registerAuthBridge } from "@/lib/api/auth-bridge";
 import { isApiError } from "@/lib/api/errors";
 import { describeServerError } from "./server-error";
-import type { AttemptOutcome, AuthToken, LoginResult, Session } from "./types";
+import type { AttemptOutcome, AuthenticatedAdmin, AuthToken, LoginResult, Session } from "./types";
 import { writeLastActivity } from "./idle";
 
 const SESSION_COOKIE = "abapro_session";
+export const AUTH_STORAGE_KEY = "abapro-auth";
 const DAY = 86_400_000;
 const SESSION_TTL_MS = 7 * DAY;
 
 function id() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   return `a-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+}
+
+export function sessionOwner(session: Pick<Session, "adminId" | "email"> | null | undefined): string | null {
+  return session ? (session.adminId ?? session.email) : null;
+}
+
+export function readStoredSession(raw: string | null): Session | null {
+  if (!raw) return null;
+  try {
+    const session = (JSON.parse(raw) as { state?: { session?: Session | null } })?.state?.session;
+    return session && typeof session === "object" ? session : null;
+  } catch {
+    return null;
+  }
+}
+
+function storedSessionToken(): string | null | undefined {
+  if (typeof localStorage === "undefined") return undefined;
+  try {
+    const stored = readStoredSession(localStorage.getItem(AUTH_STORAGE_KEY));
+    return stored ? (stored.accessToken ?? stored.token) : null;
+  } catch {
+    return undefined;
+  }
+}
+
+function sameAdmin(session: Session, profile: AuthenticatedAdmin): boolean {
+  if (session.adminId) return session.adminId === profile.id;
+  return Boolean(profile.email) && session.email.trim().toLowerCase() === profile.email.trim().toLowerCase();
 }
 
 function writeSessionCookie() {
@@ -34,6 +64,7 @@ interface AuthState {
   attempt: (email: string, password: string, remember?: boolean) => Promise<AttemptOutcome>;
   verify: (email: string, code: string, remember: boolean) => Promise<AttemptOutcome>;
   isRemembered: (email: string) => boolean;
+  syncProfile: (profile: AuthenticatedAdmin) => void;
   signOut: () => void;
 }
 
@@ -66,6 +97,7 @@ export const useAuthStore = create<AuthState>()(
           expiresAt: Date.now() + (tok.expires_in ?? 0) * 1000,
           adminId: tok.user.id,
           permissions: Array.isArray(tok.user.permissions) ? tok.user.permissions : [],
+          landingPage: tok.user.landing_page ?? null,
         };
         writeSessionCookie();
         writeLastActivity(Date.now());
@@ -154,6 +186,26 @@ export const useAuthStore = create<AuthState>()(
           return outcome;
         },
 
+        syncProfile: (profile) => {
+          const session = get().session;
+          if (!session || !sameAdmin(session, profile)) return;
+          const stored = storedSessionToken();
+          if (stored !== undefined && stored !== (session.accessToken ?? session.token)) return;
+          const next: Session = {
+            ...session,
+            name: profile.full_name?.trim() || session.name,
+            role: profile.roles?.[0] ?? session.role,
+            permissions: Array.isArray(profile.permissions) ? profile.permissions : session.permissions,
+            landingPage: profile.landing_page ?? null,
+          };
+          const unchanged =
+            next.name === session.name &&
+            next.role === session.role &&
+            next.landingPage === (session.landingPage ?? null) &&
+            JSON.stringify(next.permissions ?? null) === JSON.stringify(session.permissions ?? null);
+          if (!unchanged) set({ session: next });
+        },
+
         signOut: () => {
           clearSessionCookie();
           set({ session: null });
@@ -161,7 +213,7 @@ export const useAuthStore = create<AuthState>()(
       };
     },
     {
-      name: "abapro-auth",
+      name: AUTH_STORAGE_KEY,
       partialize: (state) => ({
         session: state.session,
         rememberedUntil: state.rememberedUntil,

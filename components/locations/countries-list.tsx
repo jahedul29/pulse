@@ -25,6 +25,7 @@ import { useRetained } from "@/lib/use-retained";
 import { CountryFormDialog } from "./country-form-dialog";
 import { DeleteLocationDialog } from "./delete-location-dialog";
 import { LocationRowActions } from "./location-row-actions";
+import { firstError, LoadError } from "@/components/common/load-error";
 
 type DialogState = { mode: "create" } | { mode: "edit"; country: CountryDto };
 
@@ -200,19 +201,14 @@ export function CountriesList() {
         </CardHeader>
         <CardContent>
           {(countriesQuery.isError && !countriesQuery.data) || (citiesQuery.isError && !citiesQuery.data) ? (
-            <div className="flex flex-col items-center gap-3 py-16 text-center">
-              <p className="text-sm text-muted-foreground">{t("loadError")}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (countriesQuery.isError) void countriesQuery.refetch();
-                  if (citiesQuery.isError) void citiesQuery.refetch();
-                }}
-              >
-                {tc("retry")}
-              </Button>
-            </div>
+            <LoadError
+              error={firstError(countriesQuery.error, citiesQuery.error)}
+              message={t("loadError")}
+              onRetry={() => {
+                if (countriesQuery.isError) void countriesQuery.refetch();
+                if (citiesQuery.isError) void citiesQuery.refetch();
+              }}
+            />
           ) : countriesQuery.isPending ? (
             <div className="flex flex-col gap-2">
               {Array.from({ length: 6 }, (_, index) => (

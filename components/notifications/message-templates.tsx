@@ -69,6 +69,7 @@ import {
 } from "@/lib/notifications/queries";
 import type { NotificationTemplateDto } from "@/lib/notifications/dto";
 import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
+import { LoadError } from "@/components/common/load-error";
 
 function VarInserter({ label, onInsert }: { label: string; onInsert: (token: string) => void }) {
   const t = useTranslations("notifications");
@@ -122,6 +123,8 @@ export function MessageTemplates() {
   const t = useTranslations("notifications");
   const tc = useTranslations("common");
   const canEdit = useHasPermission(PERMISSIONS.NOTIFICATION_TEMPLATES_EDIT);
+  const canViewChannels = useHasPermission(PERMISSIONS.NOTIFICATION_CHANNELS_VIEW);
+  const canOpenForm = canEdit && canViewChannels;
   const te = useTranslations("apiErrors");
   const locale = useLocale();
 
@@ -131,7 +134,7 @@ export function MessageTemplates() {
   const channels = useMemo(() => channelsQuery.data ?? [], [channelsQuery.data]);
   const channelName = useMemo(() => {
     const map = new Map(channels.map((channel) => [channel.id, channel.name || channel.code]));
-    return (id: number | null | undefined) => (id == null ? "-" : map.get(id) ?? `#${id}`);
+    return (id: number | null | undefined) => (id == null ? "-" : (map.get(id) ?? "-"));
   }, [channels]);
 
   const createTemplate = useCreateTemplate();
@@ -356,14 +359,14 @@ export function MessageTemplates() {
                         openEdit(template);
                       }}
                       focusableWhenDisabled
-                      disabled={!canEdit}
+                      disabled={!canOpenForm}
                       aria-label={t("templates.edit")}
                     />
                   }
                 >
                   <Pencil className="size-4" />
                 </TooltipTrigger>
-                <TooltipContent>{canEdit ? t("templates.edit") : tc("noPermission")}</TooltipContent>
+                <TooltipContent>{canOpenForm ? t("templates.edit") : tc("noPermission")}</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger
@@ -391,7 +394,7 @@ export function MessageTemplates() {
         },
       },
     ],
-    [t, tc, channelName, openEdit, canEdit],
+    [t, tc, channelName, openEdit, canEdit, canOpenForm],
   );
 
   return (
@@ -403,12 +406,7 @@ export function MessageTemplates() {
         </CardHeader>
         <CardContent>
           {templatesQuery.isError ? (
-            <div className="flex flex-col items-center gap-3 py-16 text-center">
-              <p className="text-sm text-muted-foreground">{t("templates.loadError")}</p>
-              <Button variant="outline" size="sm" onClick={() => templatesQuery.refetch()}>
-                {tc("retry")}
-              </Button>
-            </div>
+            <LoadError error={templatesQuery.error} message={t("templates.loadError")} onRetry={() => templatesQuery.refetch()} />
           ) : templatesQuery.isPending ? (
             <div className="flex flex-col gap-2">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -446,7 +444,7 @@ export function MessageTemplates() {
                         size="lg"
                         onClick={openCreate}
                         focusableWhenDisabled
-                        disabled={!canEdit}
+                        disabled={!canOpenForm}
                         aria-label={t("templates.newTemplate")}
                         className={toolbarIconButtonClass}
                       />
@@ -455,7 +453,7 @@ export function MessageTemplates() {
                     <Plus className="size-4" />
                     <span className="hidden sm:inline">{t("templates.newTemplate")}</span>
                   </TooltipTrigger>
-                  <TooltipContent>{canEdit ? t("templates.newTemplate") : tc("noPermission")}</TooltipContent>
+                  <TooltipContent>{canOpenForm ? t("templates.newTemplate") : tc("noPermission")}</TooltipContent>
                 </Tooltip>
               }
             />
@@ -690,12 +688,7 @@ export function MessageTemplates() {
             </SheetHeader>
             <SheetBody className="flex flex-col gap-4">
               {detailQuery.isError ? (
-                <div className="flex flex-col items-center gap-3 py-16 text-center">
-                  <p className="text-sm text-muted-foreground">{t("templates.detailLoadError")}</p>
-                  <Button variant="outline" size="sm" onClick={() => detailQuery.refetch()}>
-                    {tc("retry")}
-                  </Button>
-                </div>
+                <LoadError error={detailQuery.error} message={t("templates.detailLoadError")} onRetry={() => detailQuery.refetch()} />
               ) : detailQuery.isPending ? (
                 <div className="flex flex-col gap-4">
                   <Skeleton className="h-24 w-full" />
@@ -769,17 +762,24 @@ export function MessageTemplates() {
             </SheetBody>
             {canEdit && (
               <SheetFooter>
-                <Button
-                  size="lg"
-                  disabled={detailQuery.isPending || detailQuery.isError}
-                  onClick={() => {
-                    const target = detailQuery.data ?? shownDetail;
-                    closeDetail();
-                    openEdit(target);
-                  }}
-                >
-                  {t("templates.edit")}
-                </Button>
+                {canOpenForm ? (
+                  <Button
+                    size="lg"
+                    disabled={detailQuery.isPending || detailQuery.isError}
+                    onClick={() => {
+                      const target = detailQuery.data ?? shownDetail;
+                      closeDetail();
+                      openEdit(target);
+                    }}
+                  >
+                    {t("templates.edit")}
+                  </Button>
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger render={<Button size="lg" focusableWhenDisabled disabled />}>{t("templates.edit")}</TooltipTrigger>
+                    <TooltipContent>{tc("noPermission")}</TooltipContent>
+                  </Tooltip>
+                )}
               </SheetFooter>
             )}
           </SheetContent>

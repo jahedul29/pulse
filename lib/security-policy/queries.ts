@@ -1,24 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/api/query-keys";
-import { useAuthed } from "@/lib/auth/use-authed";
+import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 import { getCurrentPolicy, listPolicyVersions, publishPolicy } from "./policy-api";
 import type { StorePolicyBody } from "./dto";
 
 export function useCurrentPolicy() {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.SECURITY_POLICY_VIEW);
   return useQuery({
     queryKey: queryKeys.currentPolicy(),
     queryFn: getCurrentPolicy,
-    enabled: authed,
+    enabled: allowed,
   });
 }
 
 export function usePolicyVersions() {
-  const authed = useAuthed();
+  const allowed = useHasPermission(PERMISSIONS.SECURITY_POLICY_VIEW);
   return useQuery({
     queryKey: queryKeys.policyVersions(),
     queryFn: listPolicyVersions,
-    enabled: authed,
+    enabled: allowed,
   });
 }
 

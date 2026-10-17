@@ -23,16 +23,12 @@ import { IdleSignOutNotice } from "./idle-sign-out-notice";
 import { LoginErrorBanner } from "./login-error-banner";
 import { MfaStep } from "./mfa-step";
 import { StatusNotice } from "./status-notice";
+import { landingPath } from "@/lib/auth/access";
+import { currentProbeResults } from "@/lib/auth/access-probes";
 
 type View = "form" | "mfa" | "locked" | "pending" | "suspended" | "deactivated";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const DEFAULT_DEST = "/personnel";
-
-function safeDest(raw: string | null) {
-  if (raw && raw.startsWith("/") && !raw.startsWith("//") && !raw.startsWith("/\\")) return raw;
-  return DEFAULT_DEST;
-}
 
 export function LoginForm({
   returnTo,
@@ -64,7 +60,10 @@ export function LoginForm({
 
   const goToDest = useCallback(() => {
     toast.success(t("signedIn"));
-    router.replace(safeDest(returnTo ?? null));
+    const session = useAuthStore.getState().session;
+    router.replace(
+      landingPath(session, { returnTo, landingPage: session?.landingPage }, currentProbeResults()),
+    );
   }, [router, returnTo, t]);
 
   const raiseServerError = (info: ServerErrorInfo) => {

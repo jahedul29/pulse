@@ -42,7 +42,8 @@
     "to": "إلى",
     "lang_RU": "الروسية",
     "required": "مطلوب",
-    "noPermission": "ليس لديك صلاحية للقيام بذلك."
+    "noPermission": "ليس لديك صلاحية للقيام بذلك.",
+    "noPermissionShort": "لا توجد صلاحية"
   },
   "pagination": {
     "range": "{start}–{end} من {total} {label}",
@@ -562,7 +563,7 @@
     "staffEmpty": "لا يوجد موظف مطابق بدون حساب مستخدم قائم.",
     "emailLabel": "البريد الإلكتروني",
     "emailPlaceholder": "name@abapro.health",
-    "rolesLabel": "الأدوار المقترحة (اختياري)",
+    "rolesLabel": "الأدوار المقترحة",
     "rolesPlaceholder": "اختر دورًا واحدًا أو أكثر",
     "rolesSearchPlaceholder": "ابحث عن الأدوار",
     "rolesEmpty": "لا توجد أدوار مطابقة.",
@@ -600,7 +601,7 @@
     "suspendTitle": "تعليق الحساب؟",
     "suspendBody": "لن يتمكن {name} من تسجيل الدخول حتى تتم إعادة تفعيل الحساب.",
     "suspendConfirm": "تعليق",
-    "statusReasonLabel": "السبب (اختياري)",
+    "statusReasonLabel": "السبب",
     "statusReasonPlaceholder": "أضف ملاحظة يراها المسؤولون الآخرون على هذا الحساب",
     "statusReasonRow": "سبب الحالة"
   },
@@ -729,7 +730,7 @@
     "addRole": "منح دور",
     "addOverlay": "إضافة صلاحية",
     "role": "الدور",
-    "expiryOptional": "تاريخ الانتهاء (اختياري)",
+    "expiryOptional": "تاريخ الانتهاء",
     "temporaryHint": "للوصول المؤقت أو البديل.",
     "noExpiry": "بدون انتهاء",
     "grantedByOn": "مُنح بواسطة {name} · {date}",
@@ -1344,7 +1345,7 @@
       "countryLabel": "الدولة",
       "newRegion": "منطقة جديدة",
       "noRegionsInCountry": "لا توجد مناطق في هذه الدولة بعد.",
-      "notMapped": "غير مرسومة",
+      "notMapped": "لا خلايا بعد",
       "panelLabel": "لوحة المنطقة",
       "editDetailsShort": "تعديل التفاصيل",
       "centreNotSet": "غير محدد",
@@ -1372,7 +1373,8 @@
       "createTitle": "بدء منطقة جديدة؟",
       "createBody": "ستُفتح المنطقة الجديدة في المنشئ، لذا ستفقد تغييراتك غير المحفوظة على {name}.",
       "createConfirm": "متابعة",
-      "centreMoved": "تم نقل المركز"
+      "centreMoved": "تم نقل المركز",
+      "zoomToPaint": "كبّر للتلوين"
     },
     "regions": {
       "title": "المناطق",
@@ -1388,7 +1390,7 @@
       "colStatus": "الحالة",
       "colUpdated": "آخر تحديث",
       "mapped": "مرسومة",
-      "notMapped": "غير مرسومة",
+      "notMapped": "لا خلايا بعد",
       "mapVersion": "الإصدار {version}",
       "active": "نشطة",
       "inactive": "غير نشطة",
@@ -1401,7 +1403,7 @@
       "countryLabel": "الدولة",
       "countryPlaceholder": "اختر دولة",
       "countryRequired": "اختر دولة.",
-      "codeLabel": "الرمز (اختياري)",
+      "codeLabel": "الرمز",
       "codePlaceholder": "مثال: AD-01",
       "nameEnLabel": "الاسم (إنجليزي)",
       "nameEnPlaceholder": "مثال: Abu Dhabi",
@@ -1477,5 +1479,13 @@
       "deleteNamed": "حذف: {name}",
       "deleteChecking": "جارٍ التحقق من مناطقها أولًا."
     }
+  },
+  "access": {
+    "pageTitle": "ليس لديك صلاحية لعرض هذه الصفحة",
+    "pageBody": "لا يملك حسابك صلاحية فتح هذه الصفحة. اطلب الوصول من أحد المسؤولين إذا كنت تحتاجه.",
+    "goToStart": "الانتقال إلى صفحة البداية",
+    "noAccessTitle": "لا يملك حسابك أي صلاحيات بعد",
+    "noAccessBody": "اطلب من أحد المسؤولين منحك دورًا.",
+    "contentDenied": "ليس لديك صلاحية لعرض هذا المحتوى."
   }
 }

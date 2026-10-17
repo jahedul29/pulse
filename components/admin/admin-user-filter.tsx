@@ -4,6 +4,8 @@ import { useMemo } from "react";
 
 import { AsyncMultiFilter, type AsyncOptionsResult } from "@/components/common/async-select";
 import { useAdminUserSearch } from "@/lib/user-management/queries";
+import { useTranslations } from "next-intl";
+import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 
 export function useAdminUserOptions(search: string, enabled: boolean): AsyncOptionsResult {
   const usersQuery = useAdminUserSearch(search, enabled);
@@ -16,7 +18,7 @@ export function useAdminUserOptions(search: string, enabled: boolean): AsyncOpti
   );
   return {
     options,
-    isPending: usersQuery.isPending,
+    isPending: usersQuery.isLoading,
     hasNextPage: Boolean(usersQuery.hasNextPage),
     isFetchingNextPage: usersQuery.isFetchingNextPage,
     fetchNextPage: usersQuery.fetchNextPage,
@@ -29,5 +31,13 @@ export function AdminUserFilter(props: {
   searchLabel?: string;
   emptyLabel?: string;
 }) {
-  return <AsyncMultiFilter useOptions={useAdminUserOptions} {...props} />;
+  const allowed = useHasPermission(PERMISSIONS.USER_MANAGEMENT_VIEW);
+  const tc = useTranslations("common");
+  return (
+    <AsyncMultiFilter
+      useOptions={useAdminUserOptions}
+      {...props}
+      emptyLabel={allowed ? props.emptyLabel : tc("noPermission")}
+    />
+  );
 }

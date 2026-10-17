@@ -50,10 +50,10 @@ describe("location references", () => {
     expect(screen.getByText("Dubai")).toBeInTheDocument();
   });
 
-  it("doesn't load location names without the technical view permission", () => {
+  it("shows a region as plain text without the technical view permission", () => {
     signIn([]);
     render(<ReferenceValue fieldKey="city_id" value="7" locale="en" fallbacks={fallbacks} />);
-    expect(screen.getByRole("link", { name: "Region" })).toBeInTheDocument();
-    expect(mockCitiesOptions).toHaveBeenCalledWith({ enabled: false });
+    expect(screen.getByText("Dubai")).toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 });

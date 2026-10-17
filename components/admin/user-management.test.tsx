@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
@@ -227,7 +227,7 @@ describe("UserManagement", () => {
     await userEvent.click(suspend);
     const confirm = await screen.findByRole("alertdialog");
     expect(within(confirm).getByText("Suspend account?")).toBeInTheDocument();
-    await userEvent.type(within(confirm).getByLabelText("Reason (optional)"), "Leave of absence");
+    await userEvent.type(within(confirm).getByLabelText("Reason"), "Leave of absence");
     await userEvent.click(within(confirm).getByRole("button", { name: "Suspend" }));
     expect(updateUserStatus).toHaveBeenCalledWith("u2", "suspended", "Leave of absence");
   });
@@ -241,18 +241,25 @@ describe("UserManagement", () => {
         role: "admin",
         token: "t",
         issuedAt: 0,
-        permissions: ["USER_MANAGEMENT.user_management.EDIT"],
+        permissions: [
+          "USER_MANAGEMENT.user_management.VIEW",
+          "USER_MANAGEMENT.user_management.EDIT",
+          "USER_MANAGEMENT.invitations.VIEW",
+        ],
       },
     });
-    renderWithClient(<UserManagement />);
+    try {
+      renderWithClient(<UserManagement />);
 
-    const active = (await screen.findByText("Emma Novak")).closest("tr")!;
-    expect(within(active).getByRole("button", { name: "Suspend" })).toBeInTheDocument();
-    const pending = screen.getByText("Omar Haddad").closest("tr")!;
-    expect(within(pending).queryByRole("button", { name: "Resend invite" })).not.toBeInTheDocument();
-    expect(within(pending).queryByRole("button", { name: "Revoke invite" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Invite user" })).toHaveAttribute("aria-disabled", "true");
-    useAuthStore.setState({ session: previous });
+      const active = (await screen.findByText("Emma Novak")).closest("tr")!;
+      expect(within(active).getByRole("button", { name: "Suspend" })).toBeInTheDocument();
+      const pending = screen.getByText("Omar Haddad").closest("tr")!;
+      expect(within(pending).queryByRole("button", { name: "Resend invite" })).not.toBeInTheDocument();
+      expect(within(pending).queryByRole("button", { name: "Revoke invite" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Invite user" })).toHaveAttribute("aria-disabled", "true");
+    } finally {
+      act(() => useAuthStore.setState({ session: previous }));
+    }
   });
 
   it("shows Resend (enabled) + Revoke for a pending account", async () => {
@@ -443,5 +450,50 @@ describe("UserManagement", () => {
       "true",
     );
     (fetchAdminUserDetail as jest.Mock).mockImplementation(async () => ({}));
+  });
+
+  describe("with partial permissions", () => {
+    async function withPermissions(permissions: string[], check: () => Promise<void>) {
+      const previous = useAuthStore.getState().session;
+      useAuthStore.setState({
+        session: { email: "owner@abapro.health", name: "Sam", role: "admin", token: "t", issuedAt: 0, permissions },
+      });
+      try {
+        await check();
+      } finally {
+        act(() => useAuthStore.setState({ session: previous }));
+      }
+    }
+
+    it("shows only the Pending tab, with Invite, to an invitations-only admin", async () => {
+      await withPermissions(
+        ["USER_MANAGEMENT.invitations.VIEW", "USER_MANAGEMENT.invitations.EDIT", "PERSONNEL.staff.VIEW"],
+        async () => {
+          renderWithClient(<UserManagement />);
+          expect(await screen.findByRole("tab", { name: /Pending invitations/ })).toBeInTheDocument();
+          expect(screen.queryByRole("tab", { name: "User accounts" })).not.toBeInTheDocument();
+          expect(await screen.findByRole("button", { name: "Invite user" })).not.toHaveAttribute("aria-disabled", "true");
+        },
+      );
+    });
+
+    it("hides the Pending tab from an accounts-only admin", async () => {
+      await withPermissions(["USER_MANAGEMENT.user_management.VIEW"], async () => {
+        renderWithClient(<UserManagement />);
+        expect(await screen.findByText("Emma Novak")).toBeInTheDocument();
+        expect(screen.queryByRole("tab", { name: /Pending invitations/ })).not.toBeInTheDocument();
+      });
+    });
+
+    it("disables Invite when the staff list can't be viewed", async () => {
+      await withPermissions(
+        ["USER_MANAGEMENT.user_management.VIEW", "USER_MANAGEMENT.invitations.VIEW", "USER_MANAGEMENT.invitations.EDIT"],
+        async () => {
+          renderWithClient(<UserManagement />);
+          await screen.findByText("Emma Novak");
+          expect(screen.getByRole("button", { name: "Invite user" })).toHaveAttribute("aria-disabled", "true");
+        },
+      );
+    });
   });
 });
