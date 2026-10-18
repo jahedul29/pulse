@@ -1,6 +1,5 @@
 stages:
   - test
-  - deploy
 
 default:
   image: node:24-bookworm
@@ -48,17 +47,3 @@ e2e:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH'
-
-# Deploy is intentionally manual: GitHub owns auto-deploy today, and both
-# pipelines target the same Vercel project. To make GitLab the deploy owner,
-# change `when: manual` to `on_success` here and disable the GitHub deploy job.
-# Requires CI/CD variables: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID.
-deploy:
-  stage: deploy
-  script:
-    - npx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
-    - npx vercel@latest build --prod --token="$VERCEL_TOKEN"
-    - npx vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      when: manual
