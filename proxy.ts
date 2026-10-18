@@ -19,7 +19,14 @@ function coverageFileResponse(request: NextRequest): NextResponse {
   }
   const target = coverageObjectUrl(pathname, search);
   if (!target) return new NextResponse(null, { status: 404 });
-  return NextResponse.rewrite(new URL(target), { headers: COVERAGE_RESPONSE_HEADERS });
+  // These public S3 objects must not receive the dev site's authentication.
+  const headers = new Headers(request.headers);
+  headers.delete("authorization");
+  headers.delete("cookie");
+  return NextResponse.rewrite(new URL(target), {
+    request: { headers },
+    headers: COVERAGE_RESPONSE_HEADERS,
+  });
 }
 
 export function proxy(request: NextRequest) {
