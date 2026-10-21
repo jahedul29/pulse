@@ -1,7 +1,8 @@
+import type { AnnualSchedule, WeeklySchedule } from "@abapro-front-end/calendars";
+import { emptyWeek } from "@abapro-front-end/calendars/weekly";
 import { create } from "zustand";
-import { SLOTS_PER_DAY } from "@/lib/availability/constants";
-import { configFor } from "@/lib/availability/rules";
-import type { DayState, RuleConfig, SpecialistType } from "@/lib/availability/types";
+
+export type SpecialistType = "therapist" | "analyst";
 
 export interface Specialist {
   id: string;
@@ -10,18 +11,8 @@ export interface Specialist {
   email: string;
   initials: string;
   defined: boolean;
-  config: RuleConfig;
-  days: DayState[];
-  daysOff: number[];
-  annualOff: string[];
-}
-
-export function seedDays(daysOff: number[]): DayState[] {
-  return Array.from({ length: 7 }, (_, i) =>
-    daysOff.includes(i)
-      ? { blocks: [{ start: 0, end: SLOTS_PER_DAY, kind: "unavailable" as const }] }
-      : { blocks: [] },
-  );
+  weekly: WeeklySchedule;
+  annualOff: AnnualSchedule;
 }
 
 function make(id: string, name: string, role: SpecialistType, email: string): Specialist {
@@ -38,9 +29,7 @@ function make(id: string, name: string, role: SpecialistType, email: string): Sp
     email,
     initials,
     defined: false,
-    config: configFor(role),
-    days: seedDays([]),
-    daysOff: [],
+    weekly: emptyWeek(),
     annualOff: [],
   };
 }
@@ -50,18 +39,17 @@ const SEED: Specialist[] = [
   make("sp-4", "Priya Nair", "analyst", "priya.nair@pulse.health"),
 ];
 
+type WeeklyPatch = Partial<Pick<Specialist, "weekly" | "defined">>;
+
 interface SpecialistStore {
   specialists: Specialist[];
-  saveAvailability: (
-    id: string,
-    patch: Pick<Specialist, "config" | "days" | "daysOff" | "defined">,
-  ) => void;
-  saveAnnual: (id: string, annualOff: string[]) => void;
+  saveWeekly: (id: string, patch: WeeklyPatch) => void;
+  saveAnnual: (id: string, annualOff: AnnualSchedule) => void;
 }
 
 export const useSpecialistStore = create<SpecialistStore>((set) => ({
   specialists: SEED,
-  saveAvailability: (id, patch) =>
+  saveWeekly: (id, patch) =>
     set((state) => ({
       specialists: state.specialists.map((specialist) =>
         specialist.id === id ? { ...specialist, ...patch } : specialist,

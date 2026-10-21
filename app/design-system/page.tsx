@@ -104,9 +104,8 @@ import { AsyncSelect, type AsyncOptionsResult } from "@/components/common/async-
 import { IconInput } from "@/components/ui/icon-input";
 import { ProfileCell } from "@/components/common/profile-cell";
 import { exportCsv } from "@/lib/export/csv";
-import { GuidelinesDialog } from "@/components/availability/guidelines-dialog";
-import { NoticeDialog, NoticeHl } from "@/components/availability/notice-dialog";
-import { configFor } from "@/lib/availability/rules";
+import { NoticeDialog, NoticeHl, WeeklyGuidelinesDialog, WeeklyLegend } from "@abapro-front-end/calendars/weekly";
+import { WEEKLY_RULES } from "@/lib/calendars/presets";
 import { SECTIONS } from "@/lib/nav";
 import { Alert } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -1881,17 +1880,7 @@ export default function DesignSystemPage() {
             <Card>
               <CardContent className="flex flex-col gap-6">
                 <Sub label="Status legend">
-                  <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3">
-                    <div className="flex items-center justify-center rounded-xl bg-muted px-4 py-2.5 text-center text-sm font-semibold text-muted-foreground ring-1 ring-inset ring-border-strong">
-                      Available In-person
-                    </div>
-                    <div className="flex items-center justify-center rounded-xl bg-danger px-4 py-2.5 text-center text-sm font-semibold text-danger-foreground">
-                      Unavailable
-                    </div>
-                    <div className="flex items-center justify-center gap-1.5 rounded-xl bg-muted px-4 py-2.5 text-center text-sm font-semibold text-muted-foreground ring-1 ring-inset ring-border-strong">
-                      <span className="size-3 rounded-full bg-chart-3" /> Available Online-only
-                    </div>
-                  </div>
+                  <WeeklyLegend rules={WEEKLY_RULES.analyst} className="w-full" />
                 </Sub>
                 <Sub label="Travel-time pills">
                   {TRAVEL.map((minutes) => (
@@ -1974,11 +1963,10 @@ export default function DesignSystemPage() {
           </AlertDialogContent>
         </AlertDialog>
 
-        <GuidelinesDialog
+        <WeeklyGuidelinesDialog
           open={guidelinesOpen}
           onOpenChange={setGuidelinesOpen}
-          role="analyst"
-          config={configFor("analyst")}
+          rules={WEEKLY_RULES.analyst}
         />
 
         <NoticeDialog

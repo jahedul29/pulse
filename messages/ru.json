@@ -160,7 +160,8 @@
     "openMenu": "Открыть меню",
     "closeMenu": "Закрыть меню",
     "search": "Универсальный поиск",
-    "details": "Подробности"
+    "details": "Подробности",
+    "calendarSettings": "Calendar settings"
   },
   "personnel": {
     "title": "Специалисты",
@@ -179,111 +180,54 @@
       "analyst": "Поведенческий аналитик"
     },
     "titleTop": "Выберите свой годовой рабочий календарь",
-    "titleRole": "как {role}",
-    "instr1": "Нажмите на любой день (или нажмите и перетащите), чтобы изменить его статус",
-    "instr2": "Нажмите на год, чтобы изменить год",
-    "legend": {
-      "availableLabel": "Доступно",
-      "availableSub": "(согласно недельным рабочим часам)",
-      "unavailableLabel": "Недоступно",
-      "availableDesc": "Клиенты, которым нужна терапия в эти дни, смогут найти и записаться к вам",
-      "unavailableDesc": "Клиенты, которым нужна терапия в эти дни, не смогут вас найти"
-    },
-    "yearPickerTitle": "Выберите год",
-    "savedToast": "Годовой календарь сохранён для {name}",
-    "rule": {
-      "maxDaysOff": "Вы можете выбрать до {max} выходных дней в год",
-      "maxConsecutive": "Вы можете взять максимум {max} выходных дней подряд",
-      "minGap": "Оставьте не менее {weeks} полных календарных недель (Пн–Вс) между несмежными выходными"
-    }
+    "titleRole": "как {role}"
   },
   "availability": {
     "title": "Выберите свои недельные рабочие часы как {role}",
-    "help": "Как редактировать",
-    "btnRules": "Правила",
-    "btnReset": "Сбросить",
-    "toastDaysOffMax": "Разрешено максимум {max} выходных дней",
-    "toastTravelReset": "Время в пути обновлено - календарь сброшен",
-    "toastRulesUpdated": "Правила календаря обновлены",
-    "toastSaved": "Доступность сохранена для {name}",
     "care": {
       "therapy": "терапия",
       "supervision": "супервизия"
     },
     "controls": {
-      "travelPrompt": "Выберите оптимальное время в пути между клиентами",
-      "paintInstr": "Нажмите на слот, чтобы изменить его статус; перетащите, чтобы закрасить несколько",
-      "availableInpersonLabel": "Доступно лично",
-      "unavailableLabel": "Недоступно",
-      "onlineLabel": "Доступно только онлайн",
       "availableInpersonDesc": "Клиенты, которым нужна {care} в эти часы, смогут вас найти",
       "unavailableDesc": "Клиенты, которым нужна {care} в эти часы, не смогут вас найти",
       "onlineDesc": "Только клиенты, согласившиеся на онлайн-супервизию, могут найти или записаться к вам в эти часы"
     },
     "notice": {
-      "maxAvailTitle": "Рабочие часы установлены на максимальную доступность",
-      "maxAvailBody": "Ваши недельные рабочие часы установлены на <hl>максимальную доступность 06:00–24:00, Пн–Вс</hl>. Вы можете изменить их, пока не подтверждено первое бронирование ваших услуг.",
-      "travelTitle": "Выберите время в пути",
-      "travelBody1": "Пожалуйста, выберите для терапевта предпочтительный вариант <hl>ВРЕМЕНИ В ПУТИ</hl>.",
-      "travelBody2": "Вы можете изменить его позже, пока не подтверждено первое бронирование ваших услуг."
+      "travelBody1": "Пожалуйста, выберите для терапевта предпочтительный вариант <hl>ВРЕМЕНИ В ПУТИ</hl>."
     },
-    "issueWeekdays": "Будни",
-    "cantSave": "Не удалось сохранить - {issues}",
-    "rule": {
-      "minBlockInpersonLabel": "Очный блок доступности",
-      "minBlockAnyLabel": "Минимальный блок доступности",
-      "minBlockInpersonMsg": "Каждый очный блок доступности должен быть не менее {dur}.",
-      "minBlockAnyMsg": "Каждый блок доступности должен быть не менее {dur}.",
-      "onlineLabel": "Блок доступности только онлайн",
-      "onlineMsg": "Каждый блок доступности только онлайн должен быть не менее {dur}.",
-      "breakTherapistLabel": "Перерыв ≥ времени в пути",
-      "breakAnalystLabel": "Перерыв между блоками доступности",
-      "breakTherapistMsg": "Перерывы между блоками доступности должны быть\nне менее {brk} (ваше время в пути).\nКрая могут быть {edge}.",
-      "breakAnalystMsg": "Перерывы между блоками доступности должны быть\nне менее {brk}.\nКрая могут быть {edge}.",
-      "windowLabel": "Непрерывное окно доступности",
-      "windowMsg": "В рабочие дни нужно одно непрерывное окно доступности не менее {dur}."
-    }
-  },
-  "coach": {
-    "title": "Как редактировать доступность",
-    "replay": "Повтор",
-    "gotIt": "Понятно"
-  },
-  "rulesConfig": {
-    "title": "Обновить правила календаря",
-    "desc": "Эти параметры взяты из модуля «Услуги». Их изменение мгновенно перепроверяет календарь.",
-    "minAvailBlock": "Мин. блок доступности",
-    "minInpersonBlock": "Мин. очный блок",
-    "minOnlineBlock": "Мин. онлайн-блок",
-    "minBreak": "Мин. перерыв между блоками",
-    "continuousWindow": "Непрерывное окно",
-    "maxDaysOffWeek": "Макс. выходных / неделя",
-    "days": "{count, plural, one {# день} few {# дня} many {# дней} other {# дня}}",
-    "reset": "Сбросить к значениям по умолчанию",
-    "apply": "Применить правила"
+    "daysOffMax": "{max, plural, one {Maximum # day off allowed} other {Maximum # days off allowed}}"
   },
   "guidelines": {
     "weeklyTitleTherapist": "Настройка недельных рабочих часов терапевта",
     "weeklyTitleAnalyst": "Настройка недельных рабочих часов аналитика",
     "weekly": {
       "p1": "Мы стремимся сделать вас и ваших клиентов счастливыми. Поэтому крайне важно правильно настроить свою доступность в течение дня.",
-      "therapistP2": "Выберите, сколько времени вам нужно на дорогу между клиентами (мин. <hl>00h45m</hl> для вашего местоположения). Сделайте это в первую очередь! Изменение позже сбрасывает настройки календаря. Время в пути блокируется после первого бронирования.",
+      "therapistP2": "Выберите, сколько времени вам нужно на дорогу между клиентами (мин. <hl>{travelMin}</hl> для вашего местоположения). Сделайте это в первую очередь! Изменение позже сбрасывает настройки календаря. Время в пути блокируется после первого бронирования.",
       "therapistP3": "Нужен перерыв? Возьмите до {maxDaysOff} любых <hl>ВЫХОДНЫХ</hl> в неделю. При желании можно задать особые рабочие часы для этих дней. Для остальных дней применяются правила рабочего дня.",
-      "therapistCard1": "Расписание для всех <hl>РАБОЧИХ ДНЕЙ</hl> будет одинаковым. Убедитесь, что в рабочие дни есть хотя бы одно <hl>непрерывное окно не менее 6 часов</hl>, когда вы доступны для бронирований.",
-      "therapistCard2": "Любые другие интервалы <hl>доступности</hl> должны быть <hl>не менее 1 часа</hl>. Кроме того, <hl>перерывы</hl> между интервалами доступности не могут быть короче выбранного времени в пути.",
+      "therapistCard1": "Расписание для всех <hl>РАБОЧИХ ДНЕЙ</hl> будет одинаковым. Убедитесь, что в рабочие дни есть хотя бы одно <hl>непрерывное окно не менее {window}</hl>, когда вы доступны для бронирований.",
+      "therapistCard2": "Любые другие интервалы <hl>доступности</hl> должны быть <hl>не менее {minBlock}</hl>. Кроме того, <hl>перерывы</hl> между интервалами доступности не могут быть короче выбранного времени в пути.",
       "therapistCard3": "Чтобы поддерживать высокий рейтинг и предотвращать двойное бронирование, мы автоматически <hl>добавляем время в пути</hl> к каждому сеансу. Вас всегда будут бронировать только на <hl>одного клиента за раз</hl>.",
       "analystP2": "Как аналитик, выберите, будете ли вы проводить супервизию <hl>лично</hl> в месте клиента, <hl>онлайн</hl> из любого места или совмещать оба варианта. Вы можете сочетать оба типа в течение дня.",
       "analystP3": "Сначала, если вам нужен недельный перерыв, выберите до {maxDaysOff} <hl>ВЫХОДНЫХ</hl>. Вы по-прежнему можете задать особые рабочие часы для этих дней. Для всех остальных дней применяются ваши персональные правила рабочего дня.",
-      "analystCard1": "Для <hl>РАБОЧИХ ДНЕЙ</hl> ваше расписание будет одинаковым. Убедитесь, что в рабочие дни доступно хотя бы одно <hl>непрерывное 3-часовое окно</hl> для супервизии (лично или онлайн).",
-      "analystCard2": "Любые интервалы доступности должны быть не менее <hl>1 часа</hl> для очной и <hl>30 минут</hl> для онлайн-супервизии. Любые перерывы между интервалами доступности могут быть <hl>15 минут</hl> или больше.",
-      "analystCard3": "Мы предотвращаем двойное бронирование, но сеансы могут идти <hl>подряд</hl>. Пожалуйста, планируйте расписание так, чтобы вовремя прибывать в место клиента для очных сеансов."
+      "analystCard1": "For <hl>WORKDAYS</hl> your schedule will be the\nsame. Ensure your workdays have at least\none <hl>continuous window of at least {window}</hl> available\nfor supervision (in-person or online).",
+      "analystCard2": "Любые интервалы доступности должны быть не менее <hl>{minBlock}</hl> для очной и <hl>{minOnline}</hl> для онлайн-супервизии. Любые перерывы между интервалами доступности могут быть <hl>{minBreak}</hl> или больше.",
+      "analystCard3": "Мы предотвращаем двойное бронирование, но сеансы могут идти <hl>подряд</hl>. Пожалуйста, планируйте расписание так, чтобы вовремя прибывать в место клиента для очных сеансов.",
+      "analystP1": "Мы стремимся сделать вас и ваших клиентов счастливыми. Поэтому крайне важно правильно настроить свою доступность в течение дня."
     },
     "annualTitleTherapist": "Настройка годового рабочего календаря терапевта",
     "annualTitleAnalyst": "Настройка годового рабочего календаря аналитика",
     "annual": {
-      "intro": "Мы стремимся сделать вас и ваших клиентов счастливыми. Таким образом, каждый календарный год вы можете выбрать <hl>до 56 календарных дней (Пн–Вс) в качестве выходных</hl>, чтобы сделать себя недоступным для бронирования.",
-      "cardConsecutive": "Вы можете взять <hl>максимум 28 выходных дней подряд</hl>",
-      "cardInterval": "Интервал между любыми несмежными выходными днями должен составлять не менее <hl>4 полных календарных недель с Пн по Вс</hl>",
+      "intro": "Мы стремимся сделать вас и ваших клиентов счастливыми. Таким образом, каждый календарный год вы можете выбрать <hl>до {maxDaysOffPerYear} календарных дней (Пн–Вс) в качестве выходных</hl>, чтобы сделать себя недоступным для бронирования.",
+      "cardConsecutive": "Вы можете взять <hl>максимум {maxConsecutive} выходных дней подряд</hl>",
+      "cardInterval": "Интервал между любыми несмежными выходными днями должен составлять не менее <hl>{minGapWeeks} полных календарных недель с Пн по Вс</hl>",
+      "cardBookings": "Вы можете выбирать выходные только в будущем и только в те недели, когда у вас <hl>нет бронирований</hl>, завершённых <sqCompleted></sqCompleted> или запланированных <sqScheduled></sqScheduled>",
+      "cardDiscuss": "Хотя вы можете корректировать годовой рабочий календарь в любое время, мы рекомендуем всегда <hl>обсуждать и согласовывать время отпусков</hl> с вашими клиентами"
+    },
+    "annualAnalyst": {
+      "intro": "Мы стремимся сделать вас и ваших клиентов счастливыми. Таким образом, каждый календарный год вы можете выбрать <hl>до {maxDaysOffPerYear} календарных дней (Пн–Вс) в качестве выходных</hl>, чтобы сделать себя недоступным для бронирования.",
+      "cardConsecutive": "Вы можете взять <hl>максимум {maxConsecutive} выходных дней подряд</hl>",
+      "cardInterval": "Интервал между любыми несмежными выходными днями должен составлять не менее <hl>{minGapWeeks} полных календарных недель с Пн по Вс</hl>",
       "cardBookings": "Вы можете выбирать выходные только в будущем и только в те недели, когда у вас <hl>нет бронирований</hl>, завершённых <sqCompleted></sqCompleted> или запланированных <sqScheduled></sqScheduled>",
       "cardDiscuss": "Хотя вы можете корректировать годовой рабочий календарь в любое время, мы рекомендуем всегда <hl>обсуждать и согласовывать время отпусков</hl> с вашими клиентами"
     }
@@ -313,5 +257,111 @@
     "overlaysDesc": "Диалоги, меню, подсказки и уведомления.",
     "availabilityTitle": "Доступность",
     "availabilityDesc": "Компоненты календаря для приложения."
+  },
+  "calendarSettings": {
+    "title": "Calendar settings",
+    "subtitle": "Rules the weekly and annual calendars enforce, for each role and each specialist.",
+    "storageTitle": "Browser-only preview",
+    "mockNotice": "Saved only in this browser until the calendar settings API is available. Other users and devices are not affected.",
+    "loading": "Loading calendar parameters…",
+    "globalLevel": "Global defaults",
+    "specialistLevel": "Specialist values",
+    "roleTabs": "Specialist role",
+    "roleDefaultsTitle": "{role} defaults",
+    "roleDefaultsDescription": "Every specialist with this role follows these rules, except rules customized for that specialist.",
+    "weekly": "Weekly calendar",
+    "weeklyHint": "Durations are picked in 15-minute steps, matching the calendar's time slots.",
+    "annual": "Annual calendar",
+    "annualHint": "Set a rule to 0 to turn it off.",
+    "travel": "Travel time",
+    "travelOptions": "Travel time choices",
+    "minBreakTravelHint": "The chosen travel time replaces this break.",
+    "readOnly": "You can view these settings. Technical edit permission is required to change them.",
+    "unsaved": "Unsaved changes",
+    "correctErrors": "Correct the highlighted parameters before applying.",
+    "discard": "Discard edits",
+    "defaults": "Restore default values",
+    "apply": "Apply parameters",
+    "saved": "Calendar parameters applied in this browser",
+    "testTitle": "Try the applied parameters",
+    "testDescription": "Open the {role} calendars to see how the applied rules behave.",
+    "openWeekly": "Open weekly calendar",
+    "openAnnual": "Open annual calendar",
+    "errors": {
+      "mustBeNumber": "Enter a number.",
+      "wholeNumber": "Enter a whole number.",
+      "minutesRange": "Use 15 to 1080 minutes in 15-minute steps.",
+      "daysPerWeek": "Use 0 to 7 days.",
+      "daysPerYear": "Use 0 to 366 days.",
+      "windowTooShort": "The continuous window must be at least the minimum in-person block.",
+      "travelEmpty": "Pick at least one travel time.",
+      "travelDuplicate": "Each travel time can be listed once.",
+      "weeksRange": "Use 0 to 52 weeks.",
+      "travelRange": "Use 15 to 240 minutes in 15-minute steps."
+    },
+    "fields": {
+      "minBlockInPersonMins": "Minimum in-person block",
+      "minBlockOnlineMins": "Minimum online block",
+      "minBreakMins": "Minimum break",
+      "continuousWindowMins": "Continuous availability window",
+      "maxDaysOff": "Maximum weekly days off",
+      "minAdjacentUnavailMins": "Minimum edge break",
+      "maxDaysOffPerYear": "Maximum annual days off",
+      "maxConsecutiveDays": "Maximum consecutive days off",
+      "minGapWeeks": "Minimum gap between days off"
+    },
+    "units": {
+      "minutes": "min",
+      "days": "days",
+      "weeks": "weeks"
+    },
+    "values": {
+      "minutes": "{value} min",
+      "days": "{value, plural, one {# day} other {# days}}",
+      "weeks": "{value, plural, one {# week} other {# weeks}}"
+    },
+    "specialistTitle": "Specialist values",
+    "specialistDescription": "Override a rule for one specialist. Rules without an override follow the global default, including later changes.",
+    "specialist": "Specialist",
+    "selectSpecialist": "Select a specialist",
+    "searchSpecialists": "Search specialists…",
+    "noSpecialistMatches": "No specialists match your search.",
+    "noSpecialists": "No specialists configured.",
+    "rule": "Rule",
+    "valueColumn": "Specialist value",
+    "overrideColumn": "Override",
+    "overrideNamed": "Override {rule}",
+    "globalCaption": "Global default: {value}",
+    "inheritAll": "Inherit all global values",
+    "saveSpecialist": "Save specialist values",
+    "specialistSaved": "Specialist parameter values saved",
+    "adminSwitches": "Calendar rule switches",
+    "adminSwitchesHint": "Turn a rule off to bypass it while you edit this specialist’s calendars. Global and specialist values stay unchanged. Switches reset when you reload the page or sign out.",
+    "enforceNamed": "Enforce {rule}",
+    "switchCaption": "{value}, {source}",
+    "customized": "specialist value",
+    "inherited": "global default",
+    "configuredOff": "Off, set to 0",
+    "manageValues": "Manage values",
+    "openSwitchesCount": "Calendar rule switches, {count, plural, one {# rule off} other {# rules off}}",
+    "turnAllOn": "Turn all rules on",
+    "overrideAll": "Override all rules",
+    "overrideAllHint": "Bypass every rule of this calendar while you edit it.",
+    "travelHint": "Therapists pick how long they need between clients before they can edit their week, and the chosen time becomes their minimum break.",
+    "travelOptionsPlaceholder": "Pick travel times",
+    "travelSearch": "Search travel times",
+    "travelNoMatches": "No travel time matches.",
+    "leaveTitle": "Discard unsaved changes?",
+    "leaveBody": "Your changes to {name}’s values haven’t been saved.",
+    "leaveStay": "Keep editing",
+    "leaveConfirm": "Discard changes",
+    "applyConflictTitle": "Some specialist values won’t fit",
+    "applyConflictBody": "These specialists have values that won’t fit the new defaults: {names}. Their calendars keep using those values until you update them under Specialist values.",
+    "applyConflictCancel": "Review first",
+    "applyConflictConfirm": "Apply anyway",
+    "specialistConflict": "These values don’t fit the current global defaults: {message}",
+    "specialistSaveFailed": "Couldn’t save the specialist values. Check them and try again.",
+    "opensInNewTab": "(opens in a new tab)",
+    "specialistNotFound": "Specialist not found. Pick one from the list."
   }
 }

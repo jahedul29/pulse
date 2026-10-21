@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   Activity,
   Bell,
+  CalendarCog,
   ChevronDown,
   GitCompare,
   Earth,
@@ -49,6 +50,7 @@ const RBAC_ITEMS: NavGroupItem[] = [
   { href: "/admin/audit/actions", key: "actionLog", icon: Activity },
   { href: "/admin/audit/changes", key: "changeLog", icon: GitCompare },
   { href: "/admin/settings/security", key: "securityPolicy", icon: Lock },
+  { href: "/calendar-settings", key: "calendarSettings", icon: CalendarCog },
   { href: "/admin/audit/logins", key: "loginAudit", icon: ScrollText },
 ];
 

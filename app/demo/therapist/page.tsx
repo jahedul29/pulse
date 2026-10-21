@@ -1,6 +1,6 @@
 "use client";
 
-import { AvailabilityEditor } from "@/components/availability/availability-editor";
+import { SpecialistWeeklyCalendar } from "@/components/calendars/specialist-weekly-calendar";
 import { useSpecialistStore } from "@/lib/specialists";
 
 export default function TherapistDemoPage() {
@@ -8,11 +8,9 @@ export default function TherapistDemoPage() {
 
   if (!specialist) {
     return (
-      <div className="py-24 text-center text-sm text-muted-foreground">
-        No therapist configured.
-      </div>
+      <div className="py-24 text-center text-sm text-muted-foreground">No therapist configured.</div>
     );
   }
 
-  return <AvailabilityEditor key={specialist.id} specialist={specialist} />;
+  return <SpecialistWeeklyCalendar specialist={specialist} />;
 }

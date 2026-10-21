@@ -23,6 +23,10 @@ export function MultiSelect({
   maxChips = 2,
   className,
   disabledReason,
+  disabled = false,
+  id,
+  invalid = false,
+  describedBy,
 }: {
   options: MultiSelectOption[];
   value: string[];
@@ -33,6 +37,10 @@ export function MultiSelect({
   maxChips?: number;
   className?: string;
   disabledReason?: string;
+  disabled?: boolean;
+  id?: string;
+  invalid?: boolean;
+  describedBy?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -53,11 +61,14 @@ export function MultiSelect({
       <PopoverTrigger
         render={
           <Button
+            id={id}
+            aria-invalid={invalid || undefined}
+            aria-describedby={describedBy}
             type="button"
             variant="outline"
             size="lg"
             focusableWhenDisabled
-            disabled={Boolean(disabledReason)}
+            disabled={Boolean(disabledReason) || disabled}
             className={cn("w-full justify-between font-normal", className)}
           />
         }

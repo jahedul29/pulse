@@ -160,7 +160,8 @@
     "openMenu": "मेनू खोलें",
     "closeMenu": "मेनू बंद करें",
     "search": "सार्वभौमिक खोज",
-    "details": "विवरण"
+    "details": "विवरण",
+    "calendarSettings": "Calendar settings"
   },
   "personnel": {
     "title": "विशेषज्ञ",
@@ -179,111 +180,54 @@
       "analyst": "व्यवहार विश्लेषक"
     },
     "titleTop": "अपना वार्षिक कार्य कैलेंडर चुनें",
-    "titleRole": "{role} के रूप में",
-    "instr1": "किसी भी दिन पर क्लिक करें (या क्लिक करके खींचें) उसकी स्थिति बदलने के लिए",
-    "instr2": "वर्ष बदलने के लिए वर्ष पर क्लिक करें",
-    "legend": {
-      "availableLabel": "उपलब्ध",
-      "availableSub": "(साप्ताहिक कार्य समय के अनुसार)",
-      "unavailableLabel": "अनुपलब्ध",
-      "availableDesc": "इन दिनों में जिन ग्राहकों को थेरेपी की आवश्यकता है, वे आपको ढूंढ और बुक कर सकेंगे",
-      "unavailableDesc": "इन दिनों में जिन ग्राहकों को थेरेपी की आवश्यकता है, वे आपको नहीं ढूंढ पाएंगे"
-    },
-    "yearPickerTitle": "वर्ष चुनें",
-    "savedToast": "{name} के लिए वार्षिक कैलेंडर सहेजा गया",
-    "rule": {
-      "maxDaysOff": "आप प्रति वर्ष अधिकतम {max} अवकाश दिन चुन सकते हैं",
-      "maxConsecutive": "आप अधिकतम {max} लगातार अवकाश दिन ले सकते हैं",
-      "minGap": "गैर-लगातार अवकाश दिनों के बीच कम से कम {weeks} पूर्ण कैलेंडर सप्ताह (सोम–रवि) रखें"
-    }
+    "titleRole": "{role} के रूप में"
   },
   "availability": {
     "title": "{role} के रूप में अपने साप्ताहिक कार्य समय चुनें",
-    "help": "संपादन कैसे काम करता है",
-    "btnRules": "नियम",
-    "btnReset": "रीसेट",
-    "toastDaysOffMax": "अधिकतम {max} अवकाश दिनों की अनुमति है",
-    "toastTravelReset": "यात्रा समय अपडेट किया गया - कैलेंडर रीसेट",
-    "toastRulesUpdated": "कैलेंडर नियम अपडेट किए गए",
-    "toastSaved": "{name} के लिए उपलब्धता सहेजी गई",
     "care": {
       "therapy": "थेरेपी",
       "supervision": "पर्यवेक्षण"
     },
     "controls": {
-      "travelPrompt": "अपने ग्राहकों के बीच इष्टतम यात्रा समय चुनें",
-      "paintInstr": "स्थिति बदलने के लिए किसी टाइम स्लॉट पर क्लिक करें; कई को पेंट करने के लिए खींचें",
-      "availableInpersonLabel": "व्यक्तिगत रूप से उपलब्ध",
-      "unavailableLabel": "अनुपलब्ध",
-      "onlineLabel": "केवल ऑनलाइन उपलब्ध",
       "availableInpersonDesc": "इन घंटों में जिन ग्राहकों को {care} की आवश्यकता है, वे आपको ढूंढ सकेंगे",
       "unavailableDesc": "इन घंटों में जिन ग्राहकों को {care} की आवश्यकता है, वे आपको नहीं ढूंढ पाएंगे",
       "onlineDesc": "केवल वे ग्राहक जो ऑनलाइन पर्यवेक्षण के लिए सहमत हैं, इन घंटों में आपको ढूंढ या बुक कर सकते हैं"
     },
     "notice": {
-      "maxAvailTitle": "कार्य समय अधिकतम उपलब्धता पर सेट",
-      "maxAvailBody": "आपके साप्ताहिक कार्य समय <hl>अधिकतम उपलब्धता 06:00–24:00, सोम–रवि</hl> पर सेट हैं। आप अपनी सेवाओं की पहली बुकिंग की पुष्टि होने तक इन्हें बदल सकते हैं।",
-      "travelTitle": "यात्रा समय चुनें",
-      "travelBody1": "कृपया थेरेपिस्ट के लिए अपना पसंदीदा <hl>यात्रा समय</hl> विकल्प चुनें।",
-      "travelBody2": "आप इसे बाद में तब तक बदल सकते हैं जब तक आपकी सेवाओं की पहली बुकिंग की पुष्टि नहीं हो जाती।"
+      "travelBody1": "कृपया थेरेपिस्ट के लिए अपना पसंदीदा <hl>यात्रा समय</hl> विकल्प चुनें।"
     },
-    "issueWeekdays": "कार्यदिवस",
-    "cantSave": "सहेजा नहीं जा सका - {issues}",
-    "rule": {
-      "minBlockInpersonLabel": "व्यक्तिगत उपलब्धता ब्लॉक",
-      "minBlockAnyLabel": "न्यूनतम उपलब्धता ब्लॉक",
-      "minBlockInpersonMsg": "प्रत्येक व्यक्तिगत उपलब्धता ब्लॉक कम से कम {dur} का होना चाहिए।",
-      "minBlockAnyMsg": "प्रत्येक उपलब्धता ब्लॉक कम से कम {dur} का होना चाहिए।",
-      "onlineLabel": "केवल-ऑनलाइन उपलब्धता ब्लॉक",
-      "onlineMsg": "प्रत्येक केवल-ऑनलाइन उपलब्धता ब्लॉक कम से कम {dur} का होना चाहिए।",
-      "breakTherapistLabel": "विराम ≥ यात्रा समय",
-      "breakAnalystLabel": "उपलब्धता के बीच विराम",
-      "breakTherapistMsg": "उपलब्धता के बीच विराम\nकम से कम {brk} (आपका यात्रा समय) होना चाहिए।\nकिनारे {edge} हो सकते हैं।",
-      "breakAnalystMsg": "उपलब्धता के बीच विराम\nकम से कम {brk} होना चाहिए।\nकिनारे {edge} हो सकते हैं।",
-      "windowLabel": "निरंतर उपलब्धता विंडो",
-      "windowMsg": "कार्यदिवसों में कम से कम {dur} की एक निरंतर उपलब्धता विंडो होनी चाहिए।"
-    }
-  },
-  "coach": {
-    "title": "अपनी उपलब्धता कैसे संपादित करें",
-    "replay": "फिर से चलाएं",
-    "gotIt": "समझ गया"
-  },
-  "rulesConfig": {
-    "title": "कैलेंडर नियम अपडेट करें",
-    "desc": "ये पैरामीटर सर्विसेज़ मॉड्यूल से आते हैं। इन्हें संपादित करने पर कैलेंडर तुरंत पुनः जाँचा जाता है।",
-    "minAvailBlock": "न्यूनतम उपलब्धता ब्लॉक",
-    "minInpersonBlock": "न्यूनतम व्यक्तिगत ब्लॉक",
-    "minOnlineBlock": "न्यूनतम ऑनलाइन ब्लॉक",
-    "minBreak": "ब्लॉक के बीच न्यूनतम विराम",
-    "continuousWindow": "निरंतर विंडो",
-    "maxDaysOffWeek": "अधिकतम अवकाश दिन / सप्ताह",
-    "days": "{count, plural, one {# दिन} other {# दिन}}",
-    "reset": "डिफ़ॉल्ट पर रीसेट करें",
-    "apply": "नियम लागू करें"
+    "daysOffMax": "{max, plural, one {Maximum # day off allowed} other {Maximum # days off allowed}}"
   },
   "guidelines": {
     "weeklyTitleTherapist": "थेरेपिस्ट साप्ताहिक कार्य समय सेट करना",
     "weeklyTitleAnalyst": "विश्लेषक साप्ताहिक कार्य समय सेट करना",
     "weekly": {
       "p1": "हम आपको और आपके ग्राहकों को खुश रखने का प्रयास करते हैं। इसलिए पूरे दिन अपनी उपलब्धता सही ढंग से सेट करना महत्वपूर्ण है।",
-      "therapistP2": "चुनें कि आपको ग्राहकों के बीच जाने में कितना समय चाहिए (आपके स्थान के लिए न्यूनतम <hl>00h45m</hl>)। यह पहले करें! इसे बाद में बदलने से आपकी कैलेंडर सेटिंग्स रीसेट हो जाती हैं। पहली बुकिंग के बाद यात्रा समय लॉक हो जाता है।",
+      "therapistP2": "चुनें कि आपको ग्राहकों के बीच जाने में कितना समय चाहिए (आपके स्थान के लिए न्यूनतम <hl>{travelMin}</hl>)। यह पहले करें! इसे बाद में बदलने से आपकी कैलेंडर सेटिंग्स रीसेट हो जाती हैं। पहली बुकिंग के बाद यात्रा समय लॉक हो जाता है।",
       "therapistP3": "विराम चाहिए? सप्ताह में कोई भी {maxDaysOff} <hl>अवकाश दिन</hl> लें। चाहें तो इन दिनों के लिए कस्टम कार्य समय सेट कर सकते हैं। अन्य दिनों के लिए आपके कार्यदिवस नियम लागू होंगे।",
-      "therapistCard1": "सभी <hl>कार्यदिवसों</hl> के लिए शेड्यूल समान होगा। सुनिश्चित करें कि आपके कार्यदिवसों में कम से कम एक <hl>कम से कम 6 घंटे की निरंतर विंडो</hl> हो जब आप बुकिंग के लिए उपलब्ध हों।",
-      "therapistCard2": "कोई भी अन्य <hl>उपलब्धता</hl> स्लॉट <hl>कम से कम 1 घंटा</hl> लंबा होना चाहिए। साथ ही, आपके उपलब्धता स्लॉट के बीच लिए गए <hl>विराम</hl> आपके चुने हुए यात्रा समय से छोटे नहीं हो सकते।",
+      "therapistCard1": "सभी <hl>कार्यदिवसों</hl> के लिए शेड्यूल समान होगा। सुनिश्चित करें कि आपके कार्यदिवसों में कम से कम एक <hl>कम से कम {window} की निरंतर विंडो</hl> हो जब आप बुकिंग के लिए उपलब्ध हों।",
+      "therapistCard2": "कोई भी अन्य <hl>उपलब्धता</hl> स्लॉट <hl>कम से कम {minBlock}</hl> लंबा होना चाहिए। साथ ही, आपके उपलब्धता स्लॉट के बीच लिए गए <hl>विराम</hl> आपके चुने हुए यात्रा समय से छोटे नहीं हो सकते।",
       "therapistCard3": "आपकी रेटिंग ऊँची रखने और डबल-बुकिंग रोकने के लिए, हम हर सत्र में स्वचालित रूप से <hl>यात्रा समय जोड़ते</hl> हैं। आपको हमेशा <hl>एक समय में एक ही ग्राहक</hl> के लिए बुक किया जाएगा।",
       "analystP2": "एक विश्लेषक के रूप में, चुनें कि आप ग्राहक के स्थान पर <hl>व्यक्तिगत रूप से</hl> पर्यवेक्षण करेंगे, कहीं से भी <hl>ऑनलाइन</hl>, या दोनों का मिश्रण। आप अपने दिन भर दोनों प्रकारों को जोड़ सकते हैं।",
       "analystP3": "पहले, यदि आपको साप्ताहिक विराम चाहिए, तो {maxDaysOff} <hl>अवकाश दिन</hl> तक चुनें। आप चाहें तो इन दिनों के लिए कस्टम कार्य समय सेट कर सकते हैं। अन्य सभी दिनों के लिए, आपके वैयक्तिकृत कार्यदिवस नियम लागू होंगे।",
-      "analystCard1": "<hl>कार्यदिवसों</hl> के लिए आपका शेड्यूल समान होगा। सुनिश्चित करें कि आपके कार्यदिवसों में पर्यवेक्षण (व्यक्तिगत या ऑनलाइन) के लिए कम से कम एक <hl>निरंतर 3-घंटे की विंडो</hl> उपलब्ध हो।",
-      "analystCard2": "कोई भी उपलब्धता स्लॉट व्यक्तिगत के लिए कम से कम <hl>1 घंटा</hl> और ऑनलाइन पर्यवेक्षण के लिए <hl>30 मिनट</hl> होना चाहिए। उपलब्धता स्लॉट के बीच कोई भी विराम <hl>15 मिनट</hl> या अधिक हो सकता है।",
-      "analystCard3": "हम डबल-बुकिंग रोकते हैं, लेकिन सत्र <hl>लगातार</hl> हो सकते हैं। कृपया अपना शेड्यूल इस तरह बनाएं कि आप व्यक्तिगत सत्रों के लिए ग्राहक के स्थान पर समय पर पहुँचें।"
+      "analystCard1": "For <hl>WORKDAYS</hl> your schedule will be the\nsame. Ensure your workdays have at least\none <hl>continuous window of at least {window}</hl> available\nfor supervision (in-person or online).",
+      "analystCard2": "कोई भी उपलब्धता स्लॉट व्यक्तिगत के लिए कम से कम <hl>{minBlock}</hl> और ऑनलाइन पर्यवेक्षण के लिए <hl>{minOnline}</hl> होना चाहिए। उपलब्धता स्लॉट के बीच कोई भी विराम <hl>{minBreak}</hl> या अधिक हो सकता है।",
+      "analystCard3": "हम डबल-बुकिंग रोकते हैं, लेकिन सत्र <hl>लगातार</hl> हो सकते हैं। कृपया अपना शेड्यूल इस तरह बनाएं कि आप व्यक्तिगत सत्रों के लिए ग्राहक के स्थान पर समय पर पहुँचें।",
+      "analystP1": "हम आपको और आपके ग्राहकों को खुश रखने का प्रयास करते हैं। इसलिए पूरे दिन अपनी उपलब्धता सही ढंग से सेट करना महत्वपूर्ण है।"
     },
     "annualTitleTherapist": "थेरेपिस्ट वार्षिक कार्य कैलेंडर सेट करना",
     "annualTitleAnalyst": "विश्लेषक वार्षिक कार्य कैलेंडर सेट करना",
     "annual": {
-      "intro": "हम आपको और आपके ग्राहकों को खुश रखने का प्रयास करते हैं। इस प्रकार, प्रत्येक कैलेंडर वर्ष आप बुकिंग के लिए स्वयं को अनुपलब्ध बनाने हेतु <hl>56 कैलेंडर दिनों तक (सोम–रवि) अवकाश के रूप में</hl> चुन सकते हैं।",
-      "cardConsecutive": "आप <hl>अधिकतम 28 लगातार अवकाश दिन</hl> ले सकते हैं",
-      "cardInterval": "किसी भी गैर-लगातार अवकाश दिनों के बीच का अंतराल कम से कम <hl>4 पूर्ण कैलेंडर सप्ताह सोम से रवि तक</hl> होना चाहिए",
+      "intro": "हम आपको और आपके ग्राहकों को खुश रखने का प्रयास करते हैं। इस प्रकार, प्रत्येक कैलेंडर वर्ष आप बुकिंग के लिए स्वयं को अनुपलब्ध बनाने हेतु <hl>{maxDaysOffPerYear} कैलेंडर दिनों तक (सोम–रवि) अवकाश के रूप में</hl> चुन सकते हैं।",
+      "cardConsecutive": "आप <hl>अधिकतम {maxConsecutive} लगातार अवकाश दिन</hl> ले सकते हैं",
+      "cardInterval": "किसी भी गैर-लगातार अवकाश दिनों के बीच का अंतराल कम से कम <hl>{minGapWeeks} पूर्ण कैलेंडर सप्ताह सोम से रवि तक</hl> होना चाहिए",
+      "cardBookings": "आप अवकाश दिन केवल भविष्य में और केवल उन सप्ताहों में चुन सकते हैं जिनमें आपकी <hl>कोई बुकिंग</hl> नहीं है, पूर्ण <sqCompleted></sqCompleted> या निर्धारित <sqScheduled></sqScheduled>",
+      "cardDiscuss": "हालाँकि आप अपना वार्षिक कार्य कैलेंडर कभी भी समायोजित कर सकते हैं, हम अनुशंसा करते हैं कि आप हमेशा अपने ग्राहकों के साथ <hl>छुट्टियों के समय पर चर्चा और सहमति</hl> बनाएं"
+    },
+    "annualAnalyst": {
+      "intro": "हम आपको और आपके ग्राहकों को खुश रखने का प्रयास करते हैं। इस प्रकार, प्रत्येक कैलेंडर वर्ष आप बुकिंग के लिए स्वयं को अनुपलब्ध बनाने हेतु <hl>{maxDaysOffPerYear} कैलेंडर दिनों तक (सोम–रवि) अवकाश के रूप में</hl> चुन सकते हैं।",
+      "cardConsecutive": "आप <hl>अधिकतम {maxConsecutive} लगातार अवकाश दिन</hl> ले सकते हैं",
+      "cardInterval": "किसी भी गैर-लगातार अवकाश दिनों के बीच का अंतराल कम से कम <hl>{minGapWeeks} पूर्ण कैलेंडर सप्ताह सोम से रवि तक</hl> होना चाहिए",
       "cardBookings": "आप अवकाश दिन केवल भविष्य में और केवल उन सप्ताहों में चुन सकते हैं जिनमें आपकी <hl>कोई बुकिंग</hl> नहीं है, पूर्ण <sqCompleted></sqCompleted> या निर्धारित <sqScheduled></sqScheduled>",
       "cardDiscuss": "हालाँकि आप अपना वार्षिक कार्य कैलेंडर कभी भी समायोजित कर सकते हैं, हम अनुशंसा करते हैं कि आप हमेशा अपने ग्राहकों के साथ <hl>छुट्टियों के समय पर चर्चा और सहमति</hl> बनाएं"
     }
@@ -313,5 +257,111 @@
     "overlaysDesc": "डायलॉग, मेनू, टूलटिप और टोस्ट।",
     "availabilityTitle": "उपलब्धता",
     "availabilityDesc": "ऐप-विशिष्ट कैलेंडर कंपोनेंट।"
+  },
+  "calendarSettings": {
+    "title": "Calendar settings",
+    "subtitle": "Rules the weekly and annual calendars enforce, for each role and each specialist.",
+    "storageTitle": "Browser-only preview",
+    "mockNotice": "Saved only in this browser until the calendar settings API is available. Other users and devices are not affected.",
+    "loading": "Loading calendar parameters…",
+    "globalLevel": "Global defaults",
+    "specialistLevel": "Specialist values",
+    "roleTabs": "Specialist role",
+    "roleDefaultsTitle": "{role} defaults",
+    "roleDefaultsDescription": "Every specialist with this role follows these rules, except rules customized for that specialist.",
+    "weekly": "Weekly calendar",
+    "weeklyHint": "Durations are picked in 15-minute steps, matching the calendar's time slots.",
+    "annual": "Annual calendar",
+    "annualHint": "Set a rule to 0 to turn it off.",
+    "travel": "Travel time",
+    "travelOptions": "Travel time choices",
+    "minBreakTravelHint": "The chosen travel time replaces this break.",
+    "readOnly": "You can view these settings. Technical edit permission is required to change them.",
+    "unsaved": "Unsaved changes",
+    "correctErrors": "Correct the highlighted parameters before applying.",
+    "discard": "Discard edits",
+    "defaults": "Restore default values",
+    "apply": "Apply parameters",
+    "saved": "Calendar parameters applied in this browser",
+    "testTitle": "Try the applied parameters",
+    "testDescription": "Open the {role} calendars to see how the applied rules behave.",
+    "openWeekly": "Open weekly calendar",
+    "openAnnual": "Open annual calendar",
+    "errors": {
+      "mustBeNumber": "Enter a number.",
+      "wholeNumber": "Enter a whole number.",
+      "minutesRange": "Use 15 to 1080 minutes in 15-minute steps.",
+      "daysPerWeek": "Use 0 to 7 days.",
+      "daysPerYear": "Use 0 to 366 days.",
+      "windowTooShort": "The continuous window must be at least the minimum in-person block.",
+      "travelEmpty": "Pick at least one travel time.",
+      "travelDuplicate": "Each travel time can be listed once.",
+      "weeksRange": "Use 0 to 52 weeks.",
+      "travelRange": "Use 15 to 240 minutes in 15-minute steps."
+    },
+    "fields": {
+      "minBlockInPersonMins": "Minimum in-person block",
+      "minBlockOnlineMins": "Minimum online block",
+      "minBreakMins": "Minimum break",
+      "continuousWindowMins": "Continuous availability window",
+      "maxDaysOff": "Maximum weekly days off",
+      "minAdjacentUnavailMins": "Minimum edge break",
+      "maxDaysOffPerYear": "Maximum annual days off",
+      "maxConsecutiveDays": "Maximum consecutive days off",
+      "minGapWeeks": "Minimum gap between days off"
+    },
+    "units": {
+      "minutes": "min",
+      "days": "days",
+      "weeks": "weeks"
+    },
+    "values": {
+      "minutes": "{value} min",
+      "days": "{value, plural, one {# day} other {# days}}",
+      "weeks": "{value, plural, one {# week} other {# weeks}}"
+    },
+    "specialistTitle": "Specialist values",
+    "specialistDescription": "Override a rule for one specialist. Rules without an override follow the global default, including later changes.",
+    "specialist": "Specialist",
+    "selectSpecialist": "Select a specialist",
+    "searchSpecialists": "Search specialists…",
+    "noSpecialistMatches": "No specialists match your search.",
+    "noSpecialists": "No specialists configured.",
+    "rule": "Rule",
+    "valueColumn": "Specialist value",
+    "overrideColumn": "Override",
+    "overrideNamed": "Override {rule}",
+    "globalCaption": "Global default: {value}",
+    "inheritAll": "Inherit all global values",
+    "saveSpecialist": "Save specialist values",
+    "specialistSaved": "Specialist parameter values saved",
+    "adminSwitches": "Calendar rule switches",
+    "adminSwitchesHint": "Turn a rule off to bypass it while you edit this specialist’s calendars. Global and specialist values stay unchanged. Switches reset when you reload the page or sign out.",
+    "enforceNamed": "Enforce {rule}",
+    "switchCaption": "{value}, {source}",
+    "customized": "specialist value",
+    "inherited": "global default",
+    "configuredOff": "Off, set to 0",
+    "manageValues": "Manage values",
+    "openSwitchesCount": "Calendar rule switches, {count, plural, one {# rule off} other {# rules off}}",
+    "turnAllOn": "Turn all rules on",
+    "overrideAll": "Override all rules",
+    "overrideAllHint": "Bypass every rule of this calendar while you edit it.",
+    "travelHint": "Therapists pick how long they need between clients before they can edit their week, and the chosen time becomes their minimum break.",
+    "travelOptionsPlaceholder": "Pick travel times",
+    "travelSearch": "Search travel times",
+    "travelNoMatches": "No travel time matches.",
+    "leaveTitle": "Discard unsaved changes?",
+    "leaveBody": "Your changes to {name}’s values haven’t been saved.",
+    "leaveStay": "Keep editing",
+    "leaveConfirm": "Discard changes",
+    "applyConflictTitle": "Some specialist values won’t fit",
+    "applyConflictBody": "These specialists have values that won’t fit the new defaults: {names}. Their calendars keep using those values until you update them under Specialist values.",
+    "applyConflictCancel": "Review first",
+    "applyConflictConfirm": "Apply anyway",
+    "specialistConflict": "These values don’t fit the current global defaults: {message}",
+    "specialistSaveFailed": "Couldn’t save the specialist values. Check them and try again.",
+    "opensInNewTab": "(opens in a new tab)",
+    "specialistNotFound": "Specialist not found. Pick one from the list."
   }
 }

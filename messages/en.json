@@ -244,7 +244,8 @@
     "locationsGroup": "Locations",
     "regionBuilder": "Region builder",
     "regions": "Regions",
-    "countries": "Countries"
+    "countries": "Countries",
+    "calendarSettings": "Calendar settings"
   },
   "personnel": {
     "title": "Specialists",
@@ -266,113 +267,56 @@
       "analyst": "Behavior Analyst"
     },
     "titleTop": "Select your annual work calendar",
-    "titleRole": "as a {role}",
-    "instr1": "Click on any day (or click and drag) to change its status",
-    "instr2": "Click on the year to change the year",
-    "legend": {
-      "availableLabel": "Available",
-      "availableSub": "(as per weekly business hours)",
-      "unavailableLabel": "Unavailable",
-      "availableDesc": "Clients that need Therapy during these days will be able to find and book you",
-      "unavailableDesc": "Clients that need Therapy during these days will not be able to find you"
-    },
-    "yearPickerTitle": "Select the year",
-    "savedToast": "Annual calendar saved for {name}",
-    "rule": {
-      "maxDaysOff": "You can select up to {max} days off per year",
-      "maxConsecutive": "You can take a maximum of {max} consecutive days off",
-      "minGap": "Leave at least {weeks} full calendar weeks (MO–SU) between non-consecutive days off"
-    }
+    "titleRole": "as a {role}"
   },
   "availability": {
     "title": "Select your weekly business hours as a {role}",
-    "help": "How editing works",
-    "btnRules": "Rules",
-    "btnReset": "Reset",
-    "toastDaysOffMax": "Maximum {max} days off allowed",
-    "toastTravelReset": "Travel time updated - calendar reset",
-    "toastRulesUpdated": "Calendar rules updated",
-    "toastSaved": "Availability saved for {name}",
     "care": {
       "therapy": "therapy",
       "supervision": "supervision"
     },
     "controls": {
-      "travelPrompt": "Choose the optimal travel time between your clients",
-      "paintInstr": "Click a time slot to change its status; drag to paint several",
-      "availableInpersonLabel": "Available In-person",
-      "unavailableLabel": "Unavailable",
-      "onlineLabel": "Available Online-only",
       "availableInpersonDesc": "Clients who need {care} during these hours will be able to find you",
       "unavailableDesc": "Clients who need {care} during these hours won't be able to find you",
       "onlineDesc": "Only clients who agreed to online supervision can find or book you during these hours"
     },
     "notice": {
-      "maxAvailTitle": "Business hours set to maximum availability",
-      "maxAvailBody": "Your weekly business hours are set to <hl>maximum availability 06:00–24:00, MO–SU</hl>. You can change them until the first booking for your services is confirmed.",
-      "travelTitle": "Select a travel time",
-      "travelBody1": "Please select for the Therapist your preferred <hl>TRAVEL TIME</hl> option.",
-      "travelBody2": "You can change it later until the first booking for your services is confirmed."
+      "travelBody1": "Please select for the Therapist your preferred <hl>TRAVEL TIME</hl> option"
     },
-    "issueWeekdays": "Weekdays",
-    "cantSave": "Can't save - {issues}",
-    "rule": {
-      "minBlockInpersonLabel": "In-person availability block",
-      "minBlockAnyLabel": "Minimum availability block",
-      "minBlockInpersonMsg": "Each in-person availability block must be at least {dur}.",
-      "minBlockAnyMsg": "Each availability block must be at least {dur}.",
-      "onlineLabel": "Online-only availability block",
-      "onlineMsg": "Each online-only availability block must be at least {dur}.",
-      "breakTherapistLabel": "Break ≥ travel time",
-      "breakAnalystLabel": "Break between availability",
-      "breakTherapistMsg": "Breaks between availability must be\nat least {brk} (your travel time).\nEdges may be {edge}.",
-      "breakAnalystMsg": "Breaks between availability must be\nat least {brk}.\nEdges may be {edge}.",
-      "windowLabel": "Continuous availability window",
-      "windowMsg": "Workdays need one continuous availability window of at least {dur}."
-    }
-  },
-  "coach": {
-    "title": "How to edit your availability",
-    "replay": "Replay",
-    "gotIt": "Got it"
-  },
-  "rulesConfig": {
-    "title": "Update calendar rules",
-    "desc": "These parameters come from the Services module. Editing them re-checks the calendar instantly.",
-    "minAvailBlock": "Min availability block",
-    "minInpersonBlock": "Min in-person block",
-    "minOnlineBlock": "Min online block",
-    "minBreak": "Min break between blocks",
-    "continuousWindow": "Continuous window",
-    "maxDaysOffWeek": "Max days off / week",
-    "days": "{count, plural, one {# day} other {# days}}",
-    "reset": "Reset to defaults",
-    "apply": "Apply rules"
+    "daysOffMax": "{max, plural, one {Maximum # day off allowed} other {Maximum # days off allowed}}"
   },
   "guidelines": {
     "weeklyTitleTherapist": "Setting up Therapist weekly business hours",
     "weeklyTitleAnalyst": "Setting up Analyst weekly business hours",
     "weekly": {
-      "p1": "We strive to make you and your Clients happy. That's why setting up your availability correctly throughout the day is crucial.",
-      "therapistP2": "Pick how long you need to get between clients (min. <hl>00h45m</hl> for your location). Do this first! Changing it later resets your calendar settings. Travel time becomes locked after your first booking.",
-      "therapistP3": "Need a break? Grab up to {maxDaysOff} any <hl>DAYS OFF</hl> a week. You can set custom work hours for these days if you want. For other days your workday rules will apply.",
-      "therapistCard1": "Schedule for all <hl>WORKDAYS</hl> will be the same. Make sure your workdays have at least one <hl>continuous window of at least 6 hours</hl> when you're available for bookings.",
-      "therapistCard2": "Any other <hl>availability</hl> slots must be <hl>at least 1 hour</hl> long. Also, the <hl>breaks</hl> you take between your availability slots cannot be shorter than your chosen travel time.",
-      "therapistCard3": "To keep your rating high and prevent double-booking, we automatically <hl>add travel time</hl> to every session. You'll only ever be booked for <hl>one client at a time</hl>.",
-      "analystP2": "As an analyst, select whether you'll supervise <hl>in-person</hl> at the client's location, <hl>online</hl> from anywhere, or a mix of both. You can combine both types throughout your day.",
-      "analystP3": "First, if you need a weekly break, select up to {maxDaysOff} <hl>DAYS OFF</hl>. You can still set custom work hours for these days if you like. For all other days, your personalized workday rules will apply.",
-      "analystCard1": "For <hl>WORKDAYS</hl> your schedule will be the same. Ensure your workdays have at least one <hl>continuous 3-hour window</hl> available for supervision (in-person or online).",
-      "analystCard2": "Any availability slots must be at least <hl>1 hour</hl> for in-person and <hl>30 min</hl> for online supervision. Any breaks between availability slots can be <hl>15 min</hl> or longer.",
-      "analystCard3": "We prevent double-booking, but sessions can be <hl>back-to-back</hl>. Please plan your schedule to ensure you arrive on time at the client's location for in-person sessions."
+      "p1": "We strive to make you and your Clients happy.\nThat’s why setting up your availability correctly\nthroughout the day is crucial.",
+      "therapistP2": "Pick how long you need to get between clients\n(min. <hl>{travelMin}</hl> for your location). Do this first!\nChanging it later resets your calendar settings.\nTravel time becomes locked after your first booking.",
+      "therapistP3": "Need a break? Grab up to {maxDaysOff} any <hl>DAYS OFF</hl> a week.\nYou can set custom work hours for these days if you\nwant. For other days your workday rules will apply.",
+      "therapistCard1": "Schedule for all <hl>WORKDAYS</hl> will be the\nsame. Make sure your workdays have at\nleast one <hl>continuous window of at least {window}</hl> when you’re available for bookings.",
+      "therapistCard2": "Any other <hl>availability</hl> slots must be <hl>at least\n{minBlock}</hl> long. Also, the <hl>breaks</hl> you take\nbetween your availability slots cannot be\nshorter than your chosen travel time.",
+      "therapistCard3": "To keep your rating high and prevent\ndouble-booking, we automatically <hl>add\ntravel time</hl> to every session. You’ll only\never be booked for <hl>one client at a time</hl>.",
+      "analystP2": "As an analyst, select whether you’ll supervise\n<hl>in-person</hl> at the client’s location, <hl>online</hl> from\nanywhere, or a mix of both. You can combine both\ntypes throughout your day.",
+      "analystP3": "First, if you need a weekly break, select up to\n{maxDaysOff} <hl>DAYS OFF</hl>. You can still set custom work hours for\nthese days if you like. For all other days, your\npersonalized workday rules will apply.",
+      "analystCard1": "For <hl>WORKDAYS</hl> your schedule will be the\nsame. Ensure your workdays have at least\none <hl>continuous window of at least {window}</hl> available\nfor supervision (in-person or online).",
+      "analystCard2": "Any availability slots must be at least\n<hl>{minBlock}</hl> for in-person and <hl>{minOnline}</hl> for online\nsupervision. Any breaks between\navailability slots can be <hl>{minBreak}</hl> or longer.",
+      "analystCard3": "We prevent double-booking, but sessions\ncan be <hl>back-to-back</hl>. Please plan your\nschedule to ensure you arrive on time at\nthe client’s location for in-person sessions.",
+      "analystP1": "We strive to make you and your Clients happy.\nThat’s why setting up your availability correctly\nthroughout the day is crucial."
     },
     "annualTitleTherapist": "Setting up Therapist annual work calendar",
     "annualTitleAnalyst": "Setting up Analyst annual work calendar",
     "annual": {
-      "intro": "We strive to make you and your Clients happy. Thus, each calendar year you can select <hl>up to 56 calendar days (MO-SU) as days off</hl> to make yourself unavailable for booking.",
-      "cardConsecutive": "You can take a <hl>maximum of 28 consecutive days off</hl>",
-      "cardInterval": "The interval between any non-consecutive days off must be at least <hl>4 full calendar weeks from MO to SU</hl>",
-      "cardBookings": "You can select days off only in the future and only in those weeks during which you have <hl>no bookings</hl>, completed <sqCompleted></sqCompleted> or scheduled <sqScheduled></sqScheduled>",
-      "cardDiscuss": "While you can adjust your annual work calendar at any time, we recommend that you always <hl>discuss and agree on vacation times</hl> with your Clients"
+      "intro": "We strive to make you and your Clients happy.\nThus, each calendar year you can select\n<hl>up to {maxDaysOffPerYear} calendar days (MO-SU) as days off</hl>\nto make yourself unavailable for booking.",
+      "cardConsecutive": "You can take a <hl>maximum of {maxConsecutive} consecutive days off</hl>",
+      "cardInterval": "The interval between any non-consecutive days off must be at least <hl>{minGapWeeks} full calendar weeks from MO to SU</hl>",
+      "cardBookings": "You can select days off only in the future\nand only in those weeks during which you\nhave <hl>no bookings</hl>, completed <sqCompleted></sqCompleted>\nor scheduled <sqScheduled></sqScheduled>",
+      "cardDiscuss": "While you can adjust your annual work\ncalendar at any time, we recommend that\nyou always <hl>discuss and agree on vacation\ntimes with your Clients</hl>"
+    },
+    "annualAnalyst": {
+      "intro": "We strive to make you and your Clients happy.\nThus, each calendar year you can select\n<hl>up to {maxDaysOffPerYear} calendar days (MO-SU) as days off</hl>\nto make yourself unavailable for booking.",
+      "cardConsecutive": "You can take a <hl>maximum of\n{maxConsecutive} consecutive days off</hl>",
+      "cardInterval": "The interval between any non-consecutive\ndays off must be at least <hl>{minGapWeeks} full calendar\nweeks from MO to SU</hl>",
+      "cardBookings": "You can select days off only in the future\nand only in those weeks during which you\nhave <hl>no bookings</hl>, completed <sqCompleted></sqCompleted>\nor scheduled <sqScheduled></sqScheduled>",
+      "cardDiscuss": "While you can adjust your annual work\ncalendar at any time, we recommend that\nyou always <hl>discuss and agree on vacation\ntimes with your Clients</hl>"
     }
   },
   "designSystem": {
@@ -1487,5 +1431,111 @@
     "noAccessTitle": "Your account has no access yet",
     "noAccessBody": "Ask an administrator to give you a role.",
     "contentDenied": "You're not authorized to see this content."
+  },
+  "calendarSettings": {
+    "title": "Calendar settings",
+    "subtitle": "Rules the weekly and annual calendars enforce, for each role and each specialist.",
+    "storageTitle": "Browser-only preview",
+    "mockNotice": "Saved only in this browser until the calendar settings API is available. Other users and devices are not affected.",
+    "loading": "Loading calendar parameters…",
+    "globalLevel": "Global defaults",
+    "specialistLevel": "Specialist values",
+    "roleTabs": "Specialist role",
+    "roleDefaultsTitle": "{role} defaults",
+    "roleDefaultsDescription": "Every specialist with this role follows these rules, except rules customized for that specialist.",
+    "weekly": "Weekly calendar",
+    "weeklyHint": "Durations are picked in 15-minute steps, matching the calendar's time slots.",
+    "annual": "Annual calendar",
+    "annualHint": "Set a rule to 0 to turn it off.",
+    "travel": "Travel time",
+    "travelOptions": "Travel time choices",
+    "minBreakTravelHint": "The chosen travel time replaces this break.",
+    "readOnly": "You can view these settings. Technical edit permission is required to change them.",
+    "unsaved": "Unsaved changes",
+    "correctErrors": "Correct the highlighted parameters before applying.",
+    "discard": "Discard edits",
+    "defaults": "Restore default values",
+    "apply": "Apply parameters",
+    "saved": "Calendar parameters applied in this browser",
+    "testTitle": "Try the applied parameters",
+    "testDescription": "Open the {role} calendars to see how the applied rules behave.",
+    "openWeekly": "Open weekly calendar",
+    "openAnnual": "Open annual calendar",
+    "errors": {
+      "mustBeNumber": "Enter a number.",
+      "wholeNumber": "Enter a whole number.",
+      "minutesRange": "Use 15 to 1080 minutes in 15-minute steps.",
+      "daysPerWeek": "Use 0 to 7 days.",
+      "daysPerYear": "Use 0 to 366 days.",
+      "windowTooShort": "The continuous window must be at least the minimum in-person block.",
+      "travelEmpty": "Pick at least one travel time.",
+      "travelDuplicate": "Each travel time can be listed once.",
+      "weeksRange": "Use 0 to 52 weeks.",
+      "travelRange": "Use 15 to 240 minutes in 15-minute steps."
+    },
+    "fields": {
+      "minBlockInPersonMins": "Minimum in-person block",
+      "minBlockOnlineMins": "Minimum online block",
+      "minBreakMins": "Minimum break",
+      "continuousWindowMins": "Continuous availability window",
+      "maxDaysOff": "Maximum weekly days off",
+      "minAdjacentUnavailMins": "Minimum edge break",
+      "maxDaysOffPerYear": "Maximum annual days off",
+      "maxConsecutiveDays": "Maximum consecutive days off",
+      "minGapWeeks": "Minimum gap between days off"
+    },
+    "units": {
+      "minutes": "min",
+      "days": "days",
+      "weeks": "weeks"
+    },
+    "values": {
+      "minutes": "{value} min",
+      "days": "{value, plural, one {# day} other {# days}}",
+      "weeks": "{value, plural, one {# week} other {# weeks}}"
+    },
+    "specialistTitle": "Specialist values",
+    "specialistDescription": "Override a rule for one specialist. Rules without an override follow the global default, including later changes.",
+    "specialist": "Specialist",
+    "selectSpecialist": "Select a specialist",
+    "searchSpecialists": "Search specialists…",
+    "noSpecialistMatches": "No specialists match your search.",
+    "noSpecialists": "No specialists configured.",
+    "rule": "Rule",
+    "valueColumn": "Specialist value",
+    "overrideColumn": "Override",
+    "overrideNamed": "Override {rule}",
+    "globalCaption": "Global default: {value}",
+    "inheritAll": "Inherit all global values",
+    "saveSpecialist": "Save specialist values",
+    "specialistSaved": "Specialist parameter values saved",
+    "adminSwitches": "Calendar rule switches",
+    "adminSwitchesHint": "Turn a rule off to bypass it while you edit this specialist’s calendars. Global and specialist values stay unchanged. Switches reset when you reload the page or sign out.",
+    "enforceNamed": "Enforce {rule}",
+    "switchCaption": "{value}, {source}",
+    "customized": "specialist value",
+    "inherited": "global default",
+    "configuredOff": "Off, set to 0",
+    "manageValues": "Manage values",
+    "openSwitchesCount": "Calendar rule switches, {count, plural, one {# rule off} other {# rules off}}",
+    "turnAllOn": "Turn all rules on",
+    "overrideAll": "Override all rules",
+    "overrideAllHint": "Bypass every rule of this calendar while you edit it.",
+    "travelHint": "Therapists pick how long they need between clients before they can edit their week, and the chosen time becomes their minimum break.",
+    "travelOptionsPlaceholder": "Pick travel times",
+    "travelSearch": "Search travel times",
+    "travelNoMatches": "No travel time matches.",
+    "leaveTitle": "Discard unsaved changes?",
+    "leaveBody": "Your changes to {name}’s values haven’t been saved.",
+    "leaveStay": "Keep editing",
+    "leaveConfirm": "Discard changes",
+    "applyConflictTitle": "Some specialist values won’t fit",
+    "applyConflictBody": "These specialists have values that won’t fit the new defaults: {names}. Their calendars keep using those values until you update them under Specialist values.",
+    "applyConflictCancel": "Review first",
+    "applyConflictConfirm": "Apply anyway",
+    "specialistConflict": "These values don’t fit the current global defaults: {message}",
+    "specialistSaveFailed": "Couldn’t save the specialist values. Check them and try again.",
+    "opensInNewTab": "(opens in a new tab)",
+    "specialistNotFound": "Specialist not found. Pick one from the list."
   }
 }
