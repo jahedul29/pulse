@@ -6,6 +6,7 @@ import { AccountPanel } from "@/components/clients/account-panel";
 import { ProfileTabs } from "@/components/clients/profile-tabs";
 import { ClientActions } from "@/components/clients/client-actions";
 import { useClientStore } from "@/lib/store";
+import { PageContainer } from "@/components/common/page-container";
 
 export default function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -13,7 +14,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   const client = useClientStore((state) => state.clients.find((candidate) => candidate.id === id));
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-6">
+    <PageContainer className="flex flex-col gap-6">
       {client && (
         <div className="sticky top-16 z-10 -mt-2 flex items-center justify-end gap-3 border-b bg-background/90 py-3 backdrop-blur">
           <ClientActions client={client} />
@@ -40,6 +41,6 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
           </section>
         </>
       )}
-    </div>
+    </PageContainer>
   );
 }

@@ -40,6 +40,7 @@ import { CsvExportButton } from "@/components/admin/csv-export-button";
 import { actionServerStateToParams } from "@/lib/admin-actions/list-params";
 import { TARGET_SERVICES, type AdminAction } from "@/lib/admin-actions/types";
 import { LoadError } from "@/components/common/load-error";
+import { PageContainer } from "@/components/common/page-container";
 
 const RESULTS: string[] = ["SUCCESS", "PARTIAL", "FAILURE"];
 const SEVERITIES: string[] = ["INFO", "WARNING", "CRITICAL"];
@@ -250,7 +251,7 @@ export function ActionLog() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <PageContainer>
       <Card>
         <CardHeader>
           <CardTitle>{t("title")}</CardTitle>
@@ -455,6 +456,6 @@ export function ActionLog() {
           </SheetContent>
         )}
       </Sheet>
-    </div>
+    </PageContainer>
   );
 }

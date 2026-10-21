@@ -19,6 +19,7 @@ import { autoFocusSearch } from "@/lib/pointer";
 import { useAdminUsers } from "@/lib/user-management/queries";
 import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 import type { AdminUserRow } from "@/lib/user-management/types";
+import { PageContainer } from "@/components/common/page-container";
 
 const TRIGGER = "w-full justify-between font-normal";
 
@@ -48,7 +49,7 @@ export function AdminAccess() {
   };
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <PageContainer variant="form" className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
         <h1 className="font-heading text-2xl font-semibold tracking-tight">{t("accessTitle")}</h1>
         <p className="text-sm text-muted-foreground text-pretty">{t("accessSubtitle")}</p>
@@ -142,6 +143,6 @@ export function AdminAccess() {
           <UserAccessEditor userId={pickedAdmin.id} userName={pickedAdmin.name} variant="page" canEdit={canEdit} />
         </>
       )}
-    </div>
+    </PageContainer>
   );
 }

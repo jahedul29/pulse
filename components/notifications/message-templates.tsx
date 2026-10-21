@@ -70,6 +70,7 @@ import {
 import type { NotificationTemplateDto } from "@/lib/notifications/dto";
 import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 import { LoadError } from "@/components/common/load-error";
+import { PageContainer } from "@/components/common/page-container";
 
 function VarInserter({ label, onInsert }: { label: string; onInsert: (token: string) => void }) {
   const t = useTranslations("notifications");
@@ -398,7 +399,7 @@ export function MessageTemplates() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <PageContainer>
       <Card>
         <CardHeader>
           <CardTitle>{t("templates.title")}</CardTitle>
@@ -785,6 +786,6 @@ export function MessageTemplates() {
           </SheetContent>
         )}
       </Sheet>
-    </div>
+    </PageContainer>
   );
 }

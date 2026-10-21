@@ -47,6 +47,7 @@ import { calendarParametersSchemaFor, type CountKey } from "@/lib/calendars/sche
 import { fmtList } from "@/lib/format";
 import { useSpecialistStore, type SpecialistType } from "@/lib/specialists";
 import { cn } from "@/lib/utils";
+import { PageContainer } from "@/components/common/page-container";
 
 const ROLES: SpecialistType[] = ["therapist", "analyst"];
 
@@ -63,7 +64,7 @@ export function CalendarParametersEditor() {
     </div>
   );
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6">
+    <PageContainer variant="form" className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
         <h1 className="font-heading text-2xl font-semibold tracking-tight">{t("title")}</h1>
         <p className="text-sm text-muted-foreground text-pretty">{t("subtitle")}</p>
@@ -85,7 +86,7 @@ export function CalendarParametersEditor() {
           </TabsContent>
         )}
       </Tabs>
-    </div>
+    </PageContainer>
   );
 }
 

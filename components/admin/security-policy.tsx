@@ -37,6 +37,7 @@ import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 import { policySchema, reasonSchema, type PolicyForm, type ReasonForm } from "@/lib/security-policy/schemas";
 import type { SecurityPolicyDto } from "@/lib/security-policy/dto";
 import { firstError, LoadError } from "@/components/common/load-error";
+import { PageContainer } from "@/components/common/page-container";
 
 type NumKey =
   | "max_failed_attempts"
@@ -143,7 +144,7 @@ export function SecurityPolicyEditor() {
 
   if (currentQuery.isError || versionsQuery.isError) {
     return (
-      <div className="mx-auto max-w-5xl">
+      <PageContainer variant="form">
         <Card>
           <CardContent>
             <LoadError
@@ -156,18 +157,18 @@ export function SecurityPolicyEditor() {
             />
           </CardContent>
         </Card>
-      </div>
+      </PageContainer>
     );
   }
 
   if (currentQuery.isPending || versionsQuery.isPending || !current) {
     return (
-      <div className="mx-auto flex max-w-5xl flex-col gap-6">
+      <PageContainer variant="form" className="flex flex-col gap-6">
         <Skeleton className="h-8 w-56" />
         {Array.from({ length: 3 }).map((_, i) => (
           <Skeleton key={i} className="h-40 w-full rounded-xl" />
         ))}
-      </div>
+      </PageContainer>
     );
   }
 
@@ -209,7 +210,7 @@ export function SecurityPolicyEditor() {
   );
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6">
+    <PageContainer variant="form" className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
         <h1 className="font-heading text-2xl font-semibold tracking-tight">{t("title")}</h1>
         <p className="text-sm text-muted-foreground text-pretty">{t("subtitle")}</p>
@@ -391,6 +392,6 @@ export function SecurityPolicyEditor() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   );
 }

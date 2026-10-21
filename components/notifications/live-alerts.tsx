@@ -35,6 +35,7 @@ import { ChannelFilter } from "@/components/notifications/channel-select";
 import { AdminUserFilter } from "@/components/admin/admin-user-filter";
 import { LoadError } from "@/components/common/load-error";
 import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
+import { PageContainer } from "@/components/common/page-container";
 
 export function LiveAlerts() {
   const t = useTranslations("notifications");
@@ -161,7 +162,7 @@ export function LiveAlerts() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <PageContainer>
       <Card>
         <CardHeader>
           <CardTitle>{t("alerts.title")}</CardTitle>
@@ -269,6 +270,6 @@ export function LiveAlerts() {
           </SheetContent>
         )}
       </Sheet>
-    </div>
+    </PageContainer>
   );
 }

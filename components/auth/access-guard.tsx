@@ -7,14 +7,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { accessState, firstAccessiblePath, hasPendingAccess, hasRouteRule, isDefaultLanding } from "@/lib/auth/access";
 import { useAccessSnapshot } from "@/lib/auth/access-probes";
 import { useIsClient } from "@/lib/use-is-client";
+import { PageContainer } from "@/components/common/page-container";
 
 function PendingAccess() {
   return (
-    <div aria-busy="true" className="mx-auto flex max-w-7xl flex-col gap-4">
+    <PageContainer aria-busy="true" className="flex flex-col gap-4">
       <Skeleton className="h-8 w-56" />
       <Skeleton className="h-4 w-80 max-w-full" />
       <Skeleton className="h-64 w-full" />
-    </div>
+    </PageContainer>
   );
 }
 
