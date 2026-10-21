@@ -32,4 +32,23 @@ describe("SwitchField", () => {
     expect(screen.getByText("Active")).toBeInTheDocument();
     expect(screen.getByText("Route is live and sending alerts.")).toBeInTheDocument();
   });
+
+  it("passes the disabled state and an explicit switch name through", async () => {
+    const onCheckedChange = jest.fn();
+    render(
+      <SwitchField
+        label="Travel time"
+        checked
+        onCheckedChange={onCheckedChange}
+        description="Inherited"
+        disabled
+        ariaLabel="Enforce Travel time"
+      />,
+    );
+    const toggle = screen.getByRole("switch", { name: "Enforce Travel time" });
+    expect(toggle).toBeDisabled();
+    expect(screen.getByText("Inherited").parentElement).toHaveClass("group-has-[:disabled]/switch-field:opacity-60");
+    await userEvent.click(toggle);
+    expect(onCheckedChange).not.toHaveBeenCalled();
+  });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { AnnualEditor } from "@/components/annual/annual-editor";
+import { SpecialistAnnualCalendar } from "@/components/calendars/specialist-annual-calendar";
 import { useSpecialistStore } from "@/lib/specialists";
 
 export default function TherapistAnnualDemoPage() {
@@ -8,11 +8,9 @@ export default function TherapistAnnualDemoPage() {
 
   if (!specialist) {
     return (
-      <div className="py-24 text-center text-sm text-muted-foreground">
-        No therapist configured.
-      </div>
+      <div className="py-24 text-center text-sm text-muted-foreground">No therapist configured.</div>
     );
   }
 
-  return <AnnualEditor key={specialist.id} specialist={specialist} />;
+  return <SpecialistAnnualCalendar specialist={specialist} />;
 }

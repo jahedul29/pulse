@@ -27,4 +27,17 @@ describe("ButtonRow", () => {
     expect(row).not.toHaveClass("flex-col");
     expect(row).toHaveClass("sm:grid-cols-none");
   });
+
+  it("can stay stacked until the md breakpoint", () => {
+    render(
+      <ButtonRow stackUntil="md">
+        <button>Restore</button>
+        <button>Apply</button>
+      </ButtonRow>,
+    );
+    const row = screen.getByText("Restore").parentElement!;
+    expect(row).toHaveClass("flex", "flex-col", "md:grid", "md:w-fit");
+    expect(row).not.toHaveClass("sm:grid");
+  });
 });
+

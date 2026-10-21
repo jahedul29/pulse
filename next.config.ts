@@ -5,6 +5,7 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["*.trycloudflare.com"],
+  transpilePackages: ["@abapro-front-end/calendars"],
 };
 
 export default withNextIntl(nextConfig);

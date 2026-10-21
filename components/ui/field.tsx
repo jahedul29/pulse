@@ -74,9 +74,10 @@ function Field({
   )
 }
 
-function FieldError({ children }: { children: React.ReactNode }) {
+function FieldError({ children, id }: { children: React.ReactNode; id?: string }) {
   return (
     <p
+      id={id}
       role="alert"
       className="flex items-center gap-1 text-xs leading-4 font-medium text-danger"
     >

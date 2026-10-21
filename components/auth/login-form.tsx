@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState, type FormEvent } from "react";
+import { useCallback, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -30,6 +30,21 @@ type View = "form" | "mfa" | "locked" | "pending" | "suspended" | "deactivated";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function BannerSlot({ open, children }: { open: boolean; children: ReactNode }) {
+  return (
+    <div
+      inert={!open}
+      aria-hidden={!open || undefined}
+      className={cn(
+        "-mb-4 grid transition-[grid-template-rows,opacity] motion-reduce:transition-none",
+        open ? "grid-rows-[1fr] opacity-100 duration-200 ease-out" : "grid-rows-[0fr] opacity-0 duration-150 ease-in",
+      )}
+    >
+      <div className="min-h-0 overflow-hidden">{children}</div>
+    </div>
+  );
+}
+
 export function LoginForm({
   returnTo,
   signedOutForInactivity = false,
@@ -49,6 +64,7 @@ export function LoginForm({
   const [busy, setBusy] = useState(false);
   const [lockedUntil, setLockedUntil] = useState(0);
   const [serverError, setServerError] = useState<ServerErrorInfo | null>(null);
+  const [showIdleNotice, setShowIdleNotice] = useState(signedOutForInactivity);
   const [errorCount, setErrorCount] = useState(0);
   const shownError = useRetained(serverError);
   const formRef = useRef<HTMLFormElement>(null);
@@ -73,6 +89,7 @@ export function LoginForm({
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    setShowIdleNotice(false);
     setServerError(null);
     if (!EMAIL_RE.test(email.trim())) {
       setEmailError(true);
@@ -187,29 +204,24 @@ export function LoginForm({
       animationKey={view}
     >
       <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
-        {signedOutForInactivity ? <IdleSignOutNotice /> : null}
-        <div
-          inert={!serverError}
-          aria-hidden={!serverError || undefined}
-          className={cn(
-            "-mb-4 grid transition-[grid-template-rows,opacity] motion-reduce:transition-none",
-            serverError
-              ? "grid-rows-[1fr] opacity-100 duration-200 ease-out"
-              : "grid-rows-[0fr] opacity-0 duration-150 ease-in",
+        {signedOutForInactivity && (
+          <BannerSlot open={showIdleNotice}>
+            <div className="pb-4">
+              <IdleSignOutNotice />
+            </div>
+          </BannerSlot>
+        )}
+        <BannerSlot open={Boolean(serverError)}>
+          {shownError && (
+            <div className="pb-4">
+              <LoginErrorBanner
+                key={errorCount}
+                error={shownError}
+                onRetry={() => formRef.current?.requestSubmit()}
+              />
+            </div>
           )}
-        >
-          <div className="min-h-0 overflow-hidden">
-            {shownError && (
-              <div className="pb-4">
-                <LoginErrorBanner
-                  key={errorCount}
-                  error={shownError}
-                  onRetry={() => formRef.current?.requestSubmit()}
-                />
-              </div>
-            )}
-          </div>
-        </div>
+        </BannerSlot>
         <Field
           label={t("email")}
           required

@@ -16,7 +16,9 @@ export function Alert({
   title,
   children,
   className,
+  role = "alert",
 }: {
+  role?: "alert" | "status" | "note";
   tone?: Tone;
   title?: string;
   children?: ReactNode;
@@ -25,7 +27,7 @@ export function Alert({
   const t = TONE[tone];
   const Icon = t.icon;
   return (
-    <div role="alert" className={cn("flex gap-3 rounded-lg border p-3 text-sm", t.box, className)}>
+    <div role={role} className={cn("flex gap-3 rounded-lg border p-3 text-sm", t.box, className)}>
       <Icon className={cn("mt-0.5 size-4 shrink-0", t.ic)} />
       <div className="flex min-w-0 flex-col gap-0.5">
         {title && <div className="font-medium text-foreground">{title}</div>}

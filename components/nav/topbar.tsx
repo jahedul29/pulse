@@ -23,6 +23,7 @@ const ADMIN_TITLE_KEYS: Record<string, string> = {
   "/admin/access": "rbac.accessTitle",
   "/admin/audit/actions": "actionLog.title",
   "/admin/audit/changes": "changeLog.title",
+  "/calendar-settings": "calendarSettings.title",
   "/admin/settings/security": "securityPolicy.title",
   "/admin/notifications/templates": "notifications.templates.title",
   "/admin/notifications/mapping": "notifications.mapping.title",
@@ -47,7 +48,10 @@ export function Topbar() {
     publishHeight();
     const observer = new ResizeObserver(publishHeight);
     observer.observe(header);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.removeProperty("--topbar-height");
+    };
   }, []);
 
   const segments = pathname.split("/").filter(Boolean);

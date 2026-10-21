@@ -16,6 +16,14 @@ function session(...permissions: string[]) {
 }
 
 describe("canAccessPath", () => {
+  it("protects Calendar settings with Technical view permission", () => {
+    expect(canAccessPath(session(), "/calendar-settings")).toBe(false);
+    expect(canAccessPath(session(PERMISSIONS.TECHNICAL_VIEW), "/calendar-settings")).toBe(true);
+  });
+  it("needs specialist view permission to open Calendar settings on a specialist", () => {
+    expect(canAccessPath(session(PERMISSIONS.TECHNICAL_VIEW), "/calendar-settings?specialist=sp-1")).toBe(false);
+    expect(canAccessPath(session(PERMISSIONS.TECHNICAL_VIEW, PERMISSIONS.SPECIALISTS_VIEW), "/calendar-settings?specialist=sp-1")).toBe(true);
+  });
   it("allows a page when the user has its view permission", () => {
     expect(canAccessPath(session(PERMISSIONS.ROLES_VIEW), "/admin/roles")).toBe(true);
     expect(canAccessPath(session(), "/admin/roles")).toBe(false);
@@ -61,6 +69,10 @@ describe("firstAccessiblePath", () => {
   it("returns the first start page the user can open, in sidebar order", () => {
     expect(firstAccessiblePath(session(PERMISSIONS.NOTIFICATION_TEMPLATES_VIEW, PERMISSIONS.ROLES_VIEW))).toBe("/admin/roles");
     expect(firstAccessiblePath(session(PERMISSIONS.SPECIALISTS_VIEW))).toBe("/personnel");
+  });
+  it("keeps landing Technical admins on the region builder, with Calendar settings only as a last resort", () => {
+    expect(firstAccessiblePath(session(PERMISSIONS.TECHNICAL_VIEW))).toBe("/admin/locations/builder");
+    expect(START_PAGES.at(-1)).toBe("/calendar-settings");
   });
 });
 

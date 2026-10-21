@@ -22,6 +22,11 @@ function within(prefix: string) {
 }
 
 const ROUTE_RULES: RouteRule[] = [
+  {
+    matches: within("/calendar-settings"),
+    anyOf: [PERMISSIONS.TECHNICAL_VIEW],
+    queryRules: { specialist: [PERMISSIONS.SPECIALISTS_VIEW] },
+  },
   { matches: within("/personnel"), anyOf: [PERMISSIONS.SPECIALISTS_VIEW] },
   { matches: within("/clients"), anyOf: [PERMISSIONS.CLIENTS_VIEW] },
   { matches: within("/orders"), anyOf: [PERMISSIONS.ORDERS_VIEW] },
@@ -70,6 +75,7 @@ export const START_PAGES = [
   BUILDER_PATH,
   REGIONS_PATH,
   COUNTRIES_PATH,
+  "/calendar-settings",
 ] as const;
 
 const DEFAULT_LANDINGS = new Set(["/", "/clients", "/personnel"]);

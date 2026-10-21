@@ -77,6 +77,15 @@ describe("NavItems parent group", () => {
     expect(screen.getByRole("button", { name: /Notifications/i })).toHaveAttribute("aria-expanded", "true");
   });
 
+  it("lists Calendar settings under RBAC & Audit Logs", () => {
+    render(<NavItems />);
+    const rbac = screen.getByRole("button", { name: /RBAC & Audit/i });
+    const link = screen.getByRole("link", { name: "Calendar settings" });
+    expect(link).toHaveAttribute("href", "/calendar-settings");
+    expect(rbac.parentElement).toContainElement(link);
+    expect(screen.getAllByRole("link", { name: "Calendar settings" })).toHaveLength(1);
+  });
+
   it("lists the notification deliveries screen under Notifications", async () => {
     render(<NavItems />);
     await userEvent.click(screen.getByRole("button", { name: /Notifications/i }));

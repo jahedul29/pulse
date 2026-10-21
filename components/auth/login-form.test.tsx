@@ -142,6 +142,27 @@ describe("LoginForm after an idle sign-out", () => {
     ).toBeInTheDocument();
   });
 
+  it("replaces the notice with the error banner after a failed sign-in, never showing both", async () => {
+    mockAttempt.mockReset();
+    mockAttempt.mockResolvedValue({ result: "INVALID_CREDENTIALS", email: "admin@ababro.ai" });
+    render(<LoginForm signedOutForInactivity />);
+    expect(screen.getByRole("status")).toHaveTextContent("Signed out for inactivity");
+    await submit();
+    const banner = await screen.findByRole("alert");
+    expect(within(banner).getByText("Incorrect email or password")).toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+  });
+
+  it("hides the notice once a sign-in starts, even before an answer", async () => {
+    mockAttempt.mockReset();
+    mockAttempt.mockReturnValue(new Promise(() => undefined));
+    render(<LoginForm signedOutForInactivity />);
+    await submit();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("shows no notice on a normal visit", () => {
     render(<LoginForm />);
     expect(screen.queryByText("Signed out for inactivity")).not.toBeInTheDocument();
