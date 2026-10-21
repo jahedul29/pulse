@@ -6,8 +6,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function closeCoach(page: Page) {
-  const gotIt = page.getByRole("button", { name: "Got it" });
-  if (await gotIt.isVisible()) await gotIt.click();
+  const coach = page.getByRole("dialog").filter({ has: page.getByRole("button", { name: "Got it" }) });
+  await coach.getByRole("button", { name: "Got it" }).click();
+  await expect(coach).toBeHidden();
 }
 
 test("applies a role default that the calendar then enforces", async ({ page }) => {
