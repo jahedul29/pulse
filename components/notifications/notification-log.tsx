@@ -41,6 +41,7 @@ import {
 } from "@/lib/notifications/dto";
 import type { NotificationDeliveryDto } from "@/lib/notifications/dto";
 import { LoadError } from "@/components/common/load-error";
+import { PageContainer } from "@/components/common/page-container";
 
 export function NotificationLog() {
   const t = useTranslations("notifications");
@@ -182,7 +183,7 @@ export function NotificationLog() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <PageContainer>
       <Card>
         <CardHeader>
           <CardTitle>{t("log.title")}</CardTitle>
@@ -297,6 +298,6 @@ export function NotificationLog() {
           </SheetContent>
         )}
       </Sheet>
-    </div>
+    </PageContainer>
   );
 }

@@ -17,6 +17,7 @@ import {
 } from "@/lib/mock/data";
 import { coercePeriod } from "@/lib/period";
 import { I18nText } from "@/components/common/i18n-text";
+import { PageContainer } from "@/components/common/page-container";
 
 export const metadata: Metadata = { title: "Clients & Profiles" };
 
@@ -28,7 +29,7 @@ export default async function ClientsPage({
   const period = coercePeriod((await searchParams).period);
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-6">
+    <PageContainer className="flex flex-col gap-6">
       <div className="flex justify-end">
         <Suspense fallback={<div className="h-8 w-72 rounded-lg border bg-card" />}>
           <PeriodToggle />
@@ -99,6 +100,6 @@ export default async function ClientsPage({
           <ClientTable />
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 }

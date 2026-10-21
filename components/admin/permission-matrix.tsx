@@ -20,6 +20,7 @@ import { usePermissionModules, usePermissions, useRole, useSyncRolePermissions }
 import { permissionCode, permissionLabel, type PermissionDto } from "@/lib/rbac/dto";
 import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 import { firstError, LoadError } from "@/components/common/load-error";
+import { PageContainer } from "@/components/common/page-container";
 
 interface ModuleGroup {
   key: string;
@@ -141,7 +142,7 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
 
   if (isError) {
     return (
-      <div className="mx-auto flex max-w-4xl flex-col gap-6">
+      <PageContainer variant="form" className="flex flex-col gap-6">
         <Card>
           <CardContent>
             <LoadError
@@ -156,13 +157,13 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
             />
           </CardContent>
         </Card>
-      </div>
+      </PageContainer>
     );
   }
 
   if (loading) {
     return (
-      <div className="mx-auto flex max-w-4xl flex-col gap-6">
+      <PageContainer variant="form" className="flex flex-col gap-6">
         <Card>
           <CardHeader>
             <Skeleton className="h-6 w-40" />
@@ -173,13 +174,13 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
             ))}
           </CardContent>
         </Card>
-      </div>
+      </PageContainer>
     );
   }
 
   if (!role) {
     return (
-      <div className="mx-auto flex max-w-4xl flex-col gap-6">
+      <PageContainer variant="form" className="flex flex-col gap-6">
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
             <div className="flex flex-col gap-1">
@@ -189,12 +190,12 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
             {backBtn}
           </CardContent>
         </Card>
-      </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6">
+    <PageContainer variant="form" className="flex flex-col gap-6">
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-center gap-2">
@@ -340,6 +341,6 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
           )}
         </CardFooter>
       </Card>
-    </div>
+    </PageContainer>
   );
 }

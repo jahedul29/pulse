@@ -47,6 +47,7 @@ import { serverStateToParams } from "@/lib/rbac/list-params";
 import { roleSchema, type RoleForm } from "@/lib/rbac/schemas";
 import type { RoleDto } from "@/lib/rbac/dto";
 import { LoadError } from "@/components/common/load-error";
+import { PageContainer } from "@/components/common/page-container";
 
 export function RolesList() {
   const t = useTranslations("rbac");
@@ -275,7 +276,7 @@ export function RolesList() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <PageContainer>
       <Card>
         <CardHeader>
           <CardTitle>{t("rolesTitle")}</CardTitle>
@@ -411,6 +412,6 @@ export function RolesList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </PageContainer>
   );
 }

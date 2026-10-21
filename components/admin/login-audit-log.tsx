@@ -20,6 +20,7 @@ import { CsvExportButton } from "@/components/admin/csv-export-button";
 import { serverStateToParams } from "@/lib/audit/list-params";
 import type { LoginAuditEntry } from "@/lib/audit/types";
 import { LoadError } from "@/components/common/load-error";
+import { PageContainer } from "@/components/common/page-container";
 
 const RESULTS: string[] = [
   "SUCCESS",
@@ -168,7 +169,7 @@ export function LoginAuditLog() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <PageContainer>
       <Card>
         <CardHeader>
           <CardTitle>{t("title")}</CardTitle>
@@ -215,6 +216,6 @@ export function LoginAuditLog() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 }

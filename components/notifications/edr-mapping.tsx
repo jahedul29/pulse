@@ -36,6 +36,7 @@ import { useRetained } from "@/lib/use-retained";
 import { mappingSchema, type MappingForm } from "@/lib/notifications/schemas";
 import { RECIPIENT_ROLES } from "@/lib/notifications/types";
 import type { EventMapping } from "@/lib/notifications/types";
+import { PageContainer } from "@/components/common/page-container";
 
 const EMPTY_MAPPING: MappingForm = {
   eventId: "",
@@ -171,7 +172,7 @@ export function EdrMapping() {
   }, [t, setMapping]);
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <PageContainer>
       <Card>
         <CardHeader>
           <CardTitle>{t("mapping.title")}</CardTitle>
@@ -280,6 +281,6 @@ export function EdrMapping() {
           </SheetContent>
         )}
       </Sheet>
-    </div>
+    </PageContainer>
   );
 }

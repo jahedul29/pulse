@@ -69,6 +69,7 @@ import { useHasPermission, PERMISSIONS } from "@/lib/auth/permissions";
 import type { AdminUserRow, AdminUserStatus, EffectiveStatus } from "@/lib/user-management/types";
 import { LoadError } from "@/components/common/load-error";
 import { isForbidden } from "@/lib/api/errors";
+import { PageContainer } from "@/components/common/page-container";
 
 const CONFIRM_WORD = "DEACTIVATE";
 const STATUS_REASON_MAX = 255;
@@ -572,7 +573,7 @@ export function UserManagement() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <PageContainer>
       <Card>
         <CardHeader>
           <CardTitle>{t("title")}</CardTitle>
@@ -1106,6 +1107,6 @@ export function UserManagement() {
             );
           })()}
       </Sheet>
-    </div>
+    </PageContainer>
   );
 }

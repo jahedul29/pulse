@@ -91,6 +91,7 @@ import { useRoles } from "@/lib/rbac/queries";
 import { useAllAdminUsers } from "@/lib/user-management/queries";
 import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 import { LoadError } from "@/components/common/load-error";
+import { PageContainer } from "@/components/common/page-container";
 
 const EMPTY_FORM: AlertRouteForm = {
   code: "",
@@ -469,7 +470,7 @@ export function AlertRoutingEditor() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <PageContainer>
       <Card>
         <CardHeader>
           <CardTitle>{t("routing.title")}</CardTitle>
@@ -894,6 +895,6 @@ export function AlertRoutingEditor() {
           </SheetContent>
         )}
       </Sheet>
-    </div>
+    </PageContainer>
   );
 }

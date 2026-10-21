@@ -29,6 +29,7 @@ import { deviceLabelFromUA } from "@/lib/device";
 import type { DeviceSession } from "@/lib/sessions/types";
 import { useIsClient } from "@/lib/use-is-client";
 import { cn } from "@/lib/utils";
+import { PageContainer } from "@/components/common/page-container";
 
 function DeviceCell({ session }: { session: DeviceSession }) {
   const ua = session.userAgent ?? "";
@@ -209,7 +210,7 @@ export function SessionManager() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <PageContainer>
       <Card>
         <CardHeader>
           <CardTitle>{t("title")}</CardTitle>
@@ -267,6 +268,6 @@ export function SessionManager() {
           </AlertDialog>
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 }
