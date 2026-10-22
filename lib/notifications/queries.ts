@@ -1,10 +1,4 @@
-import {
-  keepPreviousData,
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/api/query-keys";
 import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 import {
@@ -138,24 +132,30 @@ export function useTemplateSearch(search: string, enabled: boolean) {
   });
 }
 
-export function useDeliveries(params: ListParams) {
-  const allowed = useHasPermission(PERMISSIONS.NOTIFICATION_DELIVERIES_VIEW);
-  return useQuery({
+export function deliveriesListQuery(params: ListParams) {
+  return queryOptions({
     queryKey: queryKeys.notificationDeliveries(params),
     queryFn: () => listDeliveries(params),
     placeholderData: keepPreviousData,
-    enabled: allowed,
   });
 }
 
-export function useLiveAlerts(params: ListParams) {
-  const allowed = useHasPermission(PERMISSIONS.LIVE_ALERTS_VIEW);
-  return useQuery({
+export function useDeliveries(params: ListParams, paused = false) {
+  const allowed = useHasPermission(PERMISSIONS.NOTIFICATION_DELIVERIES_VIEW);
+  return useQuery({ ...deliveriesListQuery(params), enabled: allowed, refetchOnWindowFocus: !paused });
+}
+
+export function liveAlertsQuery(params: ListParams) {
+  return queryOptions({
     queryKey: queryKeys.liveAlerts(params),
     queryFn: () => listLiveAlerts(params),
     placeholderData: keepPreviousData,
-    enabled: allowed,
   });
+}
+
+export function useLiveAlerts(params: ListParams, paused = false) {
+  const allowed = useHasPermission(PERMISSIONS.LIVE_ALERTS_VIEW);
+  return useQuery({ ...liveAlertsQuery(params), enabled: allowed, refetchOnWindowFocus: !paused });
 }
 
 export function useDelivery(id: string | null) {
@@ -167,14 +167,17 @@ export function useDelivery(id: string | null) {
   });
 }
 
-export function useAlertRoutes(params: ListParams) {
-  const allowed = useHasPermission(PERMISSIONS.ALERT_ROUTES_VIEW);
-  return useQuery({
+export function alertRoutesQuery(params: ListParams) {
+  return queryOptions({
     queryKey: queryKeys.alertRoutes(params),
     queryFn: () => listAlertRoutes(params),
     placeholderData: keepPreviousData,
-    enabled: allowed,
   });
+}
+
+export function useAlertRoutes(params: ListParams, paused = false) {
+  const allowed = useHasPermission(PERMISSIONS.ALERT_ROUTES_VIEW);
+  return useQuery({ ...alertRoutesQuery(params), enabled: allowed, refetchOnWindowFocus: !paused });
 }
 
 export function useAlertRoute(id: number | null) {

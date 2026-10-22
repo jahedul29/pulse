@@ -2,31 +2,22 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Sheet,
-  SheetBody,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet } from "@/components/ui/sheet";
 import { DataTable, type ServerTableState } from "@/components/common/data-table";
+import { useRecordPager } from "@/lib/use-record-pager";
 import { StatusBadge } from "@/components/common/status-badge";
 import { ProfileCell } from "@/components/common/profile-cell";
 import { Chip } from "@/components/common/chip";
-import { DetailList } from "@/components/common/detail-list";
-import {
-  alertRouteItems,
-  campaignItem,
-  recipientItem,
-  templateItem,
-} from "@/components/notifications/delivery-references";
+import { DeliveryDrawerContent } from "@/components/notifications/delivery-references";
+import { recordHref } from "@/lib/record-links";
 import { fmtDateTimeParts } from "@/lib/format";
 import { useRetained } from "@/lib/use-retained";
-import { useDeliveries, useDelivery } from "@/lib/notifications/queries";
+import { deliveriesListQuery, useDeliveries, useDelivery } from "@/lib/notifications/queries";
 import { ChannelFilter } from "@/components/notifications/channel-select";
 import { CampaignFilter } from "@/components/notifications/campaign-filter";
 import { AdminUserFilter } from "@/components/admin/admin-user-filter";
@@ -42,6 +33,9 @@ import {
 import type { NotificationDeliveryDto } from "@/lib/notifications/dto";
 import { LoadError } from "@/components/common/load-error";
 import { PageContainer } from "@/components/common/page-container";
+import { columnWidth } from "@/lib/table/column-widths";
+import { RecordDrawerFallback } from "@/components/common/record-drawer-fallback";
+import { useServerPage } from "@/lib/use-server-page";
 
 export function NotificationLog() {
   const t = useTranslations("notifications");
@@ -50,14 +44,38 @@ export function NotificationLog() {
 
   const [server, setServer] = useState<ServerTableState | null>(null);
   const params = useMemo(() => deliveriesStateToParams(server), [server]);
-  const deliveriesQuery = useDeliveries(params);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const openId = searchParams.get("open");
+  const [selectedId, setSelectedId] = useState<string | null>(openId);
+  const deliveriesQuery = useDeliveries(params, selectedId != null);
   const rows = useMemo(() => deliveriesQuery.data?.data ?? [], [deliveriesQuery.data]);
   const total = deliveriesQuery.data?.meta?.total ?? rows.length;
   const onServerStateChange = useCallback((state: ServerTableState) => setServer(state), []);
 
-  const [selected, setSelected] = useState<NotificationDeliveryDto | null>(null);
-  const shown = useRetained(selected);
-  const detailQuery = useDelivery(selected?.id ?? null);
+  const { controller: tableController, page: serverPage } = useServerPage({
+    server,
+    pageSize: 10,
+    total: total,
+    data: deliveriesQuery.data,
+    failed: deliveriesQuery.isError,
+    queryFor: (state) => deliveriesListQuery(deliveriesStateToParams(state)),
+  });
+  const selectDelivery = useCallback((entry: NotificationDeliveryDto) => setSelectedId(String(entry.id)), []);
+  const pager = useRecordPager({
+    rows,
+    getId: (entry) => String(entry.id),
+    activeId: selectedId,
+    onSelect: selectDelivery,
+    page: serverPage,
+  });
+  const detailQuery = useDelivery(selectedId);
+  const head = (selectedId == null ? null : rows.find((entry) => String(entry.id) === selectedId)) ?? detailQuery.data ?? null;
+  const shown = useRetained(head);
+  const close = () => {
+    setSelectedId(null);
+    if (openId) router.replace("/admin/notifications/log");
+  };
 
   const columns = useMemo<ColumnDef<NotificationDeliveryDto, unknown>[]>(
     () => [
@@ -83,7 +101,7 @@ export function NotificationLog() {
       {
         id: "recipient",
         accessorFn: (entry) => entry.admin_account_id ?? "",
-        size: 220,
+        ...columnWidth("name"),
         header: t("log.colRecipient"),
         enableSorting: false,
         meta: {
@@ -113,7 +131,7 @@ export function NotificationLog() {
       {
         id: "template",
         accessorFn: (entry) => entry.template?.code ?? "",
-        size: 180,
+        ...columnWidth("name"),
         header: t("log.colTemplate"),
         enableSorting: false,
         cell: ({ row }) => <span className="block truncate text-xs">{row.original.template?.code ?? "-"}</span>,
@@ -121,7 +139,7 @@ export function NotificationLog() {
       {
         id: "campaign",
         accessorFn: (entry) => entry.campaign?.name ?? entry.campaign_id ?? "",
-        size: 180,
+        ...columnWidth("name"),
         header: t("log.colCampaign"),
         enableSorting: false,
         meta: {
@@ -183,7 +201,7 @@ export function NotificationLog() {
   );
 
   return (
-    <PageContainer>
+    <PageContainer fill>
       <Card>
         <CardHeader>
           <CardTitle>{t("log.title")}</CardTitle>
@@ -200,6 +218,7 @@ export function NotificationLog() {
             </div>
           ) : (
             <DataTable
+              fill
               columns={columns}
               data={rows}
               pageSize={10}
@@ -209,7 +228,10 @@ export function NotificationLog() {
               searchPlaceholder={t("log.search")}
               emptyLabel={t("log.empty")}
               itemsLabel={t("log.items")}
-              onRowClick={(entry) => setSelected(entry)}
+              onRowClick={selectDelivery}
+              getRowId={(entry) => String(entry.id)}
+              activeRowId={selectedId}
+              controllerRef={tableController}
               rowAriaLabel={(entry) => `${recipientName(entry)} ${entry.template?.code ?? ""}`}
               filterLabels={{
                 filter: t("log.filter"),
@@ -224,78 +246,23 @@ export function NotificationLog() {
         </CardContent>
       </Card>
 
-      <Sheet open={selected != null} onOpenChange={(open) => !open && setSelected(null)}>
-        {shown && (
-          <SheetContent>
-            <SheetHeader>
-              <SheetTitle>{recipientName(shown)}</SheetTitle>
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <StatusBadge tone={deliveryStatusTone(shown.status)} equalWidth={false}>
-                  {t(`deliveryStatus.${shown.status}`)}
-                </StatusBadge>
-                {(shown.channel?.name || shown.channel?.code) && (
-                  <Chip>{shown.channel?.name || shown.channel?.code}</Chip>
-                )}
-              </div>
-            </SheetHeader>
-            <SheetBody className="flex flex-col gap-4">
-              {detailQuery.isError ? (
-                <LoadError error={detailQuery.error} message={t("log.detailLoadError")} onRetry={() => detailQuery.refetch()} />
-              ) : detailQuery.isPending ? (
-                <div className="flex flex-col gap-4">
-                  <Skeleton className="h-40 w-full" />
-                  <Skeleton className="h-24 w-full" />
-                </div>
-              ) : (
-                (() => {
-                  const record = detailQuery.data;
-                  const fmtStamp = (value: string | null) =>
-                    value
-                      ? (() => {
-                          const { date, time } = fmtDateTimeParts(Date.parse(value), locale);
-                          return `${date} ${time}`;
-                        })()
-                      : "-";
-                  return (
-                    <>
-                      <DetailList
-                        items={[
-                          recipientItem(record, t),
-                          templateItem(record, t),
-                          ...alertRouteItems(record, t),
-                          campaignItem(record, t),
-                          {
-                            label: t("log.colSeverity"),
-                            value: record.severity ? (
-                              <StatusBadge tone={severityTone(record.severity)} equalWidth={false}>
-                                {t(`deliverySeverity.${record.severity}`)}
-                              </StatusBadge>
-                            ) : (
-                              "-"
-                            ),
-                          },
-                          { label: t("log.colTimestamp"), value: fmtStamp(record.sent_at) },
-                          { label: t("log.colCreated"), value: fmtStamp(record.created_at) },
-                          ...(record.error_message ? [{ label: t("log.colError"), value: record.error_message }] : []),
-                        ]}
-                      />
-                      {(record.title || record.body) && (
-                        <div className="flex flex-col gap-2">
-                          <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                            {t("log.messageBody")}
-                          </h4>
-                          <div className="flex flex-col gap-1 rounded-lg border bg-muted/30 p-3 text-sm">
-                            {record.title && <span className="font-medium">{record.title}</span>}
-                            {record.body && <span className="text-muted-foreground">{record.body}</span>}
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  );
-                })()
-              )}
-            </SheetBody>
-          </SheetContent>
+      <Sheet inspect open={selectedId != null} onOpenChange={(open) => !open && close()}>
+        {selectedId != null && head == null ? (
+          <RecordDrawerFallback
+            loading={detailQuery.isPending}
+            error={detailQuery.error}
+            onRetry={() => detailQuery.refetch()}
+          />
+        ) : shown && (
+          <DeliveryDrawerContent
+            record={detailQuery.data ?? shown}
+            link={recordHref("delivery", shown.id)}
+            pager={pager}
+            loading={detailQuery.isPending}
+            error={detailQuery.isError ? detailQuery.error : null}
+            loadErrorLabel={t("log.detailLoadError")}
+            onRetry={() => detailQuery.refetch()}
+          />
         )}
       </Sheet>
     </PageContainer>

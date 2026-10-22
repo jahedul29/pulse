@@ -40,6 +40,13 @@ const alerts = [
 
 let mockDeliveryAllowed = true;
 
+let mockSearch = "";
+
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
+  useSearchParams: () => new URLSearchParams(mockSearch),
+}));
+
 jest.mock("../../lib/notifications/queries", () => ({
   useLiveAlerts: () => ({
     data: { data: alerts, meta: { total: 2 }, severityCounts: { CRITICAL: 0, HIGH: 1, MEDIUM: 1, LOW: 0 } },
@@ -116,5 +123,19 @@ describe("LiveAlerts", () => {
     const dialog = await screen.findByRole("dialog");
     expect(await within(dialog).findByText("SUID-0009 · ops@abapro.ai")).toBeInTheDocument();
     expect(within(dialog).queryByRole("link", { name: "Open admin account Ops Lead" })).not.toBeInTheDocument();
+  });
+
+  it("says the user isn't authorized when a link opens an alert that isn't on the page", async () => {
+    mockDeliveryAllowed = false;
+    mockSearch = "open=999";
+    signIn(["NOTIFICATIONS.live_alerts.VIEW"]);
+    try {
+      render(<LiveAlerts />);
+      const dialog = await screen.findByRole("dialog");
+      expect(within(dialog).getByText("Record unavailable")).toBeInTheDocument();
+      expect(within(dialog).queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+    } finally {
+      mockSearch = "";
+    }
   });
 });

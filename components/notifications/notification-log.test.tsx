@@ -24,9 +24,19 @@ const delivery = {
   admin_account: { id: "u1", email: "layla@abapro.health", staff: { first_name: "Layla", last_name: "Haddad" } },
 };
 
+let mockSearch = "";
+
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
+  useSearchParams: () => new URLSearchParams(mockSearch),
+}));
+
 jest.mock("../../lib/notifications/queries", () => ({
   useDeliveries: () => ({ data: { data: [delivery], meta: { total: 1 } }, isPending: false, isError: false, refetch: jest.fn() }),
-  useDelivery: () => ({ data: delivery }),
+  useDelivery: (id: string | null) =>
+    id === "missing"
+      ? { data: undefined, isPending: false, isError: true, error: new Error("gone"), refetch: jest.fn() }
+      : { data: delivery },
   useChannelSearch: () => ({
     data: { pages: [{ data: [{ id: 1, code: "IN_APP", name: "In-app inbox", is_active: true }], meta: { current_page: 1, last_page: 1 } }] },
     isPending: false,
@@ -83,5 +93,38 @@ describe("NotificationLog", () => {
       "/admin/notifications/routing?open=3",
     );
     expect(within(dialog).getByText("The session was missed by the client.")).toBeInTheDocument();
+  });
+
+  it("lays the drawer out like the table, with a link to the delivery", async () => {
+    const writeText = jest.fn<Promise<void>, [string]>(async () => undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    render(<NotificationLog />);
+
+    await userEvent.click(await screen.findByRole("link", { name: "Layla Haddad EDR_SESSION_MISSED" }));
+    const dialog = await screen.findByRole("dialog", { name: "Session missed" });
+
+    const strip = within(dialog).getByText("Sent", { selector: "dt" }).closest("dl") as HTMLElement;
+    expect(within(strip).getAllByRole("term").map((term) => term.textContent)).toEqual(["Sent", "Severity", "Delivery"]);
+    expect(within(dialog).getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)).toEqual([
+      "Recipient",
+      "Delivery",
+      "Message",
+    ]);
+    await userEvent.click(within(dialog).getByRole("button", { name: "Copy link" }));
+    expect(writeText).toHaveBeenLastCalledWith("http://localhost/admin/notifications/log?open=d1");
+  });
+});
+
+describe("NotificationLog deep link", () => {
+  afterEach(() => {
+    mockSearch = "";
+  });
+
+  it("opens a drawer that says the record is unavailable when ?open= names a missing delivery", async () => {
+    mockSearch = "open=missing";
+    render(<NotificationLog />);
+
+    expect(await screen.findByText("Record unavailable")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 });

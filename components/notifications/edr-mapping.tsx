@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { RecordPager } from "@/components/common/record-pager";
+import { useOrderedRows, useRecordPager } from "@/lib/use-record-pager";
 import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
@@ -37,6 +39,7 @@ import { mappingSchema, type MappingForm } from "@/lib/notifications/schemas";
 import { RECIPIENT_ROLES } from "@/lib/notifications/types";
 import type { EventMapping } from "@/lib/notifications/types";
 import { PageContainer } from "@/components/common/page-container";
+import { columnWidth } from "@/lib/table/column-widths";
 
 const EMPTY_MAPPING: MappingForm = {
   eventId: "",
@@ -44,6 +47,8 @@ const EMPTY_MAPPING: MappingForm = {
   recipients: { client: false, rbt: false, sltot: false, bcba: false },
   templateByRole: {},
 };
+
+const mappingKey = (mapping: EventMapping) => String(mapping.eventId);
 
 export function EdrMapping() {
   const t = useTranslations("notifications");
@@ -70,6 +75,7 @@ export function EdrMapping() {
   });
   const { control, handleSubmit, reset, setValue, formState } = form;
   const recipientsVal = useWatch({ control, name: "recipients" });
+  const [orderedMappings, setOrderedMappingIds] = useOrderedRows(rows, mappingKey);
 
   const openMapping = (mapping: EventMapping) => {
     reset({
@@ -80,6 +86,13 @@ export function EdrMapping() {
     });
     setEditing(mapping);
   };
+  const pager = useRecordPager({
+    rows: orderedMappings,
+    getId: mappingKey,
+    activeId: editing ? String(editing.eventId) : null,
+    onSelect: openMapping,
+    disabled: formState.isDirty,
+  });
 
   useEffect(() => {
     let active = true;
@@ -151,7 +164,7 @@ export function EdrMapping() {
       {
         id: "event",
         accessorFn: (mapping) => mapping.eventName,
-        size: 240,
+        ...columnWidth("text"),
         header: t("mapping.colEvent"),
         cell: ({ row }) => <span className="font-medium">{row.original.eventName}</span>,
       },
@@ -172,7 +185,7 @@ export function EdrMapping() {
   }, [t, setMapping]);
 
   return (
-    <PageContainer>
+    <PageContainer fill>
       <Card>
         <CardHeader>
           <CardTitle>{t("mapping.title")}</CardTitle>
@@ -189,6 +202,7 @@ export function EdrMapping() {
             </div>
           ) : (
             <DataTable
+              fill
               columns={columns}
               data={rows}
               pageSize={10}
@@ -197,6 +211,9 @@ export function EdrMapping() {
               itemsLabel={t("mapping.items")}
               onRowClick={(mapping) => openMapping(mapping)}
               rowAriaLabel={(mapping) => mapping.eventName}
+              getRowId={(mapping) => String(mapping.eventId)}
+              activeRowId={editing ? String(editing.eventId) : null}
+              onOrderedIdsChange={setOrderedMappingIds}
               getSearchText={(mapping) => mapping.eventName}
               filterLabels={{ filter: t("mapping.filter"), clear: t("mapping.clear"), clearFilters: tc("clearFilters") }}
               enableFreeze
@@ -208,8 +225,9 @@ export function EdrMapping() {
 
       <Sheet open={editing != null} onOpenChange={(open) => !open && setEditing(null)}>
         {shown && (
-          <SheetContent>
+          <SheetContent onSwipeNext={() => pager.step(1)} onSwipePrev={() => pager.step(-1)}>
             <SheetHeader>
+              <RecordPager pager={pager} disabledReason={formState.isDirty ? tc("recordPagerUnsaved") : undefined} />
               <SheetTitle>{shown.eventName}</SheetTitle>
               <SheetDescription>{t("mapping.drawerHint")}</SheetDescription>
             </SheetHeader>

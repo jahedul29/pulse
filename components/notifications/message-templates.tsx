@@ -33,8 +33,6 @@ import {
   SheetBody,
   SheetContent,
   SheetFooter,
-  SheetHeader,
-  SheetTitle,
 } from "@/components/ui/sheet";
 import {
   AlertDialog,
@@ -52,7 +50,11 @@ import { Chip } from "@/components/common/chip";
 import { DetailList } from "@/components/common/detail-list";
 import { ChannelSelect, ChannelFilter } from "@/components/notifications/channel-select";
 import { DataTable, toolbarIconButtonClass } from "@/components/common/data-table";
-import { fmtDateTimeParts } from "@/lib/format";
+import { RecordDrawerHeader } from "@/components/common/record-drawer-header";
+import { DateTimeValue } from "@/components/common/date-time-value";
+import { DetailSection } from "@/components/common/detail-section";
+import { useOrderedRows, useRecordPager } from "@/lib/use-record-pager";
+import { recordHref } from "@/lib/record-links";
 import { useRetained } from "@/lib/use-retained";
 import { apiErrorMessage } from "@/lib/api/error-message";
 import { MERGE_VARIABLES, htmlToPlainText, renderTemplate } from "@/lib/notifications/variables";
@@ -71,6 +73,7 @@ import type { NotificationTemplateDto } from "@/lib/notifications/dto";
 import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 import { LoadError } from "@/components/common/load-error";
 import { PageContainer } from "@/components/common/page-container";
+import { columnWidth } from "@/lib/table/column-widths";
 
 function VarInserter({ label, onInsert }: { label: string; onInsert: (token: string) => void }) {
   const t = useTranslations("notifications");
@@ -120,6 +123,8 @@ const EMPTY_FORM: TemplateForm = {
   isActive: true,
 };
 
+const templateKey = (template: NotificationTemplateDto) => String(template.id);
+
 export function MessageTemplates() {
   const t = useTranslations("notifications");
   const tc = useTranslations("common");
@@ -158,6 +163,14 @@ export function MessageTemplates() {
     setLinkedId(null);
     router.replace("/admin/notifications/templates");
   };
+  const activeTemplateId = detail ? String(detail.id) : linkedDetail ? String(linkedDetail.id) : null;
+  const [orderedTemplates, setOrderedTemplateIds] = useOrderedRows(templates, templateKey);
+  const pager = useRecordPager({
+    rows: orderedTemplates,
+    getId: templateKey,
+    activeId: activeTemplateId,
+    onSelect: setDetail,
+  });
 
   const schema = useMemo(
     () =>
@@ -271,14 +284,14 @@ export function MessageTemplates() {
       {
         id: "code",
         accessorFn: (template) => template.code,
-        size: 150,
+        ...columnWidth("label"),
         header: t("templates.colCode"),
         cell: ({ row }) => <span className="block truncate font-medium">{row.original.code}</span>,
       },
       {
         id: "name",
         accessorFn: (template) => template.name,
-        size: 200,
+        ...columnWidth("name"),
         header: t("templates.colName"),
         cell: ({ row }) => <span className="text-sm">{row.original.name}</span>,
       },
@@ -299,7 +312,7 @@ export function MessageTemplates() {
       {
         id: "en",
         accessorFn: (template) => localizedText(template.body, "en"),
-        size: 280,
+        ...columnWidth("text"),
         header: t("templates.colEn"),
         enableSorting: false,
         cell: ({ row }) => (
@@ -311,7 +324,7 @@ export function MessageTemplates() {
       {
         id: "ar",
         accessorFn: (template) => localizedText(template.body, "ar"),
-        size: 280,
+        ...columnWidth("text"),
         header: t("templates.colAr"),
         enableSorting: false,
         cell: ({ row }) => (
@@ -323,7 +336,7 @@ export function MessageTemplates() {
       {
         id: "active",
         accessorFn: (template) => (template.is_active ? "1" : "0"),
-        size: 100,
+        size: 112,
         header: t("templates.colActive"),
         meta: {
           filter: "select",
@@ -399,7 +412,7 @@ export function MessageTemplates() {
   );
 
   return (
-    <PageContainer>
+    <PageContainer fill>
       <Card>
         <CardHeader>
           <CardTitle>{t("templates.title")}</CardTitle>
@@ -416,6 +429,7 @@ export function MessageTemplates() {
             </div>
           ) : (
             <DataTable
+              fill
               columns={columns}
               data={templates}
               pageSize={10}
@@ -424,6 +438,9 @@ export function MessageTemplates() {
               itemsLabel={t("templates.items")}
               onRowClick={(template) => setDetail(template)}
               rowAriaLabel={(template) => template.code}
+              getRowId={(template) => String(template.id)}
+              activeRowId={activeTemplateId}
+              onOrderedIdsChange={setOrderedTemplateIds}
               getSearchText={(template) =>
                 `${template.code} ${template.name} ${htmlToPlainText(template.body?.EN ?? "")} ${htmlToPlainText(
                   template.body?.AR ?? "",
@@ -675,87 +692,72 @@ export function MessageTemplates() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Sheet open={detail != null || linkedId != null} onOpenChange={(open) => !open && closeDetail()}>
+      <Sheet inspect open={detail != null || linkedId != null} onOpenChange={(open) => !open && closeDetail()}>
         {shownDetail && (
-          <SheetContent>
-            <SheetHeader>
-              <SheetTitle>{shownDetail.name}</SheetTitle>
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <Chip>{channelName(shownDetail.channel_id)}</Chip>
-                <StatusBadge tone={shownDetail.is_active ? "success" : "neutral"} equalWidth={false}>
-                  {shownDetail.is_active ? t("templates.active") : t("templates.inactive")}
-                </StatusBadge>
-              </div>
-            </SheetHeader>
-            <SheetBody className="flex flex-col gap-4">
+          <SheetContent onSwipeNext={() => pager.step(1)} onSwipePrev={() => pager.step(-1)}>
+            <RecordDrawerHeader
+              pager={pager}
+              link={recordHref("template", shownDetail.id)}
+              title={shownDetail.name}
+              subtitle={<span className="font-mono text-[13px]">{shownDetail.code}</span>}
+              summary={[
+                {
+                  label: t("templates.colCreated"),
+                  value: shownDetail.created_at ? (
+                    <DateTimeValue epoch={Date.parse(shownDetail.created_at)} locale={locale} />
+                  ) : (
+                    t("templates.notSet")
+                  ),
+                },
+                { label: t("templates.colChannel"), value: channelName(shownDetail.channel_id) },
+                {
+                  label: t("templates.colActive"),
+                  value: (
+                    <StatusBadge tone={shownDetail.is_active ? "success" : "neutral"} equalWidth={false}>
+                      {shownDetail.is_active ? t("templates.active") : t("templates.inactive")}
+                    </StatusBadge>
+                  ),
+                },
+              ]}
+            />
+            <SheetBody className="flex flex-col gap-6">
               {detailQuery.isError ? (
                 <LoadError error={detailQuery.error} message={t("templates.detailLoadError")} onRetry={() => detailQuery.refetch()} />
               ) : detailQuery.isPending ? (
                 <div className="flex flex-col gap-4">
-                  <Skeleton className="h-24 w-full" />
                   <Skeleton className="h-28 w-full" />
                   <Skeleton className="h-28 w-full" />
                 </div>
               ) : (
                 (() => {
                   const record = detailQuery.data;
-                  const notSet = <span className="text-muted-foreground italic">{t("templates.notSet")}</span>;
+                  const notSet = <span className="font-normal text-muted-foreground italic">{t("templates.notSet")}</span>;
+                  const copy = (language: "EN" | "AR") => {
+                    const html = record.body?.[language] ?? "";
+                    return (
+                      <DetailSection title={language === "EN" ? t("templates.colEn") : t("templates.colAr")}>
+                        <DetailList
+                          divided
+                          items={[{ label: t("templates.detailSubject"), value: record.subject?.[language] || notSet }]}
+                        />
+                        <div dir={language === "AR" ? "rtl" : undefined} className="rounded-lg border bg-muted/30 p-3 text-sm">
+                          {htmlToPlainText(html) ? (
+                            <div
+                              dangerouslySetInnerHTML={{
+                                __html: sanitizeTemplateHtml(renderTemplate(html, language === "AR" ? "ar" : "en")),
+                              }}
+                            />
+                          ) : (
+                            notSet
+                          )}
+                        </div>
+                      </DetailSection>
+                    );
+                  };
                   return (
                     <>
-                      <DetailList
-                        items={[
-                          { label: t("templates.colCode"), value: record.code },
-                          { label: t("templates.colName"), value: record.name },
-                          { label: t("templates.channelLabel"), value: channelName(record.channel_id) },
-                          {
-                            label: t("templates.colActive"),
-                            value: record.is_active ? t("templates.active") : t("templates.inactive"),
-                          },
-                          { label: t("templates.subjectEnLabel"), value: record.subject?.EN || notSet },
-                          { label: t("templates.subjectArLabel"), value: record.subject?.AR || notSet },
-                          {
-                            label: t("templates.colCreated"),
-                            value: record.created_at
-                              ? (() => {
-                                  const { date, time } = fmtDateTimeParts(Date.parse(record.created_at), locale);
-                                  return `${date} ${time}`;
-                                })()
-                              : notSet,
-                          },
-                        ]}
-                      />
-                      <div className="flex flex-col gap-2">
-                        <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                          {t("templates.enLabel")}
-                        </h4>
-                        <div className="rounded-lg border bg-muted/30 p-3 text-sm">
-                          {htmlToPlainText(record.body?.EN ?? "") ? (
-                            <div
-                              dangerouslySetInnerHTML={{
-                                __html: sanitizeTemplateHtml(renderTemplate(record.body?.EN ?? "", "en")),
-                              }}
-                            />
-                          ) : (
-                            notSet
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                          {t("templates.arLabel")}
-                        </h4>
-                        <div dir="rtl" className="rounded-lg border bg-muted/30 p-3 text-sm">
-                          {htmlToPlainText(record.body?.AR ?? "") ? (
-                            <div
-                              dangerouslySetInnerHTML={{
-                                __html: sanitizeTemplateHtml(renderTemplate(record.body?.AR ?? "", "ar")),
-                              }}
-                            />
-                          ) : (
-                            notSet
-                          )}
-                        </div>
-                      </div>
+                      {copy("EN")}
+                      {copy("AR")}
                     </>
                   );
                 })()

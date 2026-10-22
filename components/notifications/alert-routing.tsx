@@ -37,8 +37,6 @@ import {
   SheetBody,
   SheetContent,
   SheetFooter,
-  SheetHeader,
-  SheetTitle,
 } from "@/components/ui/sheet";
 import {
   AlertDialog,
@@ -63,7 +61,10 @@ import {
   TemplateSelect,
 } from "@/components/notifications/channel-select";
 import { DataTable, toolbarIconButtonClass, type ServerTableState } from "@/components/common/data-table";
-import { fmtDateTimeParts } from "@/lib/format";
+import { RecordDrawerHeader } from "@/components/common/record-drawer-header";
+import { DateTimeValue } from "@/components/common/date-time-value";
+import { DetailSection } from "@/components/common/detail-section";
+import { useRecordPager } from "@/lib/use-record-pager";
 import { useRetained } from "@/lib/use-retained";
 import { apiErrorMessage } from "@/lib/api/error-message";
 import { alertRouteSchema, type AlertRouteForm } from "@/lib/notifications/schemas";
@@ -79,6 +80,7 @@ import {
 } from "@/lib/notifications/dto";
 import type { AudienceType, DeliverySeverityCode, NotificationAlertRouteDto } from "@/lib/notifications/dto";
 import {
+  alertRoutesQuery,
   useAlertRoute,
   useAlertRoutes,
   useAllTemplates,
@@ -92,6 +94,8 @@ import { useAllAdminUsers } from "@/lib/user-management/queries";
 import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 import { LoadError } from "@/components/common/load-error";
 import { PageContainer } from "@/components/common/page-container";
+import { columnWidth } from "@/lib/table/column-widths";
+import { useServerPage } from "@/lib/use-server-page";
 
 const EMPTY_FORM: AlertRouteForm = {
   code: "",
@@ -118,8 +122,12 @@ export function AlertRoutingEditor() {
   const locale = useLocale();
 
   const [server, setServer] = useState<ServerTableState | null>(null);
+  const [detail, setDetail] = useState<NotificationAlertRouteDto | null>(null);
   const params = useMemo(() => alertRoutesStateToParams(server), [server]);
-  const routesQuery = useAlertRoutes(params);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [linkedId, setLinkedId] = useState<number | null>(() => Number(searchParams.get("open")) || null);
+  const routesQuery = useAlertRoutes(params, detail != null || linkedId != null);
   const routes = useMemo(() => routesQuery.data?.data ?? [], [routesQuery.data]);
   const total = routesQuery.data?.meta?.total ?? routes.length;
   const onServerStateChange = useCallback((state: ServerTableState) => setServer(state), []);
@@ -184,10 +192,6 @@ export function AlertRoutingEditor() {
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
   const [editing, setEditing] = useState<NotificationAlertRouteDto | null>(null);
   const [deleting, setDeleting] = useState<NotificationAlertRouteDto | null>(null);
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [linkedId, setLinkedId] = useState<number | null>(() => Number(searchParams.get("open")) || null);
-  const [detail, setDetail] = useState<NotificationAlertRouteDto | null>(null);
   const detailQuery = useAlertRoute(detail?.id ?? linkedId);
   const linkedDetail = linkedId != null && detail == null && detailQuery.data?.id === linkedId ? detailQuery.data : null;
   const shownDetail = useRetained(detail ?? linkedDetail);
@@ -197,6 +201,22 @@ export function AlertRoutingEditor() {
     setLinkedId(null);
     router.replace("/admin/notifications/routing");
   };
+  const activeRouteId = detail ? String(detail.id) : linkedDetail ? String(linkedDetail.id) : null;
+  const { controller: tableController, page: serverPage } = useServerPage({
+    server,
+    pageSize: 10,
+    total: total,
+    data: routesQuery.data,
+    failed: routesQuery.isError,
+    queryFor: (state) => alertRoutesQuery(alertRoutesStateToParams(state)),
+  });
+  const pager = useRecordPager({
+    rows: routes,
+    getId: (route) => String(route.id),
+    activeId: activeRouteId,
+    onSelect: setDetail,
+    page: serverPage,
+  });
 
   const schema = useMemo(
     () =>
@@ -310,14 +330,14 @@ export function AlertRoutingEditor() {
       {
         id: "code",
         accessorFn: (route) => route.code,
-        size: 200,
+        ...columnWidth("label", { min: 160 }),
         header: t("routing.colCode"),
         cell: ({ row }) => <span className="font-medium">{row.original.code}</span>,
       },
       {
         id: "name",
         accessorFn: (route) => route.name,
-        size: 200,
+        ...columnWidth("name"),
         header: t("routing.colName"),
         cell: ({ row }) => <span className="text-sm">{row.original.name}</span>,
       },
@@ -339,7 +359,7 @@ export function AlertRoutingEditor() {
       {
         id: "template",
         accessorFn: (route) => route.template_id ?? "",
-        size: 180,
+        ...columnWidth("name"),
         header: t("routing.colTemplate"),
         enableSorting: false,
         cell: ({ row }) => (
@@ -351,7 +371,7 @@ export function AlertRoutingEditor() {
       {
         id: "audience",
         accessorFn: (route) => route.audience_type,
-        size: 160,
+        ...columnWidth("label"),
         header: t("routing.colAudience"),
         enableSorting: false,
         meta: {
@@ -470,7 +490,7 @@ export function AlertRoutingEditor() {
   );
 
   return (
-    <PageContainer>
+    <PageContainer fill>
       <Card>
         <CardHeader>
           <CardTitle>{t("routing.title")}</CardTitle>
@@ -487,6 +507,7 @@ export function AlertRoutingEditor() {
             </div>
           ) : (
             <DataTable
+              fill
               columns={columns}
               data={routes}
               pageSize={10}
@@ -498,6 +519,9 @@ export function AlertRoutingEditor() {
               itemsLabel={t("routing.items")}
               onRowClick={(route) => setDetail(route)}
               rowAriaLabel={(route) => route.name}
+              getRowId={(route) => String(route.id)}
+              activeRowId={activeRouteId}
+              controllerRef={tableController}
               filterLabels={{
                 filter: t("routing.filter"),
                 clear: t("routing.clear"),
@@ -790,82 +814,90 @@ export function AlertRoutingEditor() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Sheet open={detail != null || linkedId != null} onOpenChange={(open) => !open && closeDetail()}>
+      <Sheet inspect open={detail != null || linkedId != null} onOpenChange={(open) => !open && closeDetail()}>
         {shownDetail && (
-          <SheetContent>
-            <SheetHeader>
-              <SheetTitle>{shownDetail.name}</SheetTitle>
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <Chip>{shownDetail.channel?.name ?? channelName(shownDetail.channel_id)}</Chip>
-                <StatusBadge tone={shownDetail.is_active ? "success" : "neutral"} equalWidth={false}>
-                  {shownDetail.is_active ? t("routing.active") : t("routing.inactive")}
-                </StatusBadge>
-              </div>
-            </SheetHeader>
-            <SheetBody className="flex flex-col gap-4">
+          <SheetContent onSwipeNext={() => pager.step(1)} onSwipePrev={() => pager.step(-1)}>
+            <RecordDrawerHeader
+              pager={pager}
+              link={recordHref("alertRoute", shownDetail.id)}
+              title={shownDetail.name}
+              subtitle={<span className="font-mono text-[13px]">{shownDetail.code}</span>}
+              summary={[
+                {
+                  label: t("routing.colCreated"),
+                  value: shownDetail.created_at ? (
+                    <DateTimeValue epoch={Date.parse(shownDetail.created_at)} locale={locale} />
+                  ) : (
+                    t("routing.notSet")
+                  ),
+                },
+                {
+                  label: t("routing.colSeverity"),
+                  value: shownDetail.severity ? (
+                    <StatusBadge tone={severityTone(shownDetail.severity)} equalWidth={false}>
+                      {t(`deliverySeverity.${shownDetail.severity}`)}
+                    </StatusBadge>
+                  ) : (
+                    "-"
+                  ),
+                },
+                {
+                  label: t("routing.colActive"),
+                  value: (
+                    <StatusBadge tone={shownDetail.is_active ? "success" : "neutral"} equalWidth={false}>
+                      {shownDetail.is_active ? t("routing.active") : t("routing.inactive")}
+                    </StatusBadge>
+                  ),
+                },
+              ]}
+            />
+            <SheetBody className="flex flex-col gap-6">
               {detailQuery.isError ? (
                 <LoadError error={detailQuery.error} message={t("routing.detailLoadError")} onRetry={() => detailQuery.refetch()} />
               ) : detailQuery.isPending ? (
                 <div className="flex flex-col gap-4">
-                  <Skeleton className="h-40 w-full" />
-                  <Skeleton className="h-24 w-full" />
+                  <Skeleton className="h-28 w-full" />
+                  <Skeleton className="h-16 w-full" />
                 </div>
               ) : (
                 (() => {
                   const record = detailQuery.data;
                   const members = audienceMembers(record);
                   return (
-                    <DetailList
-                      items={[
-                        { label: t("routing.colCode"), value: record.code },
-                        { label: t("routing.colName"), value: record.name },
-                        {
-                          label: t("routing.colTemplate"),
-                          value: record.template_id ? (
-                            <RecordLink href={recordHref("template", record.template_id)}>
-                              {record.template?.name ?? templateName(record.template_id)}
-                            </RecordLink>
-                          ) : (
-                            t("routing.noTemplate")
-                          ),
-                        },
-                        {
-                          label: t("routing.colAudience"),
-                          value:
-                            record.audience_type === "ALL_ADMINS" || members.length === 0 ? (
-                              t(`routing.audienceType.${record.audience_type}`)
-                            ) : (
-                              <div className="flex flex-wrap gap-1.5">
-                                {members.map((member) => (
-                                  <ChipLink key={member.key} href={member.href}>
-                                    {member.name}
-                                  </ChipLink>
-                                ))}
-                              </div>
-                            ),
-                        },
-                        { label: t("routing.colPriority"), value: String(record.priority) },
-                        {
-                          label: t("routing.colSeverity"),
-                          value: record.severity ? (
-                            <StatusBadge tone={severityTone(record.severity)} equalWidth={false}>
-                              {t(`deliverySeverity.${record.severity}`)}
-                            </StatusBadge>
-                          ) : (
-                            "-"
-                          ),
-                        },
-                        {
-                          label: t("routing.colCreated"),
-                          value: record.created_at
-                            ? (() => {
-                                const { date, time } = fmtDateTimeParts(Date.parse(record.created_at), locale);
-                                return `${date} ${time}`;
-                              })()
-                            : t("routing.notSet"),
-                        },
-                      ]}
-                    />
+                    <>
+                      <DetailSection title={t("routing.sectionDelivery")}>
+                        <DetailList
+                          divided
+                          items={[
+                            { label: t("routing.colChannel"), value: record.channel?.name ?? channelName(record.channel_id) },
+                            {
+                              label: t("routing.colTemplate"),
+                              value: record.template_id ? (
+                                <RecordLink href={recordHref("template", record.template_id)}>
+                                  {record.template?.name ?? templateName(record.template_id)}
+                                </RecordLink>
+                              ) : (
+                                t("routing.noTemplate")
+                              ),
+                            },
+                            { label: t("routing.colPriority"), value: <span className="tabular">{record.priority}</span> },
+                          ]}
+                        />
+                      </DetailSection>
+                      <DetailSection title={t("routing.colAudience")}>
+                        {record.audience_type === "ALL_ADMINS" || members.length === 0 ? (
+                          <p className="text-sm font-medium">{t(`routing.audienceType.${record.audience_type}`)}</p>
+                        ) : (
+                          <div className="flex flex-wrap gap-1.5">
+                            {members.map((member) => (
+                              <ChipLink key={member.key} href={member.href}>
+                                {member.name}
+                              </ChipLink>
+                            ))}
+                          </div>
+                        )}
+                      </DetailSection>
+                    </>
                   );
                 })()
               )}

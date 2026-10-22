@@ -2,26 +2,22 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet } from "@/components/ui/sheet";
 import { DataTable, type ServerTableState } from "@/components/common/data-table";
+import { useRecordPager } from "@/lib/use-record-pager";
 import { StatusBadge } from "@/components/common/status-badge";
 import { ProfileCell } from "@/components/common/profile-cell";
 import { Chip } from "@/components/common/chip";
-import { DetailList } from "@/components/common/detail-list";
-import {
-  alertRouteItems,
-  campaignItem,
-  channelItem,
-  recipientItem,
-  templateItem,
-} from "@/components/notifications/delivery-references";
+import { DeliveryDrawerContent } from "@/components/notifications/delivery-references";
+import { recordHref } from "@/lib/record-links";
 import { fmtDateTimeParts } from "@/lib/format";
 import { useRetained } from "@/lib/use-retained";
-import { useLiveAlerts, useDelivery } from "@/lib/notifications/queries";
+import { liveAlertsQuery, useLiveAlerts, useDelivery } from "@/lib/notifications/queries";
 import { liveAlertsStateToParams } from "@/lib/notifications/list-params";
 import {
   DELIVERY_STATUS_CODES,
@@ -36,6 +32,9 @@ import { AdminUserFilter } from "@/components/admin/admin-user-filter";
 import { LoadError } from "@/components/common/load-error";
 import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 import { PageContainer } from "@/components/common/page-container";
+import { columnWidth } from "@/lib/table/column-widths";
+import { RecordDrawerFallback } from "@/components/common/record-drawer-fallback";
+import { useServerPage } from "@/lib/use-server-page";
 
 export function LiveAlerts() {
   const t = useTranslations("notifications");
@@ -44,15 +43,39 @@ export function LiveAlerts() {
 
   const [server, setServer] = useState<ServerTableState | null>(null);
   const params = useMemo(() => liveAlertsStateToParams(server), [server]);
-  const alertsQuery = useLiveAlerts(params);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const openId = searchParams.get("open");
+  const [selectedId, setSelectedId] = useState<string | null>(openId);
+  const alertsQuery = useLiveAlerts(params, selectedId != null);
   const rows = useMemo(() => alertsQuery.data?.data ?? [], [alertsQuery.data]);
   const total = alertsQuery.data?.meta?.total ?? rows.length;
   const severityCounts = useMemo(() => alertsQuery.data?.severityCounts ?? {}, [alertsQuery.data]);
   const onServerStateChange = useCallback((state: ServerTableState) => setServer(state), []);
 
-  const [selected, setSelected] = useState<NotificationDeliveryDto | null>(null);
-  const shown = useRetained(selected);
-  const detailQuery = useDelivery(selected?.id ?? null);
+  const { controller: tableController, page: serverPage } = useServerPage({
+    server,
+    pageSize: 10,
+    total: total,
+    data: alertsQuery.data,
+    failed: alertsQuery.isError,
+    queryFor: (state) => liveAlertsQuery(liveAlertsStateToParams(state)),
+  });
+  const selectDelivery = useCallback((entry: NotificationDeliveryDto) => setSelectedId(String(entry.id)), []);
+  const pager = useRecordPager({
+    rows,
+    getId: (entry) => String(entry.id),
+    activeId: selectedId,
+    onSelect: selectDelivery,
+    page: serverPage,
+  });
+  const detailQuery = useDelivery(selectedId);
+  const head = (selectedId == null ? null : rows.find((entry) => String(entry.id) === selectedId)) ?? detailQuery.data ?? null;
+  const shown = useRetained(head);
+  const close = () => {
+    setSelectedId(null);
+    if (openId) router.replace("/admin/notifications/alerts");
+  };
   const canViewDelivery = useHasPermission(PERMISSIONS.NOTIFICATION_DELIVERIES_VIEW);
 
   const columns = useMemo<ColumnDef<NotificationDeliveryDto, unknown>[]>(
@@ -99,7 +122,7 @@ export function LiveAlerts() {
       {
         id: "title",
         accessorFn: (entry) => `${entry.title ?? ""} ${entry.body ?? ""}`,
-        size: 300,
+        ...columnWidth("text", { min: 240 }),
         header: t("alerts.colTitle"),
         enableSorting: false,
         cell: ({ row }) => (
@@ -114,7 +137,7 @@ export function LiveAlerts() {
       {
         id: "recipient",
         accessorFn: (entry) => entry.admin_account_id ?? "",
-        size: 200,
+        ...columnWidth("name"),
         header: t("log.colRecipient"),
         enableSorting: false,
         meta: {
@@ -162,7 +185,7 @@ export function LiveAlerts() {
   );
 
   return (
-    <PageContainer>
+    <PageContainer fill>
       <Card>
         <CardHeader>
           <CardTitle>{t("alerts.title")}</CardTitle>
@@ -179,6 +202,7 @@ export function LiveAlerts() {
             </div>
           ) : (
             <DataTable
+              fill
               columns={columns}
               data={rows}
               pageSize={10}
@@ -188,7 +212,10 @@ export function LiveAlerts() {
               searchPlaceholder={t("alerts.search")}
               emptyLabel={t("alerts.empty")}
               itemsLabel={t("alerts.items")}
-              onRowClick={(entry) => setSelected(entry)}
+              onRowClick={selectDelivery}
+              getRowId={(entry) => String(entry.id)}
+              activeRowId={selectedId}
+              controllerRef={tableController}
               rowAriaLabel={(entry) => `${entry.title ?? recipientName(entry)}`}
               filterLabels={{
                 filter: t("log.filter"),
@@ -203,71 +230,24 @@ export function LiveAlerts() {
         </CardContent>
       </Card>
 
-      <Sheet open={selected != null} onOpenChange={(open) => !open && setSelected(null)}>
-        {shown && (
-          <SheetContent>
-            <SheetHeader>
-              <SheetTitle>{shown.title || recipientName(shown)}</SheetTitle>
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <StatusBadge tone={severityTone(shown.severity)} equalWidth={false}>
-                  {shown.severity ? t(`deliverySeverity.${shown.severity}`) : "-"}
-                </StatusBadge>
-                <StatusBadge tone={deliveryStatusTone(shown.status)} equalWidth={false}>
-                  {t(`deliveryStatus.${shown.status}`)}
-                </StatusBadge>
-                <Chip>{shown.channel?.name ?? "-"}</Chip>
-              </div>
-            </SheetHeader>
-            <SheetBody className="flex flex-col gap-4">
-              {detailQuery.isError ? (
-                <LoadError error={detailQuery.error} message={t("alerts.detailLoadError")} onRetry={() => detailQuery.refetch()} />
-              ) : canViewDelivery && detailQuery.isPending ? (
-                <div className="flex flex-col gap-4">
-                  <Skeleton className="h-40 w-full" />
-                  <Skeleton className="h-24 w-full" />
-                </div>
-              ) : (
-                (() => {
-                  const record = detailQuery.data ?? shown;
-                  const stamp = record.sent_at ?? record.created_at;
-                  return (
-                    <>
-                      <DetailList
-                        items={[
-                          recipientItem(record, t),
-                          channelItem(record, t),
-                          templateItem(record, t),
-                          ...alertRouteItems(record, t),
-                          campaignItem(record, t),
-                          {
-                            label: t("log.colTimestamp"),
-                            value: stamp
-                              ? (() => {
-                                  const { date, time } = fmtDateTimeParts(Date.parse(stamp), locale);
-                                  return `${date} ${time}`;
-                                })()
-                              : "-",
-                          },
-                          ...(record.error_message ? [{ label: t("log.colError"), value: record.error_message }] : []),
-                        ]}
-                      />
-                      {(record.title || record.body) && (
-                        <div className="flex flex-col gap-2">
-                          <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                            {t("log.messageBody")}
-                          </h4>
-                          <div className="flex flex-col gap-1 rounded-lg border bg-muted/30 p-3 text-sm">
-                            {record.title && <span className="font-medium">{record.title}</span>}
-                            {record.body && <span className="text-muted-foreground">{record.body}</span>}
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  );
-                })()
-              )}
-            </SheetBody>
-          </SheetContent>
+      <Sheet inspect open={selectedId != null} onOpenChange={(open) => !open && close()}>
+        {selectedId != null && head == null ? (
+          <RecordDrawerFallback
+            loading={detailQuery.isPending}
+            error={detailQuery.error}
+            forbidden={!canViewDelivery}
+            onRetry={() => detailQuery.refetch()}
+          />
+        ) : shown && (
+          <DeliveryDrawerContent
+            record={detailQuery.data ?? shown}
+            link={recordHref("liveAlert", shown.id)}
+            pager={pager}
+            loading={canViewDelivery && detailQuery.isPending}
+            error={detailQuery.isError ? detailQuery.error : null}
+            loadErrorLabel={t("alerts.detailLoadError")}
+            onRetry={() => detailQuery.refetch()}
+          />
         )}
       </Sheet>
     </PageContainer>
