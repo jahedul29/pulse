@@ -5,9 +5,17 @@ import { AdminAccess } from "./admin-access";
 import { useAuthStore } from "@/lib/auth/store";
 
 const mockAdmins = [
-  { id: "u1", name: "Dana Okonkwo", email: "dana@abapro.health", initials: "DO" },
-  { id: "u2", name: "Emma Novak", email: "emma@abapro.health", initials: "EN" },
+  { id: "u1", name: "Dana Okonkwo", email: "dana@abapro.health", initials: "DO", status: "active", roles: [{ id: "3", name: "Administrator" }] },
+  { id: "u2", name: "Emma Novak", email: "emma@abapro.health", initials: "EN", status: "active", roles: [{ id: "4", name: "superadmin" }] },
 ];
+
+const mockReplace = jest.fn();
+let mockSearch = "";
+
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: mockReplace, push: jest.fn() }),
+  useSearchParams: () => new URLSearchParams(mockSearch),
+}));
 
 const mutation = () => ({ mutateAsync: jest.fn(), isPending: false });
 
@@ -21,13 +29,15 @@ jest.mock("../../lib/rbac/queries", () => ({
     data: userId
       ? {
           roles: [
-            {
-              id: 3,
-              name: "Administrator",
-              is_system: true,
-              granted_at: "2026-09-21T13:10:35.000000Z",
-              granted_by_admin_id: "u2",
-            },
+            userId === "u2"
+              ? { id: 4, name: "superadmin", is_system: true, granted_at: "2026-09-21T13:10:35.000000Z" }
+              : {
+                  id: 3,
+                  name: "Administrator",
+                  is_system: true,
+                  granted_at: "2026-09-21T13:10:35.000000Z",
+                  granted_by_admin_id: "u2",
+                },
           ],
           permissions: [
             {
@@ -89,6 +99,8 @@ jest.mock("next-intl", () => {
 
 
 beforeEach(() => {
+  mockSearch = "";
+  mockReplace.mockClear();
   useAuthStore.setState({
     session: { email: "owner@abapro.health", name: "Owner", role: "superadmin", token: "t", issuedAt: 0 },
   });
@@ -96,10 +108,8 @@ beforeEach(() => {
 
 describe("AdminAccess", () => {
   it("links the picked admin and the admin who granted each role", async () => {
+    mockSearch = "user=u1";
     render(<AdminAccess />);
-
-    await userEvent.click(screen.getByRole("button", { name: /Choose a user/ }));
-    await userEvent.click(await screen.findByRole("button", { name: /Dana Okonkwo/ }));
 
     expect(await screen.findByRole("link", { name: "Open user account Dana Okonkwo" })).toHaveAttribute(
       "href",
@@ -111,10 +121,8 @@ describe("AdminAccess", () => {
   });
 
   it("shows each permission overlay with its grant date, granter and expiry after loading", async () => {
+    mockSearch = "user=u1";
     render(<AdminAccess />);
-
-    await userEvent.click(screen.getByRole("button", { name: /Choose a user/ }));
-    await userEvent.click(await screen.findByRole("button", { name: /Dana Okonkwo/ }));
 
     expect(await screen.findByText("View Clients module.")).toBeInTheDocument();
     expect(screen.getByText("CLIENTS.clients.VIEW")).toBeInTheDocument();
@@ -123,10 +131,8 @@ describe("AdminAccess", () => {
   });
 
   it("uses labelled actions, links the role, shows No expiry, and confirms before removing an overlay", async () => {
+    mockSearch = "user=u1";
     render(<AdminAccess />);
-
-    await userEvent.click(screen.getByRole("button", { name: /Choose a user/ }));
-    await userEvent.click(await screen.findByRole("button", { name: /Dana Okonkwo/ }));
 
     expect(await screen.findByRole("link", { name: "Administrator" })).toHaveAttribute("href", "/admin/roles/3");
     expect(screen.getByRole("button", { name: "Revoke Administrator" })).toHaveTextContent("Revoke");
@@ -136,5 +142,57 @@ describe("AdminAccess", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Remove View Clients module." }));
     expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
+  });
+
+  it("puts the picked user in the address so the page can be linked", async () => {
+    render(<AdminAccess />);
+
+    await userEvent.click(screen.getByRole("button", { name: /Choose a user/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /Dana Okonkwo/ }));
+
+    expect(mockReplace).toHaveBeenCalledWith("/admin/access?user=u1", { scroll: false });
+  });
+
+  it("opens the user named in ?user= straight away", async () => {
+    mockSearch = "user=u1";
+    render(<AdminAccess />);
+
+    expect(await screen.findByRole("link", { name: "Open user account Dana Okonkwo" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Revoke Administrator" })).not.toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("leaves your own account out of the user list and ignores a link to it", async () => {
+    useAuthStore.setState({
+      session: { email: "dana@abapro.health", name: "Dana", role: "superadmin", token: "t", issuedAt: 0 },
+    });
+    const { unmount } = render(<AdminAccess />);
+
+    await userEvent.click(screen.getByRole("button", { name: /Choose a user/ }));
+    expect(await screen.findByRole("button", { name: /Emma Novak/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Dana Okonkwo/ })).not.toBeInTheDocument();
+    unmount();
+
+    mockSearch = "user=u1";
+    render(<AdminAccess />);
+    expect(screen.getByText("This user couldn't be found. Pick a user from the list.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Revoke Administrator" })).not.toBeInTheDocument();
+  });
+
+  it("follows the address: clearing ?user= clears the selection", () => {
+    mockSearch = "user=u1";
+    const { rerender } = render(<AdminAccess />);
+    expect(screen.getByRole("link", { name: "Open user account Dana Okonkwo" })).toBeInTheDocument();
+
+    mockSearch = "";
+    rerender(<AdminAccess />);
+    expect(screen.getByText("Pick a user to view and manage their access.")).toBeInTheDocument();
+  });
+
+  it("keeps the Super Admin role on the last active Super Admin", async () => {
+    mockSearch = "user=u2";
+    render(<AdminAccess />);
+
+    expect(await screen.findByRole("button", { name: "Revoke superadmin" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "Remove View Clients module." })).not.toHaveAttribute("aria-disabled", "true");
   });
 });

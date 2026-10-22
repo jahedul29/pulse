@@ -39,16 +39,20 @@ const TRIGGER = "w-full justify-between font-normal";
 export function InviteAdminDialog({
   open,
   onOpenChange,
+  initialStaff = null,
+  initialRoleIds = [],
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialStaff?: StaffRecord | null;
+  initialRoleIds?: string[];
 }) {
   const t = useTranslations("userManagement");
   const tc = useTranslations("common");
   const ta = useTranslations("apiErrors");
   const locale = useLocale();
 
-  const [picked, setPicked] = useState<StaffRecord | null>(null);
+  const [picked, setPicked] = useState<StaffRecord | null>(initialStaff);
   const [staffOpen, setStaffOpen] = useState(false);
   const [staffQuery, setStaffQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -63,7 +67,7 @@ export function InviteAdminDialog({
   const form = useForm<InviteForm>({
     resolver: zodResolver(schema),
     mode: "onSubmit",
-    defaultValues: { staffId: "", email: "", roleIds: [] },
+    defaultValues: { staffId: initialStaff?.id ?? "", email: initialStaff?.email ?? "", roleIds: initialRoleIds },
   });
   const { register, handleSubmit, reset, setValue, formState } = form;
   const staffField = useController({ control: form.control, name: "staffId" });

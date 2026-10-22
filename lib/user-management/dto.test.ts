@@ -103,9 +103,17 @@ describe("userDtoToRow", () => {
     const row = userDtoToRow(dto);
     expect(row.roleIds).toEqual(["3", "7"]);
     expect(row.roles).toEqual([
-      { id: "3", name: "Administrator" },
-      { id: "7", name: "Supervisor" },
+      { id: "3", name: "Administrator", expiresAt: null },
+      { id: "7", name: "Supervisor", expiresAt: null },
     ]);
+  });
+
+  it("reads a role grant's expiry as UTC", () => {
+    const row = userDtoToRow({
+      ...dto,
+      roles: [{ id: 4, name: "superadmin", expires_at: "2026-12-31 23:59:59" }],
+    });
+    expect(row.roles?.[0].expiresAt).toBe(Date.parse("2026-12-31T23:59:59Z"));
   });
 
   it("parses timestamps to epoch ms and null for missing", () => {
@@ -161,6 +169,27 @@ describe("invitationDtoToRow", () => {
     expect(row.name).toBe("Omar Haddad");
     expect(row.email).toBe("omar@abapro.health");
     expect(row.roleIds).toEqual([]);
+  });
+
+  it("maps who revoked an invitation and when, once the backend sends them", () => {
+    const row = invitationDtoToRow({
+      ...dto,
+      status: "REVOKED",
+      revoked_at: "2026-10-16T21:52:09.000000Z",
+      revoked_by_admin_id: "u-1",
+      revoked_by: { id: "u-1", email: "dana@abapro.health", staff: { id: 1, first_name: "Dana", last_name: "Okonkwo" } },
+    });
+    expect(row.status).toBe("revoked");
+    expect(row.revokedAt).toBe(Date.parse("2026-10-16T21:52:09.000000Z"));
+    expect(row.revokedBy).toBe("u-1");
+    expect(row.revokedByName).toBe("Dana Okonkwo");
+    expect(row.revokedByEmail).toBe("dana@abapro.health");
+  });
+
+  it("leaves the revoke fields empty while the backend doesn't send them", () => {
+    const row = invitationDtoToRow({ ...dto, status: "REVOKED" });
+    expect(row.revokedAt).toBeNull();
+    expect(row.revokedByName).toBeNull();
   });
 
   it("shows a still-PENDING invitation as expired once its expiry has passed", () => {

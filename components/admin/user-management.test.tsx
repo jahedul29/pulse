@@ -1,4 +1,4 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
@@ -8,10 +8,15 @@ import { toast } from "sonner";
 import {
   fetchAdminUserDetail,
   fetchInvitableStaff,
+  fetchUserDevices,
+  listAdminUsers,
+  listAllAdminUsers,
   sendInvitation,
   updateUserStatus,
 } from "@/lib/user-management/users-api";
 import type { AdminUserRow, AdminUserStatus } from "@/lib/user-management/types";
+import { ADMIN_ACTION_LOGS_PATH } from "@/lib/api/audit-paths";
+import { useAccessProbes } from "@/lib/auth/access-probes";
 import { UserManagement } from "./user-management";
 
 function row(partial: Partial<AdminUserRow> & { name: string; status: AdminUserStatus }): AdminUserRow {
@@ -45,6 +50,39 @@ const mockRows: AdminUserRow[] = [
   row({ id: "u3", name: "Omar Haddad", status: "pending" }),
   row({ id: "u4", name: "Lina Waitfor", status: "pending", invitableAgainAt: 9_999_999_999_999 }),
 ];
+
+const revokedInvites: AdminUserRow[] = [
+  row({
+    id: "inv-r1",
+    name: "Revoked Person",
+    email: "revoked@abapro.health",
+    status: "revoked",
+    staffId: "7",
+    roleIds: ["3"],
+    invitedBy: "u2",
+    invitedByName: "Emma Novak",
+    invitedByEmail: "emma@abapro.health",
+    invitedAt: Date.parse("2026-10-16T18:40:31.000Z"),
+    revokedAt: Date.parse("2026-10-16T21:52:09.000Z"),
+    revokedBy: "u1",
+    revokedByName: "Dana Okonkwo",
+    revokedByEmail: "dana@abapro.health",
+  }),
+];
+
+const mockHistory = [
+  {
+    id: "18",
+    createdAt: Date.parse("2026-10-16T21:52:09.000Z"),
+    actorId: "u1",
+    actorName: "Dana Okonkwo",
+    actionName: "Revoked an invitation",
+  },
+];
+
+jest.mock("../../lib/admin-actions/audit-api", () => ({
+  listTargetHistory: jest.fn(async () => ({ entries: mockHistory, total: mockHistory.length })),
+}));
 
 const pendingInvites: AdminUserRow[] = [
   row({
@@ -110,11 +148,16 @@ jest.mock("../../lib/user-management/users-api", () => ({
   listAdminUsers: jest.fn(async () => ({ data: mockRows, meta: { total: mockRows.length } })),
   listAllAdminUsers: jest.fn(async () => mockRows),
   fetchPendingInvitations: jest.fn(async () => pendingInvites),
-  fetchInvitation: jest.fn(async (id: string) => ({
-    ...pendingInvites[0],
-    id,
-    invitationExpiresAt: Date.parse("2026-10-01T00:00:00.000Z"),
-  })),
+  fetchRevokedInvitations: jest.fn(async () => revokedInvites),
+  fetchInvitation: jest.fn(async (id: string) =>
+    id === "inv-r1"
+      ? revokedInvites[0]
+      : {
+          ...pendingInvites[0],
+          id,
+          invitationExpiresAt: Date.parse("2026-10-01T00:00:00.000Z"),
+        },
+  ),
   fetchAdminUserDetail: jest.fn(async () => ({})),
   updateUserStatus: jest.fn(),
   revokeInvitation: jest.fn(),
@@ -313,6 +356,130 @@ describe("UserManagement", () => {
     expect(screen.getAllByText("Last sent").length).toBeGreaterThan(0);
   });
 
+  describe("revoked invitations", () => {
+    beforeEach(() => {
+      useAccessProbes.setState({ owner: "owner@abapro.health", results: { [ADMIN_ACTION_LOGS_PATH]: true } });
+    });
+    afterEach(() => {
+      useAccessProbes.setState({ owner: null, results: {} });
+    });
+
+    it("lists revoked invitations in their own tab, with who revoked them and when", async () => {
+      renderWithClient(<UserManagement />);
+      await screen.findByText("Dana Okonkwo");
+
+      await userEvent.click(screen.getByRole("tab", { name: "Revoked invitations (1)" }));
+      const revokedRow = await screen.findByRole("link", { name: "Revoked Person" });
+      const headers = screen.getAllByRole("columnheader").map((header) => header.textContent?.trim());
+      expect(headers).toEqual(["Name", "Email", "Roles", "Revoked", "Revoked by", ""]);
+      expect(within(revokedRow).getByText("Dana Okonkwo")).toBeInTheDocument();
+      expect(within(revokedRow).queryByText("Emma Novak")).not.toBeInTheDocument();
+      expect(screen.queryByText("Pending Person")).not.toBeInTheDocument();
+    });
+
+    it("shows - for the revoke date and revoker until the backend sends them", async () => {
+      const original = { ...revokedInvites[0] };
+      Object.assign(revokedInvites[0], { revokedAt: null, revokedBy: null, revokedByName: null, revokedByEmail: null });
+      try {
+        renderWithClient(<UserManagement />);
+        await screen.findByText("Dana Okonkwo");
+        await userEvent.click(screen.getByRole("tab", { name: "Revoked invitations (1)" }));
+        const revokedRow = await screen.findByRole("link", { name: "Revoked Person" });
+        expect(within(revokedRow).getAllByText("-")).toHaveLength(2);
+
+        await userEvent.click(revokedRow);
+        const drawer = await screen.findByRole("dialog", { name: "Revoked Person" });
+        const revokedBySection = within(drawer).getByRole("heading", { name: "Revoked by" }).closest("section");
+        expect(revokedBySection).not.toBeNull();
+        expect(within(revokedBySection as HTMLElement).getByText("-")).toBeInTheDocument();
+      } finally {
+        Object.assign(revokedInvites[0], original);
+      }
+    });
+
+    it("opens a revoked invitation with who revoked it and its history, and invites the person again", async () => {
+      renderWithClient(<UserManagement />);
+      await screen.findByText("Dana Okonkwo");
+      await userEvent.click(screen.getByRole("tab", { name: "Revoked invitations (1)" }));
+      await userEvent.click(await screen.findByRole("link", { name: "Revoked Person" }));
+
+      const drawer = await screen.findByRole("dialog", { name: "Revoked Person" });
+      expect(within(drawer).getByText("Revoked", { selector: "dt" })).toBeInTheDocument();
+      expect(within(drawer).getByRole("link", { name: "Open user account Dana Okonkwo" })).toHaveAttribute(
+        "href",
+        "/admin/user-management?open=u1",
+      );
+      expect(await within(drawer).findByRole("link", { name: "Revoked an invitation" })).toHaveAttribute(
+        "href",
+        "/admin/audit/log?open=18",
+      );
+      expect(within(drawer).queryByRole("button", { name: "Resend invite" })).not.toBeInTheDocument();
+
+      (fetchInvitableStaff as jest.Mock).mockResolvedValueOnce([
+        { id: "7", name: "Revoked Person", email: "revoked@abapro.health", initials: "RP", title: "Nurse", department: "Care", terminated: false },
+      ]);
+      await userEvent.click(within(drawer).getByRole("button", { name: "Invite again" }));
+      const invite = await screen.findByRole("dialog", { name: "Invite user" });
+      expect(within(invite).getByText("Revoked Person")).toBeInTheDocument();
+      expect(within(invite).getByDisplayValue("revoked@abapro.health")).toBeInTheDocument();
+    });
+
+    it("refuses Invite again for someone who can no longer be invited", async () => {
+      const error = jest.spyOn(toast, "error").mockImplementation(() => "toast");
+      (fetchInvitableStaff as jest.Mock).mockResolvedValueOnce([]);
+      renderWithClient(<UserManagement />);
+      await screen.findByText("Dana Okonkwo");
+      await userEvent.click(screen.getByRole("tab", { name: "Revoked invitations (1)" }));
+      const revokedRow = await screen.findByRole("link", { name: "Revoked Person" });
+      await userEvent.click(within(revokedRow).getByRole("button", { name: "Invite again" }));
+
+      await waitFor(() => expect(error).toHaveBeenCalledWith(expect.stringContaining("can't be invited any more")));
+      expect(screen.queryByRole("dialog", { name: "Invite user" })).not.toBeInTheDocument();
+      error.mockRestore();
+    });
+
+    it("blocks Invite again for someone who already has an account", async () => {
+      const original = revokedInvites[0].staffId;
+      revokedInvites[0].staffId = mockRows[0].staffId;
+      try {
+        renderWithClient(<UserManagement />);
+        await screen.findByText("Dana Okonkwo");
+        await userEvent.click(screen.getByRole("tab", { name: "Revoked invitations (1)" }));
+        const revokedRow = await screen.findByRole("link", { name: "Revoked Person" });
+        await waitFor(() =>
+          expect(within(revokedRow).getByRole("button", { name: "Invite again" })).toHaveAttribute("aria-disabled", "true"),
+        );
+      } finally {
+        revokedInvites[0].staffId = original;
+      }
+    });
+
+    it("blocks Invite again while the person already has a pending invitation", async () => {
+      const original = revokedInvites[0].staffId;
+      revokedInvites[0].staffId = pendingInvites[0].staffId;
+      try {
+        renderWithClient(<UserManagement />);
+        await screen.findByText("Dana Okonkwo");
+        await userEvent.click(screen.getByRole("tab", { name: "Revoked invitations (1)" }));
+        const revokedRow = await screen.findByRole("link", { name: "Revoked Person" });
+        expect(within(revokedRow).getByRole("button", { name: "Invite again" })).toHaveAttribute("aria-disabled", "true");
+      } finally {
+        revokedInvites[0].staffId = original;
+      }
+    });
+
+    it("opens the Revoked tab from an ?invite= link to a revoked invitation", async () => {
+      mockSearch = new URLSearchParams("invite=inv-r1");
+      renderWithClient(<UserManagement />);
+
+      expect(await screen.findByRole("dialog", { name: "Revoked Person" })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "Revoked invitations (1)", hidden: true })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+    });
+  });
+
   it("does not render the MFA column (no mfa key in the API)", async () => {
     renderWithClient(<UserManagement />);
     await screen.findByText("Dana Okonkwo");
@@ -367,7 +534,8 @@ describe("UserManagement", () => {
       "href",
       "/admin/user-management?open=u1",
     );
-    expect(within(dialog).getByText(/2 effective permissions in total/)).toBeInTheDocument();
+    const effective = within(dialog).getByText("Effective permissions").closest("div");
+    expect(effective).toHaveTextContent("2");
 
     await userEvent.keyboard("{Escape}");
     expect(mockReplace).toHaveBeenCalledWith("/admin/user-management");
@@ -398,9 +566,8 @@ describe("UserManagement", () => {
     expect(mockReplace).toHaveBeenCalledWith("/admin/user-management");
   });
 
-  it("lets an admin with edit rights manage roles and direct permissions from the drawer", async () => {
+  it("shows access read-only in the drawer and sends changes to User access", async () => {
     mockSearch = new URLSearchParams("open=u2");
-    mockSyncPermissions.mockClear();
     (fetchAdminUserDetail as jest.Mock).mockImplementation(async (id: string) =>
       id === "u2"
         ? {
@@ -416,18 +583,44 @@ describe("UserManagement", () => {
     renderWithClient(<UserManagement />);
 
     const dialog = await screen.findByRole("dialog", { name: "Emma Novak" });
-    expect(within(dialog).getByRole("button", { name: "Grant a role" })).toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Add permission" })).toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Revoke Administrator" })).toBeInTheDocument();
-
-    await userEvent.click(within(dialog).getByRole("button", { name: "Remove View Clients module." }));
-    const confirm = await screen.findByRole("alertdialog");
-    await userEvent.click(within(confirm).getByRole("button", { name: "Remove" }));
-    expect(mockSyncPermissions).toHaveBeenCalledWith({ userId: "u2", permissionIds: [] });
+    expect(await within(dialog).findByRole("link", { name: "Manage access" })).toHaveAttribute(
+      "href",
+      "/admin/access?user=u2",
+    );
+    expect(within(dialog).getByText("View Clients module.")).toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: "Grant a role" })).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: "Add permission" })).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: "Revoke Administrator" })).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: "Remove View Clients module." })).not.toBeInTheDocument();
     (fetchAdminUserDetail as jest.Mock).mockImplementation(async () => ({}));
   });
 
-  it("disables access edits on your own account, with the reason available", async () => {
+  it("counts registered devices in the heading and scrolls a long list", async () => {
+    mockSearch = new URLSearchParams("open=u2");
+    (fetchAdminUserDetail as jest.Mock).mockImplementation(async (id: string) =>
+      id === "u2"
+        ? { id: "u2", staff_id: 2, email: "emma@abapro.health", status: "ACTIVE", staff: { id: 2, first_name: "Emma", last_name: "Novak" }, roles: [] }
+        : {},
+    );
+    (fetchUserDevices as jest.Mock).mockImplementation(async () =>
+      Array.from({ length: 9 }, (_, index) => ({ id: index, device_name: `Device ${index + 1}`, last_used_at: null })),
+    );
+    try {
+      renderWithClient(<UserManagement />);
+      const dialog = await screen.findByRole("dialog", { name: "Emma Novak" });
+
+      expect(await within(dialog).findByText("Registered devices (9)")).toBeInTheDocument();
+      const devices = within(dialog).getByRole("region", { name: "Registered devices" });
+      expect(within(devices).getAllByRole("listitem")).toHaveLength(9);
+      expect(devices).toHaveAttribute("tabindex", "0");
+      expect(devices).toHaveClass("max-h-60");
+    } finally {
+      (fetchUserDevices as jest.Mock).mockImplementation(async () => []);
+      (fetchAdminUserDetail as jest.Mock).mockImplementation(async () => ({}));
+    }
+  });
+
+  it("hides Manage access on your own account", async () => {
     mockSearch = new URLSearchParams("open=u-self");
     (fetchAdminUserDetail as jest.Mock).mockImplementation(async (id: string) =>
       id === "u-self"
@@ -444,12 +637,31 @@ describe("UserManagement", () => {
     renderWithClient(<UserManagement />);
 
     const dialog = await screen.findByRole("dialog", { name: "Sam Al-Rashid" });
-    expect(within(dialog).getByRole("button", { name: "Add permission" })).toHaveAttribute("aria-disabled", "true");
-    expect(within(dialog).getByRole("button", { name: "Revoke Administrator" })).toHaveAttribute(
-      "aria-disabled",
-      "true",
-    );
+    expect(await within(dialog).findByText("View Clients module.")).toBeInTheDocument();
+    expect(within(dialog).queryByRole("link", { name: "Manage access" })).not.toBeInTheDocument();
     (fetchAdminUserDetail as jest.Mock).mockImplementation(async () => ({}));
+  });
+
+  it("won't suspend or deactivate the last active Super Admin", async () => {
+    const withSuperadmin = mockRows.map((user) =>
+      user.id === "u1" ? { ...user, roles: [{ id: "4", name: "superadmin", expiresAt: null }] } : user,
+    );
+    (listAdminUsers as jest.Mock).mockImplementation(async () => ({ data: withSuperadmin, meta: { total: withSuperadmin.length } }));
+    (listAllAdminUsers as jest.Mock).mockImplementation(async () => withSuperadmin);
+    try {
+      renderWithClient(<UserManagement />);
+      const dana = (await screen.findByText("Dana Okonkwo")).closest("tr")!;
+      const emma = screen.getByText("Emma Novak").closest("tr")!;
+
+      await waitFor(() =>
+        expect(within(dana).getByRole("button", { name: "Suspend" })).toHaveAttribute("aria-disabled", "true"),
+      );
+      expect(within(dana).getByRole("button", { name: "Deactivate" })).toHaveAttribute("aria-disabled", "true");
+      expect(within(emma).getByRole("button", { name: "Suspend" })).not.toHaveAttribute("aria-disabled", "true");
+    } finally {
+      (listAdminUsers as jest.Mock).mockImplementation(async () => ({ data: mockRows, meta: { total: mockRows.length } }));
+      (listAllAdminUsers as jest.Mock).mockImplementation(async () => mockRows);
+    }
   });
 
   describe("with partial permissions", () => {

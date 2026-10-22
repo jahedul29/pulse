@@ -47,6 +47,16 @@ export async function fetchPendingInvitations(): Promise<AdminUserRow[]> {
     .sort((first, second) => second.invitedAt - first.invitedAt);
 }
 
+export async function fetchRevokedInvitations(): Promise<AdminUserRow[]> {
+  const invitations = await listAll<InvitationDto>(INVITATIONS, {
+    relations: ["staff", "invitedBy"],
+    "filters[status]": "REVOKED",
+  });
+  return invitations
+    .map(invitationDtoToRow)
+    .sort((first, second) => (second.revokedAt ?? second.invitedAt) - (first.revokedAt ?? first.invitedAt));
+}
+
 export function fetchUserDevices(id: string): Promise<UserDeviceDto[]> {
   return apiData<UserDeviceDto[]>(`${USERS}/${encodeURIComponent(id)}/devices`);
 }

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type SyntheticEvent 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Ban, ChevronDown, ChevronUp, CirclePause, CirclePlay, Plus, Send, UserX } from "lucide-react";
+import { Ban, CirclePause, CirclePlay, Plus, RotateCcw, Send, UserX } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
@@ -28,32 +28,39 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
-  SheetDescription,
   SheetFooter,
-  SheetHeader,
-  SheetTitle,
 } from "@/components/ui/sheet";
 import { useRetained } from "@/lib/use-retained";
 import { DataTable, toolbarIconButtonClass, type ServerTableState } from "@/components/common/data-table";
+import { RecordDrawerHeader } from "@/components/common/record-drawer-header";
+import { DateTimeValue } from "@/components/common/date-time-value";
+import { DetailSection } from "@/components/common/detail-section";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ProfileCell } from "@/components/common/profile-cell";
 import { Chip } from "@/components/common/chip";
-import { ChipLink, RecordLink } from "@/components/common/record-link";
+import { ChipLink } from "@/components/common/record-link";
 import { AdminIdLink } from "@/components/admin/record-refs";
 import { UserAccessEditor } from "@/components/admin/user-access-editor";
-import { recordHref } from "@/lib/record-links";
+import { TargetHistory } from "@/components/admin/target-history";
+import type { StaffRecord } from "@/lib/staff/types";
+import { recordHref, userAccessHref } from "@/lib/record-links";
+import { holdsSuperadmin } from "@/lib/rbac/superadmin";
+import { useSuperadminGuard } from "@/lib/rbac/use-superadmin-guard";
+import { useNow } from "@/lib/use-now";
 import { StatusBadge, type Tone } from "@/components/common/status-badge";
 import { DetailList } from "@/components/common/detail-list";
 import { Field } from "@/components/ui/field";
 import { InviteAdminDialog } from "@/components/admin/invite-admin-dialog";
-import { fmtRelative, fmtDateTime, fmtDateTimeParts } from "@/lib/format";
+import { fmtRelative, fmtDateTimeParts } from "@/lib/format";
 import { useLanguageLabel } from "@/lib/i18n/language";
-import { stepIndex } from "@/lib/paging";
+import { useOrderedRows, useRecordPager } from "@/lib/use-record-pager";
 import { useRecordDetail } from "@/lib/use-record-detail";
 import { useAuthStore } from "@/lib/auth/store";
 import {
+  adminUsersQuery,
   useAdminUsers,
   usePendingInvitations,
+  useRevokedInvitations,
   useResendInvitation,
   useRevokeInvitation,
   useUpdateUserStatus,
@@ -61,7 +68,9 @@ import {
 } from "@/lib/user-management/queries";
 import { apiErrorMessage } from "@/lib/api/error-message";
 import { ApiError } from "@/lib/api/errors";
-import { fetchAdminUserDetail, fetchInvitation } from "@/lib/user-management/users-api";
+import { fetchAdminUserDetail, fetchInvitableStaff, fetchInvitation } from "@/lib/user-management/users-api";
+import { queryKeys } from "@/lib/api/query-keys";
+import { useQueryClient } from "@tanstack/react-query";
 import { serverStateToParams } from "@/lib/user-management/list-params";
 import { userDetailToDetail } from "@/lib/user-management/dto";
 import { useRoles } from "@/lib/rbac/queries";
@@ -70,6 +79,9 @@ import type { AdminUserRow, AdminUserStatus, EffectiveStatus } from "@/lib/user-
 import { LoadError } from "@/components/common/load-error";
 import { isForbidden } from "@/lib/api/errors";
 import { PageContainer } from "@/components/common/page-container";
+import { columnWidth } from "@/lib/table/column-widths";
+import { AdminProfileLink } from "@/components/common/admin-profile-link";
+import { useServerPage } from "@/lib/use-server-page";
 
 const CONFIRM_WORD = "DEACTIVATE";
 const STATUS_REASON_MAX = 255;
@@ -85,6 +97,29 @@ const STATUS_TONE: Record<EffectiveStatus, Tone> = {
 };
 
 const STATUS_FILTER: AdminUserStatus[] = ["pending", "active", "suspended", "deactivated"];
+
+function TabLabel({ full, short }: { full: string; short: string }) {
+  return (
+    <>
+      <span aria-hidden className="sm:hidden">
+        {short}
+      </span>
+      <span aria-hidden className="hidden sm:inline">
+        {full}
+      </span>
+    </>
+  );
+}
+
+const rowKey = (row: AdminUserRow) => row.id;
+
+const INVITE_ONLY_STATUSES = new Set<AdminUserStatus>(["pending", "revoked", "expired"]);
+
+const SUPERADMIN_STATUS_REASON = {
+  checking: "superadminChecking",
+  unverified: "superadminUnverified",
+  last: "lastSuperadminBlock",
+} as const;
 
 export function UserManagement() {
   const t = useTranslations("userManagement");
@@ -104,22 +139,21 @@ export function UserManagement() {
   const canViewInvites = useHasPermission(PERMISSIONS.INVITATIONS_VIEW);
 
   const [server, setServer] = useState<ServerTableState | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const params = useMemo(() => serverStateToParams(server), [server]);
-  const usersQuery = useAdminUsers(params);
+  const [linkedId, setLinkedId] = useState<string | null>(searchParams.get("open"));
+  const usersQuery = useAdminUsers(params, selectedId != null || linkedId != null);
   const rows = useMemo(() => usersQuery.data?.data ?? [], [usersQuery.data]);
+  const superadminGuard = useSuperadminGuard(canManage);
+  const checkSuperadmin = superadminGuard.check;
   const pendingQuery = usePendingInvitations();
+  const revokedQuery = useRevokedInvitations();
   const total = usersQuery.data?.meta?.total ?? rows.length;
   const loading = usersQuery.isPending;
   const error = usersQuery.isError;
   const onServerStateChange = useCallback((state: ServerTableState) => setServer(state), []);
 
-  const [now, setNow] = useState(0);
-  useEffect(() => {
-    const tick = () => setNow(Date.now());
-    tick();
-    const timer = setInterval(tick, 30_000);
-    return () => clearInterval(timer);
-  }, []);
+  const now = useNow(30_000);
 
   const { mutate: mutateStatus, mutateAsync: mutateStatusAsync, isPending: statusPending } =
     useUpdateUserStatus();
@@ -127,23 +161,30 @@ export function UserManagement() {
   const { mutateAsync: mutateResendAsync, isPending: resendPending } = useResendInvitation();
 
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteSeed, setInviteSeed] = useState<{ key: number; staff: StaffRecord | null; roleIds: string[] }>({
+    key: 0,
+    staff: null,
+    roleIds: [],
+  });
+  const openInvite = useCallback((staff: StaffRecord | null = null, roleIds: string[] = []) => {
+    setInviteSeed((current) => ({ key: current.key + 1, staff, roleIds }));
+    setInviteOpen(true);
+  }, []);
   const [revoking, setRevoking] = useState<AdminUserRow | null>(null);
   const [suspending, setSuspending] = useState<AdminUserRow | null>(null);
   const [statusReason, setStatusReason] = useState("");
   const [deactivating, setDeactivating] = useState<AdminUserRow | null>(null);
   const [confirmText, setConfirmText] = useState("");
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [linkedId, setLinkedId] = useState<string | null>(searchParams.get("open"));
 
-  const linkedIndex = linkedId ? rows.findIndex((row) => row.id === linkedId) : -1;
-  const activeIndex = selectedIndex ?? (linkedIndex >= 0 ? linkedIndex : null);
-  const active = activeIndex == null ? null : (rows[activeIndex] ?? null);
+  const linkedOnPage = linkedId != null && rows.some((row) => row.id === linkedId);
+  const activeId = selectedId ?? (linkedOnPage ? linkedId : null);
+  const active = activeId == null ? null : (rows.find((row) => row.id === activeId) ?? null);
   const [retained, setRetained] = useState<AdminUserRow | null>(null);
 
   const [selectedInvite, setSelectedInvite] = useState<AdminUserRow | null>(null);
   const [linkedInviteId, setLinkedInviteId] = useState<string | null>(searchParams.get("invite"));
   const [tab, setTab] = useState(linkedInviteId ? "pending" : "accounts");
-  const activeTab = !canViewAccounts ? "pending" : !canViewInvites ? "accounts" : tab;
+  const activeTab = !canViewInvites ? "accounts" : !canViewAccounts && tab === "accounts" ? "pending" : tab;
   const loadInvitation = useCallback((id: string) => fetchInvitation(id), []);
   const {
     data: inviteDetail,
@@ -155,6 +196,11 @@ export function UserManagement() {
   const linkedInvite =
     linkedInviteId && !selectedInvite && inviteDetail?.id === linkedInviteId ? inviteDetail : null;
   const shownInvite = useRetained(selectedInvite ?? linkedInvite);
+  const [linkTabSynced, setLinkTabSynced] = useState(false);
+  if (!linkTabSynced && linkedInvite) {
+    setLinkTabSynced(true);
+    if (linkedInvite.status === "revoked") setTab("revoked");
+  }
   const closeInvite = () => {
     setSelectedInvite(null);
     if (!linkedInviteId) return;
@@ -183,20 +229,38 @@ export function UserManagement() {
     setLinkedId(null);
     router.replace("/admin/user-management");
   };
-  const openAt = (index: number) => {
-    clearLink();
-    setSelectedIndex(index);
-    setRetained(rows[index] ?? null);
-  };
+  const openUser = useCallback(
+    (user: AdminUserRow) => {
+      if (linkedId) {
+        setLinkedId(null);
+        router.replace("/admin/user-management");
+      }
+      setSelectedId(user.id);
+      setRetained(user);
+    },
+    [linkedId, router],
+  );
   const closeDetail = () => {
     if (selected) setRetained(selected);
-    setSelectedIndex(null);
+    setSelectedId(null);
     clearLink();
   };
-  const page = (delta: number) => {
-    if (activeIndex == null) return;
-    openAt(stepIndex(activeIndex, delta, rows.length));
-  };
+  const queryClient = useQueryClient();
+  const { controller: accountsTable, page: serverPage } = useServerPage({
+    server,
+    pageSize: 25,
+    total: total,
+    data: usersQuery.data,
+    failed: usersQuery.isError,
+    queryFor: (state) => adminUsersQuery(serverStateToParams(state)),
+  });
+  const accountsPager = useRecordPager({
+    rows,
+    getId: (user) => user.id,
+    activeId,
+    onSelect: openUser,
+    page: serverPage,
+  });
 
   const rolesQuery = useRoles({ page: 1, perPage: 100 });
   const roleOptions = useMemo(
@@ -217,6 +281,76 @@ export function UserManagement() {
         }),
       })),
     [pendingQuery.data, roleNameById],
+  );
+  const [orderedInvites, setOrderedInviteIds] = useOrderedRows(pendingRows, rowKey);
+  const revokedRows = useMemo(
+    () =>
+      (revokedQuery.data ?? []).map((row) => ({
+        ...row,
+        roles: row.roleIds.flatMap((roleId) => {
+          const name = roleNameById.get(roleId);
+          return name ? [{ id: roleId, name }] : [];
+        }),
+      })),
+    [revokedQuery.data, roleNameById],
+  );
+  const [orderedRevoked, setOrderedRevokedIds] = useOrderedRows(revokedRows, rowKey);
+  const shownInviteId = (selectedInvite ?? linkedInvite)?.id ?? null;
+  const invitesPager = useRecordPager({
+    rows: orderedInvites,
+    getId: (invite) => invite.id,
+    activeId: shownInviteId,
+    onSelect: setSelectedInvite,
+  });
+  const revokedPager = useRecordPager({
+    rows: orderedRevoked,
+    getId: (invite) => invite.id,
+    activeId: shownInviteId,
+    onSelect: setSelectedInvite,
+  });
+  const pendingStaffIds = useMemo(() => new Set(pendingRows.map((invite) => invite.staffId)), [pendingRows]);
+  const canOpenInvite = canInvite && canPickStaff;
+  const accountStaffIds = useMemo(
+    () =>
+      new Set(
+        (superadminGuard.users ?? [])
+          .filter((user) => !INVITE_ONLY_STATUSES.has(user.status))
+          .map((user) => user.staffId),
+      ),
+    [superadminGuard.users],
+  );
+  const [checkingInviteId, setCheckingInviteId] = useState<string | null>(null);
+  const inviteAgainBlock = useCallback(
+    (invite: AdminUserRow): string | null => {
+      if (!canInvite) return t("noPermission");
+      if (!canPickStaff) return tc("noPermission");
+      if (pendingQuery.isPending) return t("inviteAgainChecking");
+      if (pendingQuery.isError) return t("inviteAgainUnverified");
+      if (pendingStaffIds.has(invite.staffId)) return t("inviteAgainPending");
+      if (accountStaffIds.has(invite.staffId)) return t("inviteAgainHasAccount");
+      if (checkingInviteId === invite.id) return t("inviteAgainChecking");
+      return null;
+    },
+    [canInvite, canPickStaff, pendingQuery.isPending, pendingQuery.isError, pendingStaffIds, accountStaffIds, checkingInviteId, t, tc],
+  );
+  const inviteAgain = useCallback(
+    async (invite: AdminUserRow) => {
+      setCheckingInviteId(invite.id);
+      try {
+        const staff = await queryClient.fetchQuery({
+          queryKey: [...queryKeys.unlinkedStaff(), invite.name],
+          queryFn: () => fetchInvitableStaff(invite.name),
+        });
+        const member = staff.find((candidate) => candidate.id === invite.staffId);
+        if (member) openInvite(member, invite.roleIds);
+        else toast.error(t("inviteAgainIneligible", { name: invite.name }));
+      } catch (error) {
+        toast.error(apiErrorMessage(error, ta));
+      } finally {
+        setCheckingInviteId(null);
+      }
+    },
+    [queryClient, openInvite, t, ta],
   );
 
   const applyStatus = useCallback(
@@ -291,7 +425,10 @@ export function UserManagement() {
 
   const actionsFor = useCallback(
     (user: AdminUserRow): RowAction[] => {
+      const superadminCheck = user.status === "active" && holdsSuperadmin(user, now) ? checkSuperadmin(user.id) : null;
+      const superadminBlock = superadminCheck ? t(SUPERADMIN_STATUS_REASON[superadminCheck]) : undefined;
       const selfBlock = user.email.toLowerCase() === selfEmail ? t("selfBlock") : undefined;
+      const statusBlock = selfBlock ?? superadminBlock;
       const suspendItem: RowAction = {
         key: "suspend",
         label: t("actionSuspend"),
@@ -300,8 +437,8 @@ export function UserManagement() {
           setStatusReason("");
           setSuspending(user);
         },
-        disabled: Boolean(selfBlock),
-        title: selfBlock,
+        disabled: Boolean(statusBlock),
+        title: statusBlock,
       };
       const deactivateItem: RowAction = {
         key: "deactivate",
@@ -313,8 +450,8 @@ export function UserManagement() {
           setStatusReason("");
           setDeactivating(user);
         },
-        disabled: Boolean(selfBlock),
-        title: selfBlock,
+        disabled: Boolean(statusBlock),
+        title: statusBlock,
       };
       const reactivateItem: RowAction = {
         key: "reactivate",
@@ -361,14 +498,14 @@ export function UserManagement() {
           return [];
       }
     },
-    [t, canManage, canInvite, selfEmail, applyStatus, resendInvite, now, locale],
+    [t, canManage, canInvite, selfEmail, checkSuperadmin, applyStatus, resendInvite, now, locale],
   );
 
-  const { accountsColumns, invitationColumns } = useMemo(() => {
+  const { accountsColumns, invitationColumns, revokedColumns } = useMemo(() => {
     const nameCol: ColumnDef<AdminUserRow, unknown> = {
       id: "name",
       accessorFn: (user) => user.name,
-      size: 220,
+      ...columnWidth("name"),
       header: t("colName"),
       enableSorting: false,
       cell: ({ row }) => <ProfileCell name={row.original.name} initials={row.original.initials} />,
@@ -376,7 +513,7 @@ export function UserManagement() {
     const emailCol: ColumnDef<AdminUserRow, unknown> = {
       id: "email",
       accessorFn: (user) => user.email,
-      size: 230,
+      ...columnWidth("email"),
       header: t("colEmail"),
       enableSorting: false,
       cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.original.email}</span>,
@@ -384,7 +521,7 @@ export function UserManagement() {
     const rolesCol: ColumnDef<AdminUserRow, unknown> = {
       id: "roles",
       accessorFn: (user) => (user.roles ?? []).map((role) => role.name).join(" "),
-      size: 260,
+      ...columnWidth("chips"),
       header: t("colRoles"),
       enableSorting: false,
       meta: canViewRoles ? { filter: "select", filterOptions: roleOptions, filterLabel: t("colRoles") } : undefined,
@@ -454,7 +591,7 @@ export function UserManagement() {
     const invitedByCol: ColumnDef<AdminUserRow, unknown> = {
       id: "invitedBy",
       accessorFn: (user) => user.invitedByName ?? "",
-      size: 220,
+      ...columnWidth("name"),
       header: t("colInvitedBy"),
       enableSorting: false,
       cell: ({ row }) =>
@@ -542,20 +679,83 @@ export function UserManagement() {
         );
       },
     };
+    const revokedAtCol: ColumnDef<AdminUserRow, unknown> = {
+      id: "revokedAt",
+      accessorFn: (user) => user.revokedAt ?? 0,
+      size: 130,
+      header: t("colRevoked"),
+      cell: ({ row }) => (
+        <span className="text-sm text-muted-foreground tabular">
+          {row.original.revokedAt ? fmtDateTimeParts(row.original.revokedAt, locale).date : "-"}
+        </span>
+      ),
+    };
+    const revokedByCol: ColumnDef<AdminUserRow, unknown> = {
+      id: "revokedBy",
+      accessorFn: (user) => user.revokedByName ?? "",
+      ...columnWidth("name"),
+      header: t("colRevokedBy"),
+      enableSorting: false,
+      cell: ({ row }) =>
+        row.original.revokedByName ? (
+          <ProfileCell name={row.original.revokedByName} subtitle={row.original.revokedByEmail ?? undefined} />
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        ),
+    };
+    const revokedActionsCol: ColumnDef<AdminUserRow, unknown> = {
+      id: "actions",
+      enableSorting: false,
+      size: 64,
+      header: "",
+      meta: { headClassName: "text-end", cellClassName: "text-end", noClip: true },
+      cell: ({ row }) => {
+        const blocked = inviteAgainBlock(row.original);
+        const stop = (event: SyntheticEvent) => event.stopPropagation();
+        return (
+          <div className="flex items-center justify-end" onClick={stop} onKeyDown={stop}>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    focusableWhenDisabled
+                    disabled={blocked != null}
+                    aria-label={t("actionInviteAgain")}
+                    onClick={() => inviteAgain(row.original)}
+                    className="size-8 text-muted-foreground hover:text-foreground data-[disabled]:hover:bg-transparent data-[disabled]:hover:text-muted-foreground"
+                  />
+                }
+              >
+                <RotateCcw className="size-4 rtl:-scale-x-100" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <span className="flex flex-col gap-0.5">
+                  <span>{t("actionInviteAgain")}</span>
+                  {blocked && <span className="text-xs opacity-80">{blocked}</span>}
+                </span>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        );
+      },
+    };
     return {
       accountsColumns: [nameCol, emailCol, rolesCol, statusCol, lastLoginCol, createdCol, actionsCol],
       invitationColumns: [nameCol, emailCol, rolesCol, statusCol, invitedByCol, lastSentCol, actionsCol],
+      revokedColumns: [nameCol, emailCol, rolesCol, revokedAtCol, revokedByCol, revokedActionsCol],
     };
-  }, [t, locale, roleOptions, actionsFor, canViewRoles]);
+  }, [t, locale, roleOptions, actionsFor, canViewRoles, inviteAgainBlock, inviteAgain]);
 
-  const canOpenInvite = canInvite && canPickStaff;
   const inviteButton = (
     <Tooltip>
       <TooltipTrigger
         render={
           <Button
             size="lg"
-            onClick={() => setInviteOpen(true)}
+            onClick={() => openInvite()}
             focusableWhenDisabled
             disabled={!canOpenInvite}
             aria-label={t("inviteAdmin")}
@@ -573,22 +773,39 @@ export function UserManagement() {
   );
 
   return (
-    <PageContainer>
+    <PageContainer fill>
       <Card>
         <CardHeader>
           <CardTitle>{t("title")}</CardTitle>
           <CardDescription>{t("subtitle")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs value={activeTab} onValueChange={(value) => setTab(String(value))} className="gap-4">
-            <TabsList>
-              {canViewAccounts && <TabsTrigger value="accounts">{t("tabAccounts")}</TabsTrigger>}
+          <Tabs value={activeTab} onValueChange={(value) => setTab(String(value))} className="gap-4 md:min-h-0 md:flex-1">
+            <TabsList className="max-w-full overflow-x-auto">
+              {canViewAccounts && (
+                <TabsTrigger value="accounts" aria-label={t("tabAccounts")}>
+                  <TabLabel full={t("tabAccounts")} short={t("tabAccountsShort")} />
+                </TabsTrigger>
+              )}
               {canViewInvites && (
-                <TabsTrigger value="pending">{t("tabPending", { count: pendingRows.length })}</TabsTrigger>
+                <TabsTrigger value="pending" aria-label={t("tabPending", { count: pendingRows.length })}>
+                  <TabLabel
+                    full={t("tabPending", { count: pendingRows.length })}
+                    short={t("tabPendingShort", { count: pendingRows.length })}
+                  />
+                </TabsTrigger>
+              )}
+              {canViewInvites && (
+                <TabsTrigger value="revoked" aria-label={t("tabRevoked", { count: revokedRows.length })}>
+                  <TabLabel
+                    full={t("tabRevoked", { count: revokedRows.length })}
+                    short={t("tabRevokedShort", { count: revokedRows.length })}
+                  />
+                </TabsTrigger>
               )}
             </TabsList>
 
-            <TabsContent value="accounts">
+            <TabsContent value="accounts" className="md:flex md:min-h-0 md:flex-1 md:flex-col">
               {error ? (
                 <LoadError error={usersQuery.error} message={t("loadError")} onRetry={() => usersQuery.refetch()} />
               ) : loading ? (
@@ -599,6 +816,7 @@ export function UserManagement() {
                 </div>
               ) : (
                 <DataTable
+                  fill
                   columns={accountsColumns}
                   data={rows}
                   pageSize={25}
@@ -608,9 +826,11 @@ export function UserManagement() {
                   searchPlaceholder={t("search")}
                   emptyLabel={t("empty")}
                   itemsLabel={t("items")}
-                  onRowClick={(user) => openAt(rows.indexOf(user))}
+                  onRowClick={openUser}
                   rowAriaLabel={(user) => user.name}
-                  rowClassName={(user) => (active && user.id === active.id ? "bg-accent" : undefined)}
+                  getRowId={(user) => user.id}
+                  activeRowId={activeId}
+                  controllerRef={accountsTable}
                   getSearchText={(user) => `${user.name} ${user.email}`}
                   filterLabels={{
                     filter: tc("filter"),
@@ -627,7 +847,7 @@ export function UserManagement() {
               )}
             </TabsContent>
 
-            <TabsContent value="pending">
+            <TabsContent value="pending" className="md:flex md:min-h-0 md:flex-1 md:flex-col">
               {pendingQuery.isError ? (
                 <LoadError error={pendingQuery.error} message={t("pendingLoadError")} onRetry={() => pendingQuery.refetch()} />
               ) : pendingQuery.isPending ? (
@@ -638,6 +858,7 @@ export function UserManagement() {
                 </div>
               ) : (
                 <DataTable
+                  fill
                   columns={invitationColumns}
                   toolbar={canViewAccounts ? undefined : inviteButton}
                   data={pendingRows}
@@ -647,10 +868,48 @@ export function UserManagement() {
                   itemsLabel={t("items")}
                   onRowClick={(invite) => setSelectedInvite(invite)}
                   rowAriaLabel={(invite) => invite.name}
-                  rowClassName={(invite) =>
-                    selectedInvite && invite.id === selectedInvite.id ? "bg-accent" : undefined
-                  }
+                  getRowId={(invite) => invite.id}
+                  activeRowId={shownInviteId}
+                  onOrderedIdsChange={setOrderedInviteIds}
                   getSearchText={(user) => `${user.name} ${user.email}`}
+                  filterLabels={{
+                    filter: tc("filter"),
+                    clear: tc("clear"),
+                    clearFilters: tc("clearFilters"),
+                    search: t("filterSearch"),
+                    from: tc("from"),
+                    to: tc("to"),
+                  }}
+                  enableFreeze
+                  maxFreeze={2}
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value="revoked" className="md:flex md:min-h-0 md:flex-1 md:flex-col">
+              {revokedQuery.isError ? (
+                <LoadError error={revokedQuery.error} message={t("revokedLoadError")} onRetry={() => revokedQuery.refetch()} />
+              ) : revokedQuery.isPending ? (
+                <div className="flex flex-col gap-2">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <Skeleton key={index} className="h-11 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <DataTable
+                  fill
+                  columns={revokedColumns}
+                  data={revokedRows}
+                  pageSize={10}
+                  searchPlaceholder={t("search")}
+                  emptyLabel={t("revokedEmpty")}
+                  itemsLabel={t("items")}
+                  onRowClick={(invite) => setSelectedInvite(invite)}
+                  rowAriaLabel={(invite) => invite.name}
+                  getRowId={(invite) => invite.id}
+                  activeRowId={shownInviteId}
+                  onOrderedIdsChange={setOrderedRevokedIds}
+                  getSearchText={(user) => `${user.name} ${user.email} ${user.revokedByName ?? ""}`}
                   filterLabels={{
                     filter: tc("filter"),
                     clear: tc("clear"),
@@ -668,7 +927,13 @@ export function UserManagement() {
         </CardContent>
       </Card>
 
-      <InviteAdminDialog open={inviteOpen} onOpenChange={setInviteOpen} />
+      <InviteAdminDialog
+        key={inviteSeed.key}
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        initialStaff={inviteSeed.staff}
+        initialRoleIds={inviteSeed.roleIds}
+      />
 
       <AlertDialog
         open={revoking != null}
@@ -775,47 +1040,34 @@ export function UserManagement() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Sheet open={selectedIndex != null || linkedId != null} onOpenChange={(open) => !open && closeDetail()}>
+      <Sheet inspect open={selectedId != null || linkedId != null} onOpenChange={(open) => !open && closeDetail()}>
         {selected && (
-          <SheetContent onSwipeNext={() => page(1)} onSwipePrev={() => page(-1)}>
-            <SheetHeader>
-              {activeIndex != null && (
-                <div className="flex items-center gap-1 pe-8">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => page(-1)}
-                    disabled={activeIndex === 0}
-                    aria-label={tc("prevRecord")}
-                  >
-                    <ChevronUp className="size-4" />
-                  </Button>
-                  <span className="text-xs text-muted-foreground tabular">
-                    {tc("recordPosition", { index: activeIndex + 1, total: rows.length })}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => page(1)}
-                    disabled={activeIndex === rows.length - 1}
-                    aria-label={tc("nextRecord")}
-                  >
-                    <ChevronDown className="size-4" />
-                  </Button>
-                </div>
-              )}
-              <div className="flex items-center gap-3">
-                <ProfileCell name={selected.name} initials={selected.initials} subtitle={selected.email} />
-              </div>
-              <SheetTitle className="sr-only">{selected.name}</SheetTitle>
-              <SheetDescription className="sr-only">{selected.email}</SheetDescription>
-              <div className="pt-1">
-                <StatusBadge tone={STATUS_TONE[selected.effectiveStatus]} equalWidth={false}>
-                  {t(`status_${selected.effectiveStatus}`)}
-                </StatusBadge>
-              </div>
-            </SheetHeader>
-            <SheetBody ref={detailRef} className="flex flex-col gap-5">
+          <SheetContent onSwipeNext={() => accountsPager.step(1)} onSwipePrev={() => accountsPager.step(-1)}>
+            <RecordDrawerHeader
+              pager={accountsPager}
+              link={recordHref("adminAccount", selected.id)}
+              title={selected.name}
+              subtitle={selected.email}
+              summary={[
+                {
+                  label: t("colLastLogin"),
+                  value: selected.lastLogin == null ? t("never") : <DateTimeValue epoch={selected.lastLogin} locale={locale} />,
+                },
+                {
+                  label: t("colStatus"),
+                  value: (
+                    <StatusBadge tone={STATUS_TONE[selected.effectiveStatus]} equalWidth={false}>
+                      {t(`status_${selected.effectiveStatus}`)}
+                    </StatusBadge>
+                  ),
+                },
+                {
+                  label: t("colCreated"),
+                  value: selected.invitedAt ? <DateTimeValue epoch={selected.invitedAt} locale={locale} /> : "-",
+                },
+              ]}
+            />
+            <SheetBody ref={detailRef} className="flex flex-col gap-6">
               {detailLoading ? (
                 <div className="flex flex-col gap-3">
                   <Skeleton className="h-4 w-40" />
@@ -836,102 +1088,82 @@ export function UserManagement() {
                     userId={detail.id}
                     userName={detail.name}
                     variant="drawer"
-                    canEdit={canManage}
-                    blockedReason={detail.email.toLowerCase() === selfEmail ? t("selfBlock") : undefined}
+                    canEdit={false}
+                    manageHref={detail.email.toLowerCase() === selfEmail ? undefined : userAccessHref(detail.id)}
                   />
 
-                  <section className="flex flex-col gap-2">
-                    <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                      {t("sectionSecurity")}
-                    </h4>
+                  <DetailSection title={t("sectionAccount")}>
                     <DetailList
+                      divided
                       items={[
-                        {
-                          label: t("lastLoginLabel"),
-                          value: detail.lastLogin == null ? t("never") : fmtDateTime(detail.lastLogin, locale),
-                        },
-                        ...(detail.statusReason
-                          ? [{ label: t("statusReasonRow"), value: detail.statusReason }]
-                          : []),
+                        { label: t("usernameLabel"), value: detail.username || "-" },
+                        { label: t("preferredLanguageLabel"), value: languageLabel(detail.preferredLanguage) },
+                        ...(detail.statusReason ? [{ label: t("statusReasonRow"), value: detail.statusReason }] : []),
                       ]}
                     />
-                  </section>
+                  </DetailSection>
 
-                  <section className="flex flex-col gap-2">
-                    <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                      {t("sectionDevices")}
-                    </h4>
+                  <DetailSection
+                    title={
+                      devicesQuery.data
+                        ? t("sectionDevicesCount", { count: devicesQuery.data.length })
+                        : t("sectionDevices")
+                    }
+                  >
                     {devicesQuery.isPending ? (
                       <div className="flex flex-col gap-2">
-                        <Skeleton className="h-10 w-full" />
-                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-8 w-full" />
+                        <Skeleton className="h-8 w-full" />
                       </div>
-                    ) : devicesQuery.isError &&
-                      (devicesQuery.error as ApiError)?.status === 404 ? (
+                    ) : devicesQuery.isError && (devicesQuery.error as ApiError)?.status === 404 ? (
                       <p className="text-sm text-muted-foreground">{t("devicesUnavailable")}</p>
                     ) : devicesQuery.isError ? (
                       <LoadError error={devicesQuery.error} message={t("devicesLoadError")} onRetry={() => devicesQuery.refetch()} className="py-6" />
                     ) : (devicesQuery.data ?? []).length === 0 ? (
                       <p className="text-sm text-muted-foreground">{t("noDevices")}</p>
                     ) : (
-                      <ul className="flex flex-col gap-2">
-                        {(devicesQuery.data ?? []).map((device) => (
-                          <li
-                            key={device.id}
-                            className="flex flex-col gap-0.5 rounded-lg border bg-muted/30 p-3"
-                          >
-                            <span className="text-sm font-medium">
-                              {device.device_name || t("unknownDevice")}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {device.last_used_at
-                                ? t("deviceLastUsed", {
-                                    time: fmtRelative(Date.parse(device.last_used_at), locale),
-                                  })
-                                : t("deviceNeverUsed")}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
+                      <div
+                        tabIndex={0}
+                        role="region"
+                        aria-label={t("sectionDevices")}
+                        className="max-h-60 overflow-y-auto rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                      >
+                        <ul className="divide-y">
+                          {(devicesQuery.data ?? []).map((device) => (
+                            <li
+                              key={device.id}
+                              className="flex min-h-9 items-center justify-between gap-3 py-1.5 first:pt-0 last:pb-0"
+                            >
+                              <span className="min-w-0 truncate text-sm font-medium">
+                                {device.device_name || t("unknownDevice")}
+                              </span>
+                              <span className="shrink-0 text-[13px] text-muted-foreground">
+                                {device.last_used_at
+                                  ? t("deviceLastUsed", { time: fmtRelative(Date.parse(device.last_used_at), locale) })
+                                  : t("deviceNeverUsed")}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
-                  </section>
+                  </DetailSection>
 
-                  <section className="flex flex-col gap-2">
-                    <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                      {t("sectionTimeline")}
-                    </h4>
+                  <DetailSection title={t("sectionTimeline")}>
                     <DetailList
+                      divided
                       items={[
                         {
                           label: t("invitedByLabel"),
-                          value: detail.invitedBy ? (
-                            <AdminIdLink id={detail.invitedBy} fallback={t("inviterFallback")} />
-                          ) : (
-                            "-"
-                          ),
+                          value: detail.invitedBy ? <AdminIdLink id={detail.invitedBy} fallback={t("inviterFallback")} /> : "-",
                         },
-                        { label: t("createdAtLabel"), value: fmtDateTime(detail.invitedAt, locale) },
                         {
                           label: t("activatedAtLabel"),
-                          value: detail.activatedAt != null ? fmtDateTime(detail.activatedAt, locale) : "-",
+                          value: detail.activatedAt != null ? <DateTimeValue epoch={detail.activatedAt} locale={locale} /> : "-",
                         },
-                        { label: t("preferredLanguageLabel"), value: languageLabel(detail.preferredLanguage) },
                       ]}
                     />
-                  </section>
-
-                  <section className="flex flex-col gap-2">
-                    <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                      {t("sectionStaff")}
-                    </h4>
-                    <DetailList
-                      items={[
-                        { label: t("staffNameLabel"), value: detail.name },
-                        { label: t("usernameLabel"), value: detail.username || "-" },
-                        { label: t("staffEmailLabel"), value: detail.email },
-                      ]}
-                    />
-                  </section>
+                  </DetailSection>
                 </>
               )}
             </SheetBody>
@@ -940,22 +1172,27 @@ export function UserManagement() {
               if (items.length === 0) return null;
               return (
                 <SheetFooter layout="split">
-                  {items.map((item) => (
-                    <Button
-                      key={item.key}
-                      size="lg"
-                      variant={item.variant === "destructive" ? "outline" : "default"}
-                      disabled={item.disabled}
-                      onClick={item.onSelect}
-                      className={
-                        item.variant === "destructive"
-                          ? "text-danger hover:bg-danger-muted hover:text-danger"
-                          : undefined
-                      }
-                    >
-                      {item.label}
-                    </Button>
-                  ))}
+                  {items.map((item) => {
+                    const buttonProps = {
+                      size: "lg" as const,
+                      variant: item.variant === "destructive" ? ("outline" as const) : ("default" as const),
+                      focusableWhenDisabled: true,
+                      disabled: item.disabled,
+                      onClick: item.onSelect,
+                      className:
+                        item.variant === "destructive" ? "text-danger hover:bg-danger-muted hover:text-danger" : undefined,
+                    };
+                    return item.disabled && item.title ? (
+                      <Tooltip key={item.key}>
+                        <TooltipTrigger render={<Button {...buttonProps} />}>{item.label}</TooltipTrigger>
+                        <TooltipContent>{item.title}</TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <Button key={item.key} {...buttonProps}>
+                        {item.label}
+                      </Button>
+                    );
+                  })}
                 </SheetFooter>
               );
             })()}
@@ -964,49 +1201,82 @@ export function UserManagement() {
       </Sheet>
 
       <Sheet
+        inspect
         open={selectedInvite != null || linkedInviteId != null}
         onOpenChange={(open) => !open && closeInvite()}
       >
         {shownInvite &&
           (() => {
             const record = inviteDetail ?? shownInvite;
+            const revoked = record.status === "revoked";
+            const revokedAt = record.revokedAt ?? null;
+            const revokedById = record.revokedBy ?? null;
+            const revokedByName = record.revokedByName ?? null;
+            const revokedByEmail = record.revokedByEmail ?? null;
+            const pager = revoked ? revokedPager : invitesPager;
+            const inviteAgainReason = inviteAgainBlock(record);
             const cooldownActive = record.invitableAgainAt != null && record.invitableAgainAt > now;
             const inviteRoles = (record.roleIds ?? []).flatMap((roleId) => {
               const name = roleNameById.get(roleId);
               return name ? [{ id: roleId, name }] : [];
             });
             return (
-              <SheetContent>
-                <SheetHeader>
-                  <div className="flex items-center gap-3">
-                    <ProfileCell
-                      name={shownInvite.name}
-                      initials={shownInvite.initials}
-                      subtitle={shownInvite.email}
-                    />
-                  </div>
-                  <SheetTitle className="sr-only">{shownInvite.name}</SheetTitle>
-                  <SheetDescription className="sr-only">{shownInvite.email}</SheetDescription>
-                  <div className="pt-1">
-                    <StatusBadge tone={STATUS_TONE[shownInvite.status]} equalWidth={false}>
-                      {t(`status_${shownInvite.status}`)}
-                    </StatusBadge>
-                  </div>
-                </SheetHeader>
-                <SheetBody className="flex flex-col gap-5">
+              <SheetContent onSwipeNext={() => pager.step(1)} onSwipePrev={() => pager.step(-1)}>
+                <RecordDrawerHeader
+                  pager={pager}
+                  link={recordHref("invitation", shownInvite.id)}
+                  title={shownInvite.name}
+                  subtitle={shownInvite.email}
+                  summary={[
+                    revoked
+                      ? {
+                          label: t("colSent"),
+                          value: record.invitedAt ? <DateTimeValue epoch={record.invitedAt} locale={locale} /> : "-",
+                        }
+                      : {
+                          label: t("colLastSent"),
+                          value:
+                            record.lastInviteSentAt != null ? (
+                              <DateTimeValue epoch={record.lastInviteSentAt} locale={locale} />
+                            ) : (
+                              "-"
+                            ),
+                        },
+                    {
+                      label: t("colStatus"),
+                      value: (
+                        <StatusBadge tone={STATUS_TONE[record.status]} equalWidth={false}>
+                          {t(`status_${record.status}`)}
+                        </StatusBadge>
+                      ),
+                    },
+                    revoked
+                      ? {
+                          label: t("colRevoked"),
+                          value: revokedAt != null ? <DateTimeValue epoch={revokedAt} locale={locale} /> : "-",
+                        }
+                      : {
+                          label: t("invitationExpiresLabel"),
+                          value:
+                            record.invitationExpiresAt != null ? (
+                              <DateTimeValue epoch={record.invitationExpiresAt} locale={locale} />
+                            ) : (
+                              "-"
+                            ),
+                        },
+                  ]}
+                />
+                <SheetBody className="flex flex-col gap-6">
                   {inviteError ? (
                     <LoadError error={inviteCause} message={t("invitationLoadError")} onRetry={inviteReload} />
                   ) : inviteLoading ? (
                     <div className="flex flex-col gap-3">
-                      <Skeleton className="h-24 w-full" />
+                      <Skeleton className="h-16 w-full" />
                       <Skeleton className="h-24 w-full" />
                     </div>
                   ) : (
                     <>
-                      <section className="flex flex-col gap-2">
-                        <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                          {t("colRoles")}
-                        </h4>
+                      <DetailSection title={t("colRoles")}>
                         {inviteRoles.length === 0 ? (
                           <p className="text-sm text-muted-foreground">-</p>
                         ) : (
@@ -1018,68 +1288,100 @@ export function UserManagement() {
                             ))}
                           </div>
                         )}
-                      </section>
+                      </DetailSection>
 
-                      <section className="flex flex-col gap-2">
-                        <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                          {t("invitedByLabel")}
-                        </h4>
-                        {record.invitedByName && record.invitedBy ? (
-                          <RecordLink
-                            href={recordHref("adminAccount", record.invitedBy)}
-                            label={t("openAccount", { name: record.invitedByName })}
-                          >
-                            <ProfileCell
-                              name={record.invitedByName}
-                              subtitle={record.invitedByEmail ?? undefined}
-                            />
-                          </RecordLink>
-                        ) : record.invitedByName ? (
-                          <ProfileCell
+                      <DetailSection title={t("invitedByLabel")}>
+                        {record.invitedByName ? (
+                          <AdminProfileLink
+                            id={record.invitedBy}
                             name={record.invitedByName}
-                            subtitle={record.invitedByEmail ?? undefined}
+                            subtitle={record.invitedByEmail}
+                            label={t("openAccount", { name: record.invitedByName })}
                           />
                         ) : (
                           <p className="text-sm text-muted-foreground">-</p>
                         )}
-                      </section>
+                      </DetailSection>
 
-                      <section className="flex flex-col gap-2">
-                        <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                          {t("sectionTimeline")}
-                        </h4>
+                      {revoked && (
+                        <DetailSection title={t("colRevokedBy")}>
+                          {revokedByName ? (
+                            <AdminProfileLink
+                              id={revokedById}
+                              name={revokedByName}
+                              subtitle={revokedByEmail}
+                              label={t("openAccount", { name: revokedByName })}
+                            />
+                          ) : (
+                            <p className="text-sm text-muted-foreground">-</p>
+                          )}
+                        </DetailSection>
+                      )}
+
+                      <DetailSection title={t("sectionTimeline")}>
                         <DetailList
-                          items={[
-                            { label: t("staffEmailLabel"), value: record.email },
-                            { label: t("createdAtLabel"), value: fmtDateTime(record.invitedAt, locale) },
-                            {
-                              label: t("lastSentLabel"),
-                              value:
-                                record.lastInviteSentAt != null
-                                  ? fmtDateTime(record.lastInviteSentAt, locale)
-                                  : "-",
-                            },
-                            {
-                              label: t("invitationExpiresLabel"),
-                              value:
-                                record.invitationExpiresAt != null
-                                  ? fmtDateTime(record.invitationExpiresAt, locale)
-                                  : "-",
-                            },
-                            {
-                              label: t("invitableAgainLabel"),
-                              value:
-                                record.invitableAgainAt != null
-                                  ? fmtDateTime(record.invitableAgainAt, locale)
-                                  : t("resendAvailableNow"),
-                            },
-                          ]}
+                          divided
+                          items={
+                            revoked
+                              ? [
+                                  {
+                                    label: t("lastSentLabel"),
+                                    value:
+                                      record.lastInviteSentAt != null ? (
+                                        <DateTimeValue epoch={record.lastInviteSentAt} locale={locale} />
+                                      ) : (
+                                        "-"
+                                      ),
+                                  },
+                                ]
+                              : [
+                                  {
+                                    label: t("createdAtLabel"),
+                                    value: record.invitedAt ? <DateTimeValue epoch={record.invitedAt} locale={locale} /> : "-",
+                                  },
+                                  {
+                                    label: t("invitableAgainLabel"),
+                                    value:
+                                      record.invitableAgainAt != null ? (
+                                        <DateTimeValue epoch={record.invitableAgainAt} locale={locale} />
+                                      ) : (
+                                        t("resendAvailableNow")
+                                      ),
+                                  },
+                                ]
+                          }
                         />
-                      </section>
+                      </DetailSection>
+
+                      <TargetHistory targetId={shownInvite.id} />
                     </>
                   )}
                 </SheetBody>
-                {canInvite && (
+                {canInvite && revoked && (
+                  <SheetFooter>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            size="lg"
+                            focusableWhenDisabled
+                            disabled={inviteAgainReason != null}
+                            onClick={() => {
+                              const target = record;
+                              closeInvite();
+                              inviteAgain(target);
+                            }}
+                          />
+                        }
+                      >
+                        <RotateCcw className="size-4 rtl:-scale-x-100" />
+                        {t("actionInviteAgain")}
+                      </TooltipTrigger>
+                      {inviteAgainReason && <TooltipContent>{inviteAgainReason}</TooltipContent>}
+                    </Tooltip>
+                  </SheetFooter>
+                )}
+                {canInvite && !revoked && (
                   <SheetFooter layout="split">
                     <Button
                       size="lg"

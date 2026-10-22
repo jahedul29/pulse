@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Check, ChevronsUpDown, Search } from "lucide-react";
 
@@ -13,10 +14,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ProfileCell } from "@/components/common/profile-cell";
 import { RecordLink } from "@/components/common/record-link";
 import { UserAccessEditor } from "@/components/admin/user-access-editor";
-import { recordHref } from "@/lib/record-links";
+import { LoadError } from "@/components/common/load-error";
+import { recordHref, userAccessHref } from "@/lib/record-links";
 import { cn } from "@/lib/utils";
 import { autoFocusSearch } from "@/lib/pointer";
-import { useAdminUsers } from "@/lib/user-management/queries";
+import { useAllAdminUsers } from "@/lib/user-management/queries";
+import { useAuthStore } from "@/lib/auth/store";
 import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 import type { AdminUserRow } from "@/lib/user-management/types";
 import { PageContainer } from "@/components/common/page-container";
@@ -27,25 +30,32 @@ export function AdminAccess() {
   const t = useTranslations("rbac");
   const tc = useTranslations("common");
   const canEdit = useHasPermission(PERMISSIONS.USER_MANAGEMENT_EDIT);
+  const router = useRouter();
+  const linkedId = useSearchParams().get("user") ?? "";
+  const selfEmail = useAuthStore((state) => state.session?.email?.toLowerCase() ?? "");
 
-  const [pickedAdmin, setPickedAdmin] = useState<AdminUserRow | null>(null);
-  const adminId = pickedAdmin?.id ?? "";
   const [adminOpen, setAdminOpen] = useState(false);
   const [adminSearch, setAdminSearch] = useState("");
 
-  const adminsQuery = useAdminUsers({ page: 1, perPage: 100 });
+  const adminsQuery = useAllAdminUsers();
+  const admins = useMemo(
+    () => (adminsQuery.data ?? []).filter((admin) => admin.email.toLowerCase() !== selfEmail),
+    [adminsQuery.data, selfEmail],
+  );
+  const pickedAdmin = linkedId ? (admins.find((admin) => admin.id === linkedId) ?? null) : null;
+  const adminId = pickedAdmin?.id ?? "";
   const adminResults = useMemo(() => {
     const term = adminSearch.trim().toLowerCase();
-    const rows = (adminsQuery.data?.data ?? []).filter(
+    const rows = admins.filter(
       (admin) => !term || admin.name.toLowerCase().includes(term) || admin.email.toLowerCase().includes(term),
     );
     if (!pickedAdmin) return rows;
     return [pickedAdmin, ...rows.filter((admin) => admin.id !== pickedAdmin.id)];
-  }, [adminsQuery.data, pickedAdmin, adminSearch]);
+  }, [admins, pickedAdmin, adminSearch]);
 
   const pickAdmin = (admin: AdminUserRow) => {
-    setPickedAdmin(admin);
     setAdminOpen(false);
+    router.replace(userAccessHref(admin.id), { scroll: false });
   };
 
   return (
@@ -128,7 +138,20 @@ export function AdminAccess() {
 
       {!pickedAdmin ? (
         <Card>
-          <CardContent className="py-16 text-center text-sm text-muted-foreground">{t("noAdmin")}</CardContent>
+          <CardContent>
+            {linkedId && adminsQuery.isError ? (
+              <LoadError error={adminsQuery.error} message={t("loadError")} onRetry={() => adminsQuery.refetch()} />
+            ) : linkedId && adminsQuery.isPending ? (
+              <div className="flex flex-col gap-2 py-6">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+            ) : (
+              <p className="py-16 text-center text-sm text-muted-foreground">
+                {linkedId ? t("userNotFound") : t("noAdmin")}
+              </p>
+            )}
+          </CardContent>
         </Card>
       ) : (
         <>

@@ -1,4 +1,5 @@
 import type { StaffRecord } from "@/lib/staff/types";
+import { dbDateTimeToEpoch } from "@/lib/record-links";
 import type { AdminUser, AdminUserRow, AdminUserStatus, EffectiveStatus, RoleRef } from "./types";
 
 export type UserStatusWire = "PENDING" | "ACTIVE" | "SUSPENDED" | "DEACTIVATED";
@@ -8,6 +9,7 @@ export interface RoleRefDto {
   name: string;
   description?: string;
   is_system?: boolean;
+  expires_at?: string | null;
 }
 
 export interface StaffDto {
@@ -66,6 +68,9 @@ export interface InvitationDto {
   last_sent_at?: string | null;
   invitable_again_at?: string | null;
   created_at?: string | null;
+  revoked_at?: string | null;
+  revoked_by_admin_id?: string | null;
+  revoked_by?: InvitedByDto | null;
   staff?: StaffDto | null;
 }
 
@@ -161,7 +166,11 @@ function toEpoch(value: string | null | undefined): number | null {
 }
 
 function rolesFromDto(roles: RoleRefDto[] | undefined): RoleRef[] {
-  return (roles ?? []).map((role) => ({ id: String(role.id), name: role.name }));
+  return (roles ?? []).map((role) => ({
+    id: String(role.id),
+    name: role.name,
+    expiresAt: role.expires_at ? (dbDateTimeToEpoch(role.expires_at) ?? toEpoch(role.expires_at)) : null,
+  }));
 }
 
 function withDerived(user: AdminUser, isLocked = false): AdminUserRow {
@@ -234,6 +243,10 @@ export function invitationDtoToRow(dto: InvitationDto): AdminUserRow {
     lastStatusChangeBy: null,
     registeredDevices: 0,
     lastInviteSentAt: toEpoch(dto.last_sent_at) ?? createdAt,
+    revokedAt: toEpoch(dto.revoked_at),
+    revokedBy: dto.revoked_by_admin_id ?? null,
+    revokedByName: inviterName(dto.revoked_by),
+    revokedByEmail: dto.revoked_by?.email ?? null,
   });
 }
 

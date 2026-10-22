@@ -19,12 +19,15 @@ const mockPermission = {
 const mutation = () => ({ mutateAsync: jest.fn(), isPending: false });
 
 jest.mock("../../lib/rbac/queries", () => ({
-  useAdminAccess: () => ({
-    data: {
-      roles: [{ id: 3, name: "admin", is_system: false, granted_at: "2026-10-11 12:00:00", granted_by_admin_id: "u2" }],
-      permissions: [mockPermission],
-      effectivePermissionCount: 13,
-    },
+  useAdminAccess: (userId: string) => ({
+    data:
+      userId === "u-empty"
+        ? { roles: [], permissions: [], effectivePermissionCount: 0 }
+        : {
+            roles: [{ id: 3, name: "admin", is_system: false, granted_at: "2026-10-11 12:00:00", granted_by_admin_id: "u2" }],
+            permissions: [mockPermission],
+            effectivePermissionCount: 13,
+          },
     isPending: false,
     isError: false,
     refetch: jest.fn(),
@@ -91,8 +94,24 @@ describe("UserAccessEditor", () => {
     expect(screen.getByText("Sensitive")).toBeInTheDocument();
     expect(screen.getByText("Expires 31-Dec-2026")).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Emma Novak" })).toHaveLength(2);
-    expect(screen.getByText(/13 effective permissions in total/)).toBeInTheDocument();
+    const effective = screen.getByText("Effective permissions").closest("div");
+    expect(effective).toHaveTextContent("13");
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("drawer variant says None in one left-aligned line when a list is empty", () => {
+    render(<UserAccessEditor userId="u-empty" userName="New Person" variant="drawer" canEdit={false} />);
+
+    expect(screen.getByText("None yet.")).not.toHaveClass("text-center");
+    expect(screen.getByText("None. Access comes from roles only.")).not.toHaveClass("text-center");
+    expect(screen.getByText("Effective permissions").closest("div")).toHaveTextContent("0");
+  });
+
+  it("page variant keeps the centred empty message inside its card", () => {
+    render(<UserAccessEditor userId="u-empty" userName="New Person" variant="page" canEdit={false} />);
+
+    expect(screen.getByText("No roles granted yet.")).toHaveClass("text-center");
+    expect(screen.queryByText("Effective permissions")).not.toBeInTheDocument();
   });
 
   it("offers an optional expiry when granting a role, defaulting to no expiry", async () => {

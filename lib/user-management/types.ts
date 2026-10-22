@@ -5,6 +5,7 @@ export type EffectiveStatus = AdminUserStatus | "locked";
 export interface RoleRef {
   id: string;
   name: string;
+  expiresAt?: number | null;
 }
 
 export interface AdminUser {
@@ -33,6 +34,10 @@ export interface AdminUser {
   lastStatusChangeBy: string | null;
   registeredDevices: number;
   lastInviteSentAt: number | null;
+  revokedAt?: number | null;
+  revokedBy?: string | null;
+  revokedByName?: string | null;
+  revokedByEmail?: string | null;
   willFailMutation?: boolean;
 }
 

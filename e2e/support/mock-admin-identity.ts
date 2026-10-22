@@ -286,7 +286,10 @@ export async function mockAdminIdentity(
     }
     if (/^\/users\/[^/]+\/roles$/.test(pathname) && method === "PUT") return json(ok({}));
 
-    if (pathname === "/invitations" && method === "GET") return json(list(invitations));
+    if (pathname === "/invitations" && method === "GET") {
+      const status = new URL(request.url()).searchParams.get("filters[status]");
+      return json(list(status ? invitations.filter((entry) => String(entry.status).toUpperCase() === status) : invitations));
+    }
     if (pathname === "/invitations" && method === "POST") {
       const sent = request.postDataJSON() as { staff_id: number };
       const member = staff.find((entry) => entry.id === sent.staff_id);
@@ -314,11 +317,19 @@ export async function mockAdminIdentity(
       });
       return json(ok(invitation, 201), 201);
     }
-    if (/^\/invitations\/[^/]+$/.test(pathname) && method === "DELETE") return json(ok(null));
+    const invitationMatch = pathname.match(/^\/invitations\/([^/]+)$/);
+    if (invitationMatch && method === "DELETE") {
+      const invitation = invitations.find((entry) => entry.id === invitationMatch[1]);
+      if (invitation) invitation.status = "REVOKED";
+      return json(ok(null));
+    }
 
     if (pathname === "/staff" && method === "GET") return json(list(staff));
 
-    if (pathname === "/admin-action-logs" && method === "GET") return json(list(actions));
+    if (pathname === "/admin-action-logs" && method === "GET") {
+      const targetId = new URL(request.url()).searchParams.get("filters[target_id]");
+      return json(list(targetId ? actions.filter((entry) => String(entry.target_id) === targetId) : actions));
+    }
     if (pathname === "/admin-action-logs/filter-options" && method === "GET") {
       return json(
         ok({
@@ -335,7 +346,10 @@ export async function mockAdminIdentity(
       return json(ok(action));
     }
 
-    if (pathname === "/change-logs" && method === "GET") return json(list(changes));
+    if (pathname === "/change-logs" && method === "GET") {
+      const actionId = new URL(request.url()).searchParams.get("filters[admin_action_log_id]");
+      return json(list(actionId ? changes.filter((entry) => String(entry.admin_action_log_id) === actionId) : changes));
+    }
     const changeMatch = pathname.match(/^\/change-logs\/([^/]+)$/);
     if (changeMatch && method === "GET") {
       const change = changes.find((entry) => entry.id === changeMatch[1]) ?? changes[0];

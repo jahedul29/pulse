@@ -67,3 +67,31 @@ test("rolls back an optimistic status change when the API fails", async ({ page 
   await expect(confirm).toBeHidden();
   await expect(row.getByText("Active")).toBeVisible();
 });
+
+test("keeps a revoked invitation in the Revoked tab and invites the person again", async ({ page }) => {
+  await page.goto("/admin/user-management");
+  await expect(page.getByText("Dana Okonkwo").first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Invite user" }).click();
+  const invite = page.getByRole("dialog", { name: "Invite user" });
+  await invite.getByRole("button", { name: "Select a staff member" }).click();
+  await page.getByPlaceholder("Search staff").fill("Bruno");
+  await page.getByRole("button", { name: /Bruno Costa/ }).click();
+  await invite.getByRole("button", { name: "Send invite" }).click();
+  await expect(invite).toBeHidden();
+
+  await page.getByRole("tab", { name: /Pending invitations/ }).click();
+  const pendingRow = page.getByRole("link", { name: "Bruno Costa" });
+  await pendingRow.getByRole("button", { name: "Revoke invite" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Revoke invite" }).click();
+
+  await page.getByRole("tab", { name: /Revoked invitations/ }).click();
+  const revokedRow = page.getByRole("link", { name: "Bruno Costa" });
+  await expect(revokedRow).toBeVisible();
+
+  await revokedRow.getByRole("button", { name: "Invite again" }).click();
+  const again = page.getByRole("dialog", { name: "Invite user" });
+  await expect(again).toBeVisible();
+  await expect(again.getByRole("textbox", { name: "Email" })).toHaveValue("bruno.costa@abapro.health");
+});
+

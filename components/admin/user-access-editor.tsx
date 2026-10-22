@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
-import { CalendarIcon, Check, ChevronsUpDown, Lock, Plus, Search, X } from "lucide-react";
+import { CalendarIcon, Check, ChevronsUpDown, Lock, Plus, Search, UserCog, X } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { DetailList } from "@/components/common/detail-list";
+import { DetailSection } from "@/components/common/detail-section";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Form } from "@/components/ui/form";
@@ -55,6 +57,8 @@ import {
 } from "@/lib/rbac/queries";
 import { permissionCode, permissionLabel, type PermissionDto, type RoleDto } from "@/lib/rbac/dto";
 import { grantSchema, overlaySchema, type GrantForm, type OverlayForm } from "@/lib/rbac/schemas";
+import { isSuperadminRole } from "@/lib/rbac/superadmin";
+import { useSuperadminGuard } from "@/lib/rbac/use-superadmin-guard";
 import { dateKey, endOfDayIso, parseDateKey, todayKey } from "@/lib/rbac/expiry";
 import { LoadError } from "@/components/common/load-error";
 import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
@@ -232,18 +236,6 @@ function GrantRow({
   );
 }
 
-function DrawerSection({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
-  return (
-    <section className="flex flex-col gap-2">
-      <div className="flex min-h-7 items-center justify-between gap-3">
-        <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{title}</h4>
-        {action}
-      </div>
-      {children}
-    </section>
-  );
-}
-
 function RoleTitle({ id, name }: { id: number | string; name: string }) {
   const href = recordHref("role", id);
   const canOpen = useCanOpen(href);
@@ -258,18 +250,37 @@ function RoleTitle({ id, name }: { id: number | string; name: string }) {
   );
 }
 
+const SUPERADMIN_REVOKE_REASON = {
+  checking: "superadminChecking",
+  unverified: "superadminUnverified",
+  last: "lastSuperadminRevoke",
+} as const;
+
+function ManageAccessLink({ href, label }: { href: string; label: string }) {
+  const canOpen = useCanOpen(href);
+  if (!canOpen) return null;
+  return (
+    <Link href={href} className={buttonVariants({ variant: "outline", size: "sm" })}>
+      <UserCog className="size-4" />
+      {label}
+    </Link>
+  );
+}
+
 export function UserAccessEditor({
   userId,
   userName,
   variant,
   canEdit,
   blockedReason,
+  manageHref,
 }: {
   userId: string;
   userName: string;
   variant: "page" | "drawer";
   canEdit: boolean;
   blockedReason?: string;
+  manageHref?: string;
 }) {
   const t = useTranslations("rbac");
   const tc = useTranslations("common");
@@ -277,6 +288,8 @@ export function UserAccessEditor({
   const locale = useLocale();
 
   const adminsQuery = useAllAdminUsers();
+  const superadminCheck = useSuperadminGuard(canEdit).check(userId);
+  const superadminReason = superadminCheck ? t(SUPERADMIN_REVOKE_REASON[superadminCheck]) : undefined;
   const adminNameById = useMemo(
     () => new Map((adminsQuery.data ?? []).map((admin) => [admin.id, admin.name || admin.email])),
     [adminsQuery.data],
@@ -329,8 +342,8 @@ export function UserAccessEditor({
     [directPermissions],
   );
 
-  const rolesCatalog = useRoles({ page: 1, perPage: 100 });
-  const permissionsCatalog = usePermissions();
+  const rolesCatalog = useRoles({ page: 1, perPage: 100 }, canEdit);
+  const permissionsCatalog = usePermissions(canEdit);
   const canViewRoles = useHasPermission(PERMISSIONS.ROLES_VIEW);
   const canViewPermissions = useHasPermission(PERMISSIONS.PERMISSIONS_VIEW);
 
@@ -455,8 +468,13 @@ export function UserAccessEditor({
   };
 
 
-  const removeAction = (label: string, ariaLabel: string, onClick: () => void): RowAction | undefined =>
-    canEdit ? { label, ariaLabel, onClick, disabledReason: blockedReason } : undefined;
+  const removeAction = (
+    label: string,
+    ariaLabel: string,
+    onClick: () => void,
+    reason?: string,
+  ): RowAction | undefined => (canEdit ? { label, ariaLabel, onClick, disabledReason: blockedReason ?? reason } : undefined);
+  const manageLink = manageHref ? <ManageAccessLink href={manageHref} label={t("manageAccess")} /> : null;
   const addButton = (label: string, onClick: () => void, catalogAllowed: boolean) =>
     canEdit ? (
       <EditButton
@@ -468,9 +486,13 @@ export function UserAccessEditor({
       />
     ) : null;
 
+  const emptyNote = (text: string) => (
+    <p className={cn("text-sm text-muted-foreground", variant === "page" && "py-6 text-center")}>{text}</p>
+  );
+
   const rolesList =
     grantedRoles.length === 0 ? (
-      <p className="py-6 text-center text-sm text-muted-foreground">{t("noGrants")}</p>
+      emptyNote(variant === "drawer" ? t("noRolesYet") : t("noGrants"))
     ) : (
       <ul className="@container divide-y sm:overflow-hidden sm:rounded-lg sm:border">
         {grantedRoles.map((role) => (
@@ -493,7 +515,12 @@ export function UserAccessEditor({
             }
             meta={[grantMeta(role.granted_at, role.granted_by_admin_id)]}
             status={expiryStatus(role.expires_at)}
-            action={removeAction(t("revoke"), t("revokeRoleAria", { name: role.name }), () => setRevoking(role))}
+            action={removeAction(
+              t("revoke"),
+              t("revokeRoleAria", { name: role.name }),
+              () => setRevoking(role),
+              isSuperadminRole(role.name) ? superadminReason : undefined,
+            )}
           />
         ))}
       </ul>
@@ -501,9 +528,7 @@ export function UserAccessEditor({
 
   const overlaysList =
     directPermissions.length === 0 ? (
-      <p className="py-6 text-center text-sm text-muted-foreground">
-        {variant === "drawer" ? t("noDirectPermissions") : t("noOverlays")}
-      </p>
+      emptyNote(variant === "drawer" ? t("noDirectPermissions") : t("noOverlays"))
     ) : (
       <ul className="@container divide-y sm:overflow-hidden sm:rounded-lg sm:border">
         {directPermissions.map((permission) => (
@@ -553,23 +578,28 @@ export function UserAccessEditor({
         loading
       ) : (
         <>
-          <DrawerSection
+          <DetailSection
             title={t("rolesCount", { count: grantedRoles.length })}
-            action={addButton(t("addRole"), openAddRole, canViewRoles)}
+            action={manageLink ?? addButton(t("addRole"), openAddRole, canViewRoles)}
           >
             {rolesList}
-          </DrawerSection>
-          <DrawerSection
+          </DetailSection>
+          <DetailSection
             title={t("directPermissionsCount", { count: directPermissions.length })}
-            action={addButton(t("addPermission"), openAddOverlay, canViewPermissions)}
+            action={manageLink ? undefined : addButton(t("addPermission"), openAddOverlay, canViewPermissions)}
           >
             {overlaysList}
-            {effectivePermissionCount > 0 && (
-              <p className="text-xs text-muted-foreground">
-                {t("effectivePermissions", { count: effectivePermissionCount })}
-              </p>
-            )}
-          </DrawerSection>
+            <DetailList
+              divided
+              className="border-t pt-2"
+              items={[
+                {
+                  label: t("effectivePermissionsLabel"),
+                  value: <span className="tabular">{effectivePermissionCount}</span>,
+                },
+              ]}
+            />
+          </DetailSection>
         </>
       )
     ) : accessQuery.isError ? (

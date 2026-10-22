@@ -19,13 +19,13 @@ import {
 } from "./rbac-api";
 import type { RoleDto, StoreRoleBody, UpdateRoleBody } from "./dto";
 
-export function useRoles(params: ListParams) {
+export function useRoles(params: ListParams, enabled = true) {
   const allowed = useHasPermission(PERMISSIONS.ROLES_VIEW);
   return useQuery({
     queryKey: [...queryKeys.roles(), params],
     queryFn: () => listRoles(params),
     placeholderData: keepPreviousData,
-    enabled: allowed,
+    enabled: allowed && enabled,
   });
 }
 
@@ -47,9 +47,9 @@ export function usePermissionModules() {
   });
 }
 
-export function usePermissions() {
+export function usePermissions(enabled = true) {
   const allowed = useHasPermission(PERMISSIONS.PERMISSIONS_VIEW);
-  return useQuery({ queryKey: queryKeys.permissions(), queryFn: listPermissions, enabled: allowed });
+  return useQuery({ queryKey: queryKeys.permissions(), queryFn: listPermissions, enabled: allowed && enabled });
 }
 
 export function useCreateRole() {
@@ -110,7 +110,8 @@ function setAccessRoles(qc: ReturnType<typeof useQueryClient>, userId: string, r
 
 function refreshAccess(qc: ReturnType<typeof useQueryClient>, userId: string) {
   void qc.invalidateQueries({ queryKey: queryKeys.adminAccess(userId) });
-  void qc.invalidateQueries({ queryKey: ["admin-users"] });
+  void qc.invalidateQueries({ queryKey: queryKeys.adminUsersRoot() });
+  void qc.invalidateQueries({ queryKey: queryKeys.allAdminUsers() });
 }
 
 export function useAttachUserRoles() {
