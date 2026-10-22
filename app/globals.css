@@ -63,7 +63,6 @@
 :root {
   --radius: 0.7rem;
   --badge-w: 5.6rem;
-  --topbar-height: 4rem;
   --map-picked: var(--primary);
   --map-picked-on-dark: var(--lavender);
   --map-other: var(--grey-4);
@@ -193,14 +192,28 @@
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+  a[href],
   button:not(:disabled):not([aria-disabled="true"]),
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  input[type="file"]:not(:disabled),
   [role="button"]:not([aria-disabled="true"]):not([data-disabled]),
+  [role="link"]:not([aria-disabled="true"]):not([data-disabled]),
   [role="tab"]:not([aria-disabled="true"]):not([data-disabled]),
   [role="menuitem"]:not([aria-disabled="true"]):not([data-disabled]),
   [role="menuitemradio"]:not([aria-disabled="true"]):not([data-disabled]),
+  [role="menuitemcheckbox"]:not([aria-disabled="true"]):not([data-disabled]),
   [role="option"]:not([aria-disabled="true"]):not([data-disabled]),
+  [role="radio"]:not([aria-disabled="true"]):not([data-disabled]),
   [role="switch"]:not([aria-disabled="true"]):not([data-disabled]),
   [role="checkbox"]:not([aria-disabled="true"]):not([data-disabled]),
+  [role="combobox"]:not(input):not([aria-disabled="true"]):not([data-disabled]),
+  label:has(> [role="checkbox"]:not([data-disabled])),
+  label:has(> [role="switch"]:not([data-disabled])),
+  label:has(> [role="radio"]:not([data-disabled])),
+  label:has(input[type="checkbox"]:not(:disabled)),
+  label:has(input[type="radio"]:not(:disabled)),
   summary {
     cursor: pointer;
   }

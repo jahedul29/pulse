@@ -1,15 +1,49 @@
 "use client";
 
-import { useRef, type ComponentProps, type PointerEvent as ReactPointerEvent } from "react";
+import { createContext, useContext, useRef, type ComponentProps, type PointerEvent as ReactPointerEvent } from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { XIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ButtonRow, type ButtonRowLayout } from "@/components/ui/button-row";
+import { useMediaQuery } from "@/lib/use-media-query";
 
-function Sheet({ ...props }: DialogPrimitive.Root.Props) {
-  return <DialogPrimitive.Root data-slot="sheet" {...props} />;
+const SIDE_SHEET_QUERY = "(min-width: 640px)";
+const SheetInspectContext = createContext(false);
+
+const KEEP_OPEN_TARGETS = '[data-row], [role="dialog"], [role="alertdialog"], [data-sonner-toaster]';
+
+function keepsInspectOpen(details: DialogPrimitive.Root.ChangeEventDetails): boolean {
+  if (details.reason !== "outside-press" && details.reason !== "focus-out") return false;
+  const target = details.event instanceof FocusEvent ? details.event.relatedTarget : details.event.target;
+  return target instanceof Element && target.closest(KEEP_OPEN_TARGETS) != null;
+}
+
+function Sheet({
+  inspect = false,
+  onOpenChange,
+  ...props
+}: DialogPrimitive.Root.Props & { inspect?: boolean }) {
+  const sideSheet = useMediaQuery(SIDE_SHEET_QUERY);
+  const passive = inspect && sideSheet;
+  const handleOpenChange: DialogPrimitive.Root.Props["onOpenChange"] = (open, details) => {
+    if (passive && !open && keepsInspectOpen(details)) {
+      details.cancel();
+      return;
+    }
+    onOpenChange?.(open, details);
+  };
+  return (
+    <SheetInspectContext.Provider value={passive}>
+      <DialogPrimitive.Root
+        data-slot="sheet"
+        modal={passive ? false : undefined}
+        onOpenChange={handleOpenChange}
+        {...props}
+      />
+    </SheetInspectContext.Provider>
+  );
 }
 
 function SheetTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
@@ -47,6 +81,7 @@ function SheetContent({
   onSwipePrev,
   ...props
 }: SheetContentProps) {
+  const passive = useContext(SheetInspectContext);
   const start = useRef<{ x: number; y: number } | null>(null);
   const onPointerDown = (event: ReactPointerEvent) => {
     if (event.pointerType !== "touch") return;
@@ -65,13 +100,14 @@ function SheetContent({
   };
   return (
     <DialogPrimitive.Portal data-slot="sheet-portal">
-      <SheetOverlay />
+      {!passive && <SheetOverlay />}
       <DialogPrimitive.Popup
         data-slot="sheet-content"
+        data-inspect={passive || undefined}
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
         className={cn(
-          "fixed z-50 flex flex-col overflow-hidden bg-popover text-sm text-popover-foreground ring-1 ring-foreground/10 duration-200 outline-none",
+          "fixed z-50 flex flex-col overflow-hidden bg-popover text-sm text-popover-foreground ring-1 ring-foreground/10 duration-200 outline-none data-[inspect]:shadow-2xl",
           "start-0 end-0 bottom-0 h-[88dvh] w-full rounded-t-2xl border-t",
           "data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 motion-reduce:animate-none",
           "max-sm:data-open:slide-in-from-bottom max-sm:data-closed:slide-out-to-bottom",

@@ -34,12 +34,12 @@ export function RecordLink({
       href={href}
       aria-label={label}
       className={cn(
-        "group -mx-1.5 flex w-fit max-w-full items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+        "group -mx-1.5 flex w-fit max-w-full items-center gap-2 rounded-md px-1.5 py-1 text-primary transition-colors hover:bg-primary/8 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
         className,
       )}
     >
       <span className="min-w-0">{children}</span>
-      <ArrowUpRight className="size-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-primary rtl:-scale-x-100" />
+      <ArrowUpRight className="size-3.5 shrink-0 text-primary/70 transition-colors group-hover:text-primary rtl:-scale-x-100" />
     </Link>
   );
 }
@@ -65,7 +65,7 @@ export function ChipLink({ href, children }: { href: string; children: ReactNode
       href={href}
       className="rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
     >
-      <Chip className="leading-snug whitespace-normal hover:border-primary hover:text-primary">{children}</Chip>
+      <Chip className="leading-snug whitespace-normal text-primary hover:border-primary">{children}</Chip>
     </Link>
   );
 }

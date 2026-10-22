@@ -23,6 +23,9 @@ if (typeof window !== "undefined") {
       disconnect() {}
     };
   }
+  if (!Element.prototype.scrollTo) {
+    Element.prototype.scrollTo = () => {};
+  }
   if (!Element.prototype.setPointerCapture) {
     Element.prototype.setPointerCapture = () => {};
     Element.prototype.releasePointerCapture = () => {};

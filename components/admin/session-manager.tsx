@@ -30,6 +30,7 @@ import type { DeviceSession } from "@/lib/sessions/types";
 import { useIsClient } from "@/lib/use-is-client";
 import { cn } from "@/lib/utils";
 import { PageContainer } from "@/components/common/page-container";
+import { columnWidth } from "@/lib/table/column-widths";
 
 function DeviceCell({ session }: { session: DeviceSession }) {
   const ua = session.userAgent ?? "";
@@ -159,7 +160,7 @@ export function SessionManager() {
       {
         id: "device",
         accessorFn: (deviceSession) => deviceSession.deviceName,
-        size: 260,
+        ...columnWidth("text", { min: 220 }),
         header: t("colDevice"),
         cell: ({ row }) => <DeviceCell session={row.original} />,
       },

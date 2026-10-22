@@ -123,6 +123,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { columnWidth } from "@/lib/table/column-widths";
+import { RecordDrawerDemo } from "./record-drawer-demo";
 
 const BRAND = [
   "--primary",
@@ -352,7 +354,7 @@ function DataTableDemo() {
       {
         accessorKey: "name",
         header: "Client",
-        size: 180,
+        ...columnWidth("name"),
         filterFn: "includesString",
         meta: { filter: "text", filterLabel: "Client" },
         cell: ({ row }) => <ProfileCell name={row.original.name} />,
@@ -360,7 +362,7 @@ function DataTableDemo() {
       {
         accessorKey: "email",
         header: "Email",
-        size: 200,
+        ...columnWidth("email"),
         filterFn: "includesString",
         meta: { filter: "text", filterLabel: "Email" },
         cell: ({ row }) => <span className="text-muted-foreground">{row.original.email}</span>,
@@ -418,7 +420,7 @@ function DataTableDemo() {
       {
         accessorKey: "region",
         header: "Region",
-        size: 120,
+        ...columnWidth("label"),
         meta: { filter: "select", filterLabel: "Region" },
         cell: ({ row }) => <span className="text-muted-foreground">{row.original.region}</span>,
       },
@@ -1771,6 +1773,21 @@ export default function DesignSystemPage() {
               </CardHeader>
               <CardContent>
                 <DataTableDemo />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Record drawer and fill mode</CardTitle>
+                <CardDescription>
+                  A table in fill mode (rows scroll under a pinned header, toolbar and pagination stay
+                  visible). Click a row: the inspect drawer opens with the record pager (Alt + arrow keys
+                  or swipe), Copy link, the summary strip, sections, mono dates, hash with copy, hidden
+                  values, the Fields | JSON panel and the Before / After diff.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <RecordDrawerDemo />
               </CardContent>
             </Card>
 

@@ -111,6 +111,7 @@ export function RegionsList() {
           ) : (
             <TooltipProvider>
               <DataTable
+                fill
                 key={countryParam ?? "all"}
                 columns={columns}
                 data={citiesQuery.data ?? []}

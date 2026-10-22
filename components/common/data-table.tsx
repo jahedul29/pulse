@@ -3,10 +3,13 @@
 import {
   useCallback,
   useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
+  type Ref,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
@@ -46,9 +49,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { fmtDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useDragScroll } from "@/lib/use-drag-scroll";
+import { distributeWidths, widthRange } from "@/lib/table/column-widths";
 import { autoFocusSearch } from "@/lib/pointer";
 
 const MAX_FILL_ROWS = 12;
+const STICKY_HEAD = "md:sticky md:top-0 md:z-20 md:bg-card md:shadow-[inset_0_-1px_0_var(--border)]";
 
 declare module "@tanstack/react-table" {
   interface ColumnMeta<TData extends RowData, TValue> {
@@ -94,13 +99,33 @@ function toIso(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-function cellSizeStyle<TData>(column: Column<TData, unknown>, pinned: boolean): CSSProperties | undefined {
-  const explicit = column.columnDef.size != null;
-  if (!pinned && !explicit) return undefined;
-  const width = column.getSize();
+function cellSizeStyle(width: number, start?: number): CSSProperties {
   const style: CSSProperties = { width, minWidth: width, maxWidth: width };
-  if (pinned) style.insetInlineStart = column.getStart("left");
+  if (start != null) style.insetInlineStart = start;
   return style;
+}
+
+function readableText(cell: HTMLElement): string {
+  const parts: string[] = [];
+  const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (node.parentElement?.closest('[aria-hidden="true"]')) continue;
+    const text = node.textContent?.trim();
+    if (text) parts.push(text);
+  }
+  return parts.join(" ");
+}
+
+function revealClippedText(event: ReactPointerEvent<HTMLTableSectionElement>) {
+  const cell = (event.target as HTMLElement).closest<HTMLTableCellElement>("td[data-clip]");
+  if (!cell) return;
+  const from = event.relatedTarget;
+  if (from instanceof Node && cell.contains(from)) return;
+  const clipped = [cell, ...cell.querySelectorAll<HTMLElement>("*")].some(
+    (element) => element.scrollWidth > element.clientWidth + 1,
+  );
+  if (clipped) cell.title = readableText(cell);
+  else cell.removeAttribute("title");
 }
 
 type DataTableProps<TData> = {
@@ -133,6 +158,16 @@ type DataTableProps<TData> = {
   onServerStateChange?: (state: ServerTableState) => void;
   searchDebounceMs?: number;
   initialColumnFilters?: ColumnFiltersState;
+  getRowId?: (row: TData) => string;
+  activeRowId?: string | null;
+  onOrderedIdsChange?: (ids: string[]) => void;
+  controllerRef?: Ref<DataTableController>;
+  fill?: boolean;
+};
+
+export type DataTableController = {
+  goToPage: (pageIndex: number) => void;
+  setColumnFilter: (columnId: string, value: unknown) => void;
 };
 
 export type ServerTableState = {
@@ -415,6 +450,11 @@ export function DataTable<TData>({
   onServerStateChange,
   searchDebounceMs = 350,
   initialColumnFilters,
+  getRowId,
+  activeRowId,
+  onOrderedIdsChange,
+  controllerRef,
+  fill = false,
 }: DataTableProps<TData>) {
   const sizeOptions = useMemo(
     () =>
@@ -474,6 +514,7 @@ export function DataTable<TData>({
     [],
   );
 
+  const sizedColumnIds = new Set(columnIds.filter((_, index) => resolvedColumns[index].size != null));
   const table = useReactTable({
     data,
     columns: resolvedColumns,
@@ -495,6 +536,7 @@ export function DataTable<TData>({
     rowCount: manualServer ? rowCount : undefined,
     enableColumnPinning: true,
     sortDescFirst: false,
+    getRowId: getRowId ? (row) => getRowId(row) : undefined,
     globalFilterFn: getSearchText
       ? (row, _columnId, value) =>
           getSearchText(row.original).toLowerCase().includes(String(value).toLowerCase())
@@ -515,6 +557,37 @@ export function DataTable<TData>({
     onServerStateChangeRef.current?.({ pageIndex, pageSize: size, search: debouncedSearch, sorting, columnFilters });
   }, [manualServer, pageIndex, size, debouncedSearch, sorting, columnFilters]);
   const pageRows = table.getRowModel().rows;
+  const orderedRows = table.getPrePaginationRowModel().rows;
+
+  useImperativeHandle(
+    controllerRef,
+    () => ({
+      goToPage: (index: number) => table.setPageIndex(index),
+      setColumnFilter: (columnId: string, value: unknown) => table.getColumn(columnId)?.setFilterValue(value),
+    }),
+    [table],
+  );
+
+  const onOrderedIdsChangeRef = useRef(onOrderedIdsChange);
+  const emittedIds = useRef<string | null>(null);
+  useEffect(() => {
+    onOrderedIdsChangeRef.current = onOrderedIdsChange;
+  }, [onOrderedIdsChange]);
+  useEffect(() => {
+    const ids = orderedRows.map((row) => row.id);
+    const key = ids.join("\u0000");
+    if (emittedIds.current === key) return;
+    emittedIds.current = key;
+    onOrderedIdsChangeRef.current?.(ids);
+  }, [orderedRows]);
+
+  useEffect(() => {
+    if (manualServer || activeRowId == null) return;
+    const position = orderedRows.findIndex((row) => row.id === activeRowId);
+    if (position < 0) return;
+    const target = Math.floor(position / size);
+    if (target !== pageIndex) table.setPageIndex(target);
+  }, [manualServer, activeRowId, orderedRows, size, pageIndex, table]);
   const toolbarNode =
     typeof toolbar === "function"
       ? toolbar(table.getSortedRowModel().rows.map((row) => row.original))
@@ -532,35 +605,71 @@ export function DataTable<TData>({
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
+  const vtrackRef = useRef<HTMLDivElement>(null);
   const [edge, setEdge] = useState({ atStart: true, atEnd: true });
   const [bar, setBar] = useState({ overflow: false, leftPct: 0, widthPct: 100 });
-  const [dragging, setDragging] = useState(false);
+  const [vbar, setVbar] = useState({ overflow: false, topPct: 0, heightPct: 100 });
+  const [dragging, setDragging] = useState<"x" | "y" | null>(null);
+  const [available, setAvailable] = useState(0);
+  const leafColumns = table.getVisibleLeafColumns();
+  const layout = distributeWidths(
+    leafColumns.map((column) => widthRange(column.getSize(), column.columnDef.maxSize)),
+    available,
+  );
+  const measured = available > 0;
+  const filler = measured ? layout.filler : 0;
+  const spanCount = colCount + (filler > 0 ? 1 : 0);
+  const columnBox = new Map<string, { width: number; start: number }>();
+  leafColumns.reduce((start, column, index) => {
+    columnBox.set(column.id, { width: layout.widths[index], start });
+    return start + layout.widths[index];
+  }, 0);
+  const sizeStyle = (columnId: string, pinned: boolean) => {
+    const box = columnBox.get(columnId);
+    return box ? cellSizeStyle(box.width, pinned ? box.start : undefined) : undefined;
+  };
+  useLayoutEffect(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+    const measure = () => setAvailable(element.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
   const syncEdge = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const max = el.scrollWidth - el.clientWidth;
-    const x = Math.abs(el.scrollLeft);
+    const element = scrollRef.current;
+    if (!element) return;
+    const max = element.scrollWidth - element.clientWidth;
+    const x = Math.abs(element.scrollLeft);
     setEdge({ atStart: x <= 1, atEnd: max <= 1 || x >= max - 1 });
     setBar({
       overflow: max > 1,
-      widthPct: Math.max(8, (el.clientWidth / el.scrollWidth) * 100),
-      leftPct: (x / el.scrollWidth) * 100,
+      widthPct: Math.max(8, (element.clientWidth / element.scrollWidth) * 100),
+      leftPct: (x / element.scrollWidth) * 100,
+    });
+    setVbar({
+      overflow: element.scrollHeight - element.clientHeight > 1,
+      heightPct: Math.max(8, (element.clientHeight / element.scrollHeight) * 100),
+      topPct: (element.scrollTop / element.scrollHeight) * 100,
     });
   }, []);
-  const onThumbDown = (event: ReactPointerEvent) => {
+  const dragThumb = (axis: "x" | "y") => (event: ReactPointerEvent) => {
     event.preventDefault();
-    const el = scrollRef.current;
-    const track = trackRef.current;
-    if (!el || !track) return;
-    setDragging(true);
-    const startX = event.clientX;
-    const startLeft = el.scrollLeft;
-    const ratio = el.scrollWidth / track.clientWidth;
+    const element = scrollRef.current;
+    const track = axis === "x" ? trackRef.current : vtrackRef.current;
+    if (!element || !track) return;
+    setDragging(axis);
+    const startPointer = axis === "x" ? event.clientX : event.clientY;
+    const startScroll = axis === "x" ? element.scrollLeft : element.scrollTop;
+    const ratio = axis === "x" ? element.scrollWidth / track.clientWidth : element.scrollHeight / track.clientHeight;
     const onMove = (moveEvent: PointerEvent) => {
-      el.scrollLeft = startLeft + (moveEvent.clientX - startX) * ratio;
+      const delta = ((axis === "x" ? moveEvent.clientX : moveEvent.clientY) - startPointer) * ratio;
+      if (axis === "x") element.scrollLeft = startScroll + delta;
+      else element.scrollTop = startScroll + delta;
     };
     const onUp = () => {
-      setDragging(false);
+      setDragging(null);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
@@ -568,24 +677,24 @@ export function DataTable<TData>({
     window.addEventListener("pointerup", onUp);
   };
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
+    const element = scrollRef.current;
+    if (!element) return;
     syncEdge();
-    const dataRow = el.querySelector("tbody tr[data-row]");
+    const dataRow = element.querySelector("tbody tr[data-row]");
     if (dataRow) {
       const height = dataRow.getBoundingClientRect().height;
       setRowH((prev) => (Math.abs(prev - height) > 0.5 ? height : prev));
     }
-    const ro = new ResizeObserver(syncEdge);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [syncEdge, pageRows.length, colCount, freezeCount]);
+    const resizeObserver = new ResizeObserver(syncEdge);
+    resizeObserver.observe(element);
+    return () => resizeObserver.disconnect();
+  }, [syncEdge, pageRows.length, colCount, freezeCount, layout.total]);
 
   useDragScroll(scrollRef);
 
   return (
     <TooltipProvider>
-    <div className="space-y-3">
+    <div className={cn("flex flex-col gap-3", fill && "md:min-h-0 md:flex-1")}>
       <div className="flex items-center gap-3">
         <label className="relative flex min-w-0 flex-1 items-center max-w-sm">
           <Search className="pointer-events-none absolute start-2.5 size-4 text-muted-foreground" />
@@ -625,7 +734,10 @@ export function DataTable<TData>({
         </div>
       </div>
 
-      <div data-no-os className="relative overflow-hidden rounded-lg border">
+      <div
+        data-no-os
+        className={cn("relative overflow-hidden rounded-lg border", fill && "md:flex md:min-h-0 md:flex-1 md:flex-col")}
+      >
         <div
           aria-hidden
           className={cn(
@@ -644,9 +756,11 @@ export function DataTable<TData>({
         )}
         <Table
           className="min-w-full table-fixed"
+          style={measured ? { width: layout.total } : undefined}
           containerClassName={cn(
             "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
             bar.overflow && "cursor-grab",
+            fill && "md:min-h-0 md:flex-1 md:overflow-y-auto",
           )}
           containerProps={{ ref: scrollRef, onScroll: syncEdge }}
         >
@@ -669,11 +783,13 @@ export function DataTable<TData>({
                       className={cn(
                         "group/head",
                         header.column.columnDef.meta?.headClassName,
+                        fill && STICKY_HEAD,
                         pinned && "sticky z-20 bg-card",
+                        pinned && fill && "md:z-30",
                         lastPinned &&
                           "dt-freeze-divider",
                       )}
-                      style={cellSizeStyle(header.column, pinned)}
+                      style={sizeStyle(header.column.id, pinned)}
                       aria-sort={
                         sorted === "asc"
                           ? "ascending"
@@ -749,10 +865,13 @@ export function DataTable<TData>({
                     </TableHead>
                   );
                 })}
+                {filler > 0 && (
+                  <TableHead aria-hidden className={cn("p-0", fill && STICKY_HEAD)} style={cellSizeStyle(filler)} />
+                )}
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody>
+          <TableBody onPointerOver={revealClippedText}>
             {pageRows.map((row) => (
               <TableRow
                 key={row.id}
@@ -771,64 +890,92 @@ export function DataTable<TData>({
                 tabIndex={onRowClick ? 0 : undefined}
                 role={onRowClick ? "link" : undefined}
                 aria-label={rowAriaLabel ? rowAriaLabel(row.original) : undefined}
+                data-active={activeRowId != null && row.id === activeRowId ? "" : undefined}
                 className={cn(
                   onRowClick &&
                     "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+                  activeRowId != null && row.id === activeRowId && "bg-accent",
                   rowClassName?.(row.original),
                 )}
               >
                 {row.getVisibleCells().map((cell) => {
                   const pinned = cell.column.getIsPinned() === "left";
                   const lastPinned = pinned && pinnedLeft[pinnedLeft.length - 1] === cell.column.id;
-                  const sized = cell.column.columnDef.size != null || pinned;
-                  const noClip = cell.column.columnDef.meta?.noClip;
+                  const clip = (sizedColumnIds.has(cell.column.id) || pinned) && !cell.column.columnDef.meta?.noClip;
                   return (
                     <TableCell
                       key={cell.id}
+                      data-clip={clip ? "" : undefined}
                       className={cn(
-                        sized && !noClip && "overflow-hidden",
+                        clip && "overflow-hidden text-ellipsis",
                         cell.column.columnDef.meta?.cellClassName,
                         pinned && "sticky z-10 bg-card",
                         lastPinned &&
                           "dt-freeze-divider",
                       )}
-                      style={cellSizeStyle(cell.column, pinned)}
+                      style={sizeStyle(cell.column.id, pinned)}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   );
                 })}
+                {filler > 0 && <TableCell aria-hidden className="p-0" />}
               </TableRow>
             ))}
             {rowH > 0 &&
               table.getPageCount() <= 1 &&
               pageRows.length > 0 &&
               pageRows.length < Math.min(size, MAX_FILL_ROWS) && (
-                <TableRow aria-hidden className="pointer-events-none border-transparent hover:bg-transparent">
+                <TableRow
+                  aria-hidden
+                  className={cn("pointer-events-none border-transparent hover:bg-transparent", fill && "md:hidden")}
+                >
                   <TableCell
-                    colSpan={colCount}
+                    colSpan={spanCount}
                     style={{ height: (Math.min(size, MAX_FILL_ROWS) - pageRows.length) * rowH }}
                   />
                 </TableRow>
               )}
             {total === 0 && (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={colCount} className="py-10 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={spanCount} className="py-10 text-center text-sm text-muted-foreground">
                   {emptyLabel}
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
+        {fill && vbar.overflow && (
+          <div
+            aria-hidden
+            className={cn(
+              "pointer-events-none absolute end-0.5 top-11 z-40 hidden w-1.5 md:block",
+              bar.overflow ? "bottom-3.5" : "bottom-1",
+            )}
+          >
+            <div ref={vtrackRef} className="relative size-full">
+              <div
+                onPointerDown={dragThumb("y")}
+                className={cn(
+                  "pointer-events-auto absolute inset-x-0 touch-none rounded-full transition-colors",
+                  dragging === "y"
+                    ? "cursor-grabbing bg-foreground/50"
+                    : "cursor-grab bg-foreground/30 hover:bg-foreground/45",
+                )}
+                style={{ top: `${vbar.topPct}%`, height: `${vbar.heightPct}%` }}
+              />
+            </div>
+          </div>
+        )}
         {bar.overflow && (
           <div className="border-t border-border bg-muted/40 px-0.5 py-0.5">
             <div ref={trackRef} className="relative h-1.5">
               <div
                 aria-hidden
-                onPointerDown={onThumbDown}
+                onPointerDown={dragThumb("x")}
                 className={cn(
                   "absolute inset-y-0 touch-none rounded-full transition-colors",
-                  dragging
+                  dragging === "x"
                     ? "cursor-grabbing bg-foreground/50"
                     : "cursor-grab bg-foreground/30 hover:bg-foreground/45",
                 )}

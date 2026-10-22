@@ -26,7 +26,10 @@ export function ProfileCell({
 }) {
   return (
     <div className={cn("flex items-center gap-2.5", className)}>
-      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/12 font-heading text-xs font-semibold text-primary ring-1 ring-primary/20">
+      <span
+        aria-hidden
+        className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/12 font-heading text-xs font-semibold text-primary ring-1 ring-primary/20"
+      >
         {unmatched ? <User className="size-3.5" /> : (initials ?? initialsOf(name))}
       </span>
       <div className="min-w-0">

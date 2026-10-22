@@ -127,3 +127,14 @@ describe("apiFetch", () => {
     expect(out).toBeUndefined();
   });
 });
+
+describe("apiFetch path safety", () => {
+  it("refuses a record id made of dots, so ?open=.. can't reach the API's parent path", async () => {
+    const fetchSpy = jest.fn();
+    global.fetch = fetchSpy as unknown as typeof fetch;
+    await expect(apiFetch(`/admin-action-logs/${encodeURIComponent("..")}`)).rejects.toMatchObject({ status: 404 });
+    await expect(apiFetch("/change-logs/.")).rejects.toMatchObject({ status: 404 });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+

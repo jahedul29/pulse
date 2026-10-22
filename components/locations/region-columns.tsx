@@ -8,6 +8,7 @@ import { fmtCount, fmtDateTimeParts } from "@/lib/format";
 import { alternateName, localizedName } from "@/lib/locations/names";
 import type { CityDto } from "@/lib/locations/types";
 import { LocationRowActions } from "./location-row-actions";
+import { columnWidth } from "@/lib/table/column-widths";
 
 export function useRegionColumns({
   countryNames,
@@ -28,7 +29,7 @@ export function useRegionColumns({
       {
         id: "region",
         accessorFn: (region) => localizedName(region.name, region.name_translations, locale),
-        size: 260,
+        ...columnWidth("name", { min: 200 }),
         header: t("colRegion"),
         cell: ({ row }) => {
           const other = alternateName(row.original.name, row.original.name_translations, locale);
@@ -58,7 +59,7 @@ export function useRegionColumns({
         accessorFn: (region) => String(region.country_id),
         sortingFn: (first, second) =>
           (countryNames.get(first.original.country_id) ?? "").localeCompare(countryNames.get(second.original.country_id) ?? "", locale),
-        size: 200,
+        ...columnWidth("label"),
         header: t("colCountry"),
         meta: {
           filter: "select",

@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Countries" };
 
 export default function CountriesPage() {
   return (
-    <PageContainer className="flex flex-col gap-6">
+    <PageContainer fill className="flex flex-col gap-6">
       <CountriesList />
     </PageContainer>
   );

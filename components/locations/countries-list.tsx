@@ -26,6 +26,7 @@ import { CountryFormDialog } from "./country-form-dialog";
 import { DeleteLocationDialog } from "./delete-location-dialog";
 import { LocationRowActions } from "./location-row-actions";
 import { firstError, LoadError } from "@/components/common/load-error";
+import { columnWidth } from "@/lib/table/column-widths";
 
 type DialogState = { mode: "create" } | { mode: "edit"; country: CountryDto };
 
@@ -68,7 +69,7 @@ export function CountriesList() {
       {
         id: "country",
         accessorFn: nameOf,
-        size: 280,
+        ...columnWidth("name", { min: 200 }),
         header: t("colCountry"),
         cell: ({ row }) => {
           const other = alternateName(row.original.name, row.original.name_translations, locale);
@@ -218,6 +219,7 @@ export function CountriesList() {
           ) : (
             <TooltipProvider>
               <DataTable
+                fill
                 columns={columns}
                 data={countriesQuery.data ?? []}
                 searchPlaceholder={t("search")}

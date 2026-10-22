@@ -18,4 +18,12 @@ describe("PageContainer", () => {
     expect(column.parentElement).toHaveAttribute("data-page", "form");
     expect(column.parentElement).toHaveClass("mx-auto", "max-w-[120rem]");
   });
+
+  it("fills the window height from tablet width up when asked", () => {
+    render(<PageContainer fill aria-label="list">content</PageContainer>);
+    const page = screen.getByLabelText("list");
+    expect(page).toHaveAttribute("data-fill");
+    expect(page.className).toContain("md:h-[calc(100dvh-var(--topbar-height,4rem)-3rem)]");
+    expect(page.className).toContain("md:[&>[data-slot=card]]:flex-1");
+  });
 });

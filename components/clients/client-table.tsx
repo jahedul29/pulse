@@ -15,6 +15,7 @@ import { useClientStore } from "@/lib/store";
 import { fmtDate } from "@/lib/format";
 import { Money } from "@/components/common/money";
 import type { Client } from "@/lib/types";
+import { columnWidth } from "@/lib/table/column-widths";
 
 export function ClientTable() {
   const t = useTranslations("clients");
@@ -29,7 +30,7 @@ export function ClientTable() {
       {
         accessorKey: "fullName",
         header: t("colClient"),
-        size: 240,
+        ...columnWidth("name"),
         filterFn: "includesString",
         meta: { filter: "text", filterLabel: t("colClient") },
         cell: ({ row }) => (
@@ -43,7 +44,7 @@ export function ClientTable() {
       {
         accessorKey: "region",
         header: t("colRegion"),
-        size: 160,
+        ...columnWidth("label"),
         meta: { filter: "select", filterLabel: t("colRegion") },
         cell: ({ row }) => <span className="text-muted-foreground">{row.original.region}</span>,
       },
@@ -105,8 +106,9 @@ export function ClientTable() {
         id: "actions",
         header: t("colActions"),
         enableSorting: false,
+        size: 196,
         cell: ({ row }) => <ClientRowActions client={row.original} />,
-        meta: { headClassName: "text-end", cellClassName: "text-end" },
+        meta: { headClassName: "text-end", cellClassName: "text-end", noClip: true },
       },
     ],
     [t, locale],

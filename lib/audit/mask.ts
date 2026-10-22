@@ -13,10 +13,26 @@ export function maskIdentifier(identifier: string): string {
 }
 
 const SENSITIVE_FIELD_RE =
-  /(email|e-mail|password|passwd|pwd|token|secret|hash|card|cvv|iban|ssn|national|passport|phone|mobile|dob|birth|api_key|apikey|access_key|credential|authorization|bearer|otp|session)/i;
+  /(email|e-mail|password|passwd|pwd|token|secret|hash|card|cvv|cvc|iban|ssn|national|passport|phone|mobile|dob|birth|api_key|apikey|access_key|private_key|signing_key|credential|authorization|bearer|otp|session|cookie|signature|jwt)/i;
+
+const SENSITIVE_TOKEN_RE = /(^|[^a-z0-9])(pin|ip|ip_address|address|link|url)($|[^a-z0-9])/i;
 
 export function isSensitiveField(name: string): boolean {
-  return SENSITIVE_FIELD_RE.test(name);
+  return SENSITIVE_FIELD_RE.test(name) || SENSITIVE_TOKEN_RE.test(name);
+}
+
+export function maskKey(key: string): string {
+  return key.includes("@") ? maskIdentifier(key) : key;
+}
+
+export function parseJsonText(value: string): unknown {
+  const text = value.trim();
+  if (!(text.startsWith("{") && text.endsWith("}")) && !(text.startsWith("[") && text.endsWith("]"))) return undefined;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
 }
 
 function maskValue(value: string): string {
@@ -32,4 +48,10 @@ export function maskColumnValue(column: string, value: string | null): string | 
 
 export function maskInputValue(label: string, value: string): string {
   return isSensitiveField(label) || value.includes("@") ? maskValue(value) : value;
+}
+
+const REDACTED = /^[\s\S]?•{3,4}$/;
+
+export function isRedacted(value: string | null | undefined): boolean {
+  return typeof value === "string" && REDACTED.test(value);
 }

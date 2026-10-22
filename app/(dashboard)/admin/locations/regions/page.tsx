@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Regions" };
 
 export default function RegionsPage() {
   return (
-    <PageContainer className="flex flex-col gap-6">
+    <PageContainer fill className="flex flex-col gap-6">
       <Suspense>
         <RegionsList />
       </Suspense>

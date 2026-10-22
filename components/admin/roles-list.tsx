@@ -48,6 +48,7 @@ import { roleSchema, type RoleForm } from "@/lib/rbac/schemas";
 import type { RoleDto } from "@/lib/rbac/dto";
 import { LoadError } from "@/components/common/load-error";
 import { PageContainer } from "@/components/common/page-container";
+import { columnWidth } from "@/lib/table/column-widths";
 
 export function RolesList() {
   const t = useTranslations("rbac");
@@ -136,7 +137,7 @@ export function RolesList() {
       {
         id: "role",
         accessorFn: (role) => `${role.name} ${role.description ?? ""}`,
-        size: 340,
+        ...columnWidth("text", { min: 240 }),
         header: t("colRole"),
         cell: ({ row }) => (
           <div className="flex min-w-0 flex-col">
@@ -276,7 +277,7 @@ export function RolesList() {
   );
 
   return (
-    <PageContainer>
+    <PageContainer fill>
       <Card>
         <CardHeader>
           <CardTitle>{t("rolesTitle")}</CardTitle>
@@ -293,6 +294,7 @@ export function RolesList() {
             </div>
           ) : (
             <DataTable
+              fill
               columns={columns}
               data={roles}
               pageSize={10}

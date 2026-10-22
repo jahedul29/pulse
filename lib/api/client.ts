@@ -17,7 +17,10 @@ export interface ApiFetchOptions {
   retry?: boolean;
 }
 
+const DOT_SEGMENT = /(^|\/)(\.|%2e){1,2}(\/|$)/i;
+
 function buildUrl(path: string, query?: ApiFetchOptions["query"]): string {
+  if (DOT_SEGMENT.test(path.split("?")[0])) throw new ApiError("not_found", 404, "Invalid record id");
   const base = path.startsWith("http") ? path : `${API_BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
   if (!query) return base;
   const params = new URLSearchParams();

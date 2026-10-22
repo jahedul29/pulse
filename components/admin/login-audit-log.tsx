@@ -21,6 +21,7 @@ import { serverStateToParams } from "@/lib/audit/list-params";
 import type { LoginAuditEntry } from "@/lib/audit/types";
 import { LoadError } from "@/components/common/load-error";
 import { PageContainer } from "@/components/common/page-container";
+import { columnWidth } from "@/lib/table/column-widths";
 
 const RESULTS: string[] = [
   "SUCCESS",
@@ -97,7 +98,7 @@ export function LoginAuditLog() {
       {
         id: "admin",
         accessorFn: (entry) => entry.adminName ?? t("unmatchedAdmin"),
-        size: 200,
+        ...columnWidth("name"),
         header: t("colAdmin"),
         enableSorting: false,
         meta: {
@@ -117,7 +118,7 @@ export function LoginAuditLog() {
       {
         id: "identifier",
         accessorFn: (entry) => entry.attemptedIdentifier,
-        size: 230,
+        ...columnWidth("email"),
         header: t("colIdentifier"),
         enableSorting: false,
         cell: ({ row }) => (
@@ -143,7 +144,7 @@ export function LoginAuditLog() {
       {
         id: "method",
         accessorFn: (entry) => entry.method,
-        size: 150,
+        ...columnWidth("label"),
         header: t("colMethod"),
         meta: {
           filter: "select",
@@ -169,7 +170,7 @@ export function LoginAuditLog() {
   );
 
   return (
-    <PageContainer>
+    <PageContainer fill>
       <Card>
         <CardHeader>
           <CardTitle>{t("title")}</CardTitle>
@@ -186,6 +187,7 @@ export function LoginAuditLog() {
             </div>
           ) : (
             <DataTable
+              fill
               columns={columns}
               data={rows}
               pageSize={10}

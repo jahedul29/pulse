@@ -1,4 +1,4 @@
-import { maskIdentifier, maskColumnValue, maskInputValue } from "./mask";
+import { isRedacted, isSensitiveField, maskIdentifier, maskColumnValue, maskInputValue, maskKey } from "./mask";
 
 describe("maskIdentifier", () => {
   it("masks the local part and domain of an email but keeps the TLD", () => {
@@ -40,3 +40,38 @@ describe("maskInputValue", () => {
     expect(maskInputValue("Reason", "Duplicate charge")).toBe("Duplicate charge");
   });
 });
+
+describe("isRedacted", () => {
+  it("recognises values the masking made unreadable", () => {
+    expect(isRedacted(maskColumnValue("password_reset_token", "s3cr3t"))).toBe(true);
+    expect(isRedacted(maskInputValue("Password", "ab"))).toBe(true);
+  });
+
+  it("leaves readable and masked email values alone", () => {
+    expect(isRedacted(maskColumnValue("email", "jane@acme.ae"))).toBe(false);
+    expect(isRedacted("refunded")).toBe(false);
+    expect(isRedacted(null)).toBe(false);
+  });
+});
+
+describe("isSensitiveField", () => {
+  it("covers PINs, card codes, keys, cookies, IPs, addresses and links", () => {
+    for (const field of ["pin", "card_pin", "cvc", "private_key", "signing_key", "jwt", "cookie", "signature", "ip", "client_ip", "ip_address", "address", "invite.link", "callback_url"]) {
+      expect(isSensitiveField(field)).toBe(true);
+    }
+  });
+
+  it("leaves look-alike words alone", () => {
+    for (const field of ["shipping", "pinned", "linked_role", "status", "name"]) {
+      expect(isSensitiveField(field)).toBe(false);
+    }
+  });
+});
+
+describe("maskKey", () => {
+  it("masks an email used as a key", () => {
+    expect(maskKey("jane@acme.ae")).toBe("j***@***.ae");
+    expect(maskKey("status")).toBe("status");
+  });
+});
+

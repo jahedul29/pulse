@@ -43,4 +43,67 @@ describe("Sheet", () => {
     expect(onOpenChange).toHaveBeenCalled();
     expect(onOpenChange.mock.calls[0][0]).toBe(false);
   });
+
+  describe("inspect mode", () => {
+    const originalMatchMedia = window.matchMedia;
+    afterEach(() => {
+      window.matchMedia = originalMatchMedia;
+    });
+
+    function renderInspect(onOpenChange?: (open: boolean) => void) {
+      return render(
+        <>
+          <button type="button">Outside</button>
+          <table>
+            <tbody>
+              <tr data-row tabIndex={0}>
+                <td>Another record</td>
+              </tr>
+            </tbody>
+          </table>
+          <Sheet inspect open onOpenChange={onOpenChange}>
+            <SheetContent>
+              <SheetTitle>Log entry</SheetTitle>
+            </SheetContent>
+          </Sheet>
+        </>,
+      );
+    }
+
+    function desktop() {
+      window.matchMedia = ((query: string) =>
+        ({
+          matches: true,
+          media: query,
+          addEventListener: () => {},
+          removeEventListener: () => {},
+        }) as unknown as MediaQueryList) as typeof window.matchMedia;
+    }
+
+    it("leaves the page undimmed beside a desktop side sheet", () => {
+      desktop();
+      renderInspect();
+      expect(screen.getByRole("dialog")).toHaveAttribute("data-inspect");
+      expect(document.querySelector('[data-slot="sheet-overlay"]')).toBeNull();
+    });
+
+    it("closes on a click outside, but not on a table row that opens another record", async () => {
+      desktop();
+      const onOpenChange = jest.fn();
+      renderInspect(onOpenChange);
+
+      await userEvent.click(screen.getByText("Another record"));
+      expect(onOpenChange).not.toHaveBeenCalled();
+
+      await userEvent.click(screen.getByRole("button", { name: "Outside" }));
+      expect(onOpenChange).toHaveBeenCalledWith(false, expect.anything());
+    });
+
+    it("keeps the dimmed overlay for the mobile bottom sheet", () => {
+      renderInspect();
+      expect(screen.getByRole("dialog")).not.toHaveAttribute("data-inspect");
+      expect(document.querySelector('[data-slot="sheet-overlay"]')).not.toBeNull();
+    });
+  });
 });
+

@@ -18,6 +18,7 @@ import { ProfileCell } from "@/components/common/profile-cell";
 import { StatusBadge } from "@/components/common/status-badge";
 import { cn } from "@/lib/utils";
 import { useSpecialistStore, type Specialist } from "@/lib/specialists";
+import { columnWidth } from "@/lib/table/column-widths";
 
 export function SpecialistsTable() {
   const t = useTranslations();
@@ -28,7 +29,7 @@ export function SpecialistsTable() {
       {
         accessorKey: "name",
         header: t("personnel.colSpecialist"),
-        size: 260,
+        ...columnWidth("name", { min: 200 }),
         filterFn: "includesString",
         meta: { filter: "text", filterLabel: t("personnel.colSpecialist") },
         cell: ({ row }) => (
@@ -80,6 +81,7 @@ export function SpecialistsTable() {
       {
         id: "action",
         header: t("personnel.colAction"),
+        size: 196,
         cell: ({ row }) => (
           <Link
             href={`/personnel/${row.original.id}`}
@@ -88,7 +90,7 @@ export function SpecialistsTable() {
             <CalendarClock className="size-3.5" /> {t("personnel.editAvailability")}
           </Link>
         ),
-        meta: { headClassName: "text-end", cellClassName: "text-end" },
+        meta: { headClassName: "text-end", cellClassName: "text-end", noClip: true },
       },
     ],
     [t],
