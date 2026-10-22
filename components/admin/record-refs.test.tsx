@@ -44,7 +44,7 @@ describe("location references", () => {
     expect(screen.getByRole("link", { name: "United Arab Emirates" })).toHaveAttribute("href", "/admin/locations/regions?country=1");
   });
 
-  it("names an action-log target region", () => {
+  it("names an audit-log target region", () => {
     signIn(["TECHNICAL.technical.VIEW"]);
     render(<RecordName kind="region" id="7" fallback="Region" />);
     expect(screen.getByText("Dubai")).toBeInTheDocument();

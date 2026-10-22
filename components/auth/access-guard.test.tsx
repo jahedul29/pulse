@@ -58,7 +58,7 @@ describe("AccessGuard", () => {
   });
 
   it("lets a probed page render while the probe is pending and blocks it once the backend refuses", () => {
-    mockPathname = "/admin/audit/actions";
+    mockPathname = "/admin/audit/log";
     signIn(["ROLES.roles.VIEW"]);
     const { rerender } = render(<AccessGuard>page content</AccessGuard>);
     expect(screen.getByText("page content")).toBeInTheDocument();

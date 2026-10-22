@@ -3,6 +3,9 @@
 import { Fragment, useMemo, type ReactNode } from "react";
 
 import { Chip } from "@/components/common/chip";
+import { DateTimeValue } from "@/components/common/date-time-value";
+import { HiddenValue } from "@/components/common/hidden-value";
+import { isRedacted } from "@/lib/audit/mask";
 import { ChipLink, InlineRecordLink } from "@/components/common/record-link";
 import { fmtDateTime } from "@/lib/format";
 import {
@@ -223,6 +226,7 @@ export function ReferenceValue({
 }) {
   const kind = referenceKind(fieldKey);
   if (!value || value === "-") return <>{value || "-"}</>;
+  if (isRedacted(value)) return <HiddenValue plain={plain} />;
   if (plain && kind === "admin") return <AdminNames ids={[value]} fallback={fallbacks.admin} />;
   if (plain && kind === "adminList") return <AdminNames ids={parseIdList(value)} fallback={fallbacks.admin} />;
   if (plain && kind === "roles") return <RoleNames ids={parseIdList(value)} fallback={fallbacks.role ?? "-"} />;
@@ -237,5 +241,6 @@ export function ReferenceValue({
   if (plain && (kind === "region" || kind === "country")) return <LocationName kind={kind} id={value} fallback={fallbacks[kind] ?? "-"} />;
   if (kind === "region" || kind === "country") return <LocationIdLink kind={kind} id={value} fallback={fallbacks[kind] ?? "-"} />;
   const epoch = dbDateTimeToEpoch(value);
-  return <>{epoch == null ? value : fmtDateTime(epoch, locale)}</>;
+  if (epoch == null) return <>{value}</>;
+  return plain ? <>{fmtDateTime(epoch, locale)}</> : <DateTimeValue epoch={epoch} locale={locale} />;
 }

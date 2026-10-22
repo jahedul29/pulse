@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import type { ColumnDef } from "@tanstack/react-table";
-import { ChevronDown, ChevronUp, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import { fmtDateTimeParts } from "@/lib/format";
 import { downloadCsvText } from "@/lib/export/csv";
@@ -15,50 +15,48 @@ import {
   Sheet,
   SheetBody,
   SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
 } from "@/components/ui/sheet";
 import { DataTable, type ServerTableState } from "@/components/common/data-table";
+import { RecordDrawerHeader } from "@/components/common/record-drawer-header";
 import { auditTone } from "@/lib/audit/tone";
-import { stepIndex } from "@/lib/paging";
+import { useRecordPager } from "@/lib/use-record-pager";
 import { useRecordDetail } from "@/lib/use-record-detail";
 import { ProfileCell } from "@/components/common/profile-cell";
 import { StatusBadge } from "@/components/common/status-badge";
 import { DetailList } from "@/components/common/detail-list";
 import { DiffViewer } from "@/components/common/diff-viewer";
-import { Chip } from "@/components/common/chip";
 import { RecordLink } from "@/components/common/record-link";
-import { ReferenceCode } from "@/components/common/reference-code";
-import { ActionTargetName, ReferenceValue, RoleNameChips } from "@/components/admin/record-refs";
-import { recordHref, tableRecordKind, targetRecordKind } from "@/lib/record-links";
+import { DateTimeValue } from "@/components/common/date-time-value";
+import { DetailSection } from "@/components/common/detail-section";
+import { FieldsJsonPanel } from "@/components/common/fields-json-panel";
+import { HashValue } from "@/components/common/hash-value";
+import { ActionTargetName, RecordName, ReferenceValue } from "@/components/admin/record-refs";
+import { actionChangesHref, recordHref, tableRecordKind, targetRecordKind } from "@/lib/record-links";
 import { humanizeCode, humanizeLabel } from "@/lib/admin-actions/dto";
 import { AdminUserFilter } from "@/components/admin/admin-user-filter";
 import { AdminActionFilter } from "@/components/admin/admin-action-filter";
-import { useChangeLog } from "@/lib/admin-actions/queries";
+import { changeLogQuery, useChangeLog, usePreviousChange } from "@/lib/admin-actions/queries";
+import { changesJson, toJsonText } from "@/lib/admin-actions/export-json";
+import { useRetained } from "@/lib/use-retained";
 import { getChangeLog, exportChangeLogCsv } from "@/lib/admin-actions/audit-api";
 import { CsvExportButton } from "@/components/admin/csv-export-button";
-import { changeServerStateToParams } from "@/lib/admin-actions/list-params";
+import { LOG_PAGE_SIZE, changeServerStateToParams } from "@/lib/admin-actions/list-params";
+import { PeriodFilter } from "@/components/admin/period-filter";
 import type { AdminAction, ChangeLogEntry } from "@/lib/admin-actions/types";
 import { LoadError } from "@/components/common/load-error";
 import { PageContainer } from "@/components/common/page-container";
+import { columnWidth } from "@/lib/table/column-widths";
+import { RecordDrawerFallback } from "@/components/common/record-drawer-fallback";
+import { AdminProfileLink } from "@/components/common/admin-profile-link";
+import { useServerPage } from "@/lib/use-server-page";
 
 const OPS: string[] = ["INSERT", "UPDATE", "DELETE"];
 const FIELD_PREVIEW = 2;
 
 
-function ChipSection({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <h5 className="text-xs font-medium text-muted-foreground">{title}</h5>
-      {children}
-    </div>
-  );
-}
-
 export function ChangeLog() {
   const t = useTranslations("changeLog");
-  const tl = useTranslations("actionLog");
+  const tl = useTranslations("auditLog");
   const tc = useTranslations("common");
   const locale = useLocale();
   const resultLabel = useCallback(
@@ -129,9 +127,13 @@ export function ChangeLog() {
   const searchParams = useSearchParams();
   const actionId = searchParams.get("action");
 
+  const openId = searchParams.get("open");
+
   const [server, setServer] = useState<ServerTableState | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(openId);
+  const [pinned, setPinned] = useState<ChangeLogEntry | null>(null);
   const params = useMemo(() => changeServerStateToParams(server, actionId), [server, actionId]);
-  const changeQuery = useChangeLog(params);
+  const changeQuery = useChangeLog(params, selectedId != null);
   const rows = useMemo(() => changeQuery.data?.data ?? [], [changeQuery.data]);
   const total = changeQuery.data?.meta?.total ?? rows.length;
   const onServerStateChange = useCallback((state: ServerTableState) => setServer(state), []);
@@ -141,10 +143,6 @@ export function ChangeLog() {
     downloadCsvText("change-logs.csv", csv);
   }, [params]);
 
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const active = selectedIndex == null ? null : (rows[selectedIndex] ?? null);
-  const [retained, setRetained] = useState<ChangeLogEntry | null>(null);
-  const selected = active ?? retained;
   const detailRef = useRef<HTMLDivElement>(null);
   const {
     data: detail,
@@ -152,72 +150,139 @@ export function ChangeLog() {
     error: detailError,
     cause: detailCause,
     reload,
-  } = useRecordDetail(selected?.id ?? null, getChangeLog);
+  } = useRecordDetail(selectedId, getChangeLog);
+  const liveHead =
+    selectedId == null
+      ? null
+      : (rows.find((entry) => entry.id === selectedId) ??
+        (pinned?.id === selectedId ? pinned : null) ??
+        (detail?.id === selectedId ? detail : null));
+  const selected = useRetained(liveHead);
   useEffect(() => {
     detailRef.current?.scrollTo({ top: 0 });
-  }, [selected?.id]);
-  const openAt = (index: number) => {
-    setSelectedIndex(index);
-    setRetained(rows[index] ?? null);
+  }, [selectedId]);
+  const openEntry = useCallback((entry: ChangeLogEntry) => setSelectedId(entry.id), []);
+  const openPinned = useCallback((entry: ChangeLogEntry) => {
+    setPinned(entry);
+    setSelectedId(entry.id);
+  }, []);
+  const close = () => {
+    setSelectedId(null);
+    if (openId) router.replace(actionId ? actionChangesHref(actionId) : "/admin/audit/changes");
   };
-  const page = (delta: number) => {
-    if (selectedIndex == null) return;
-    openAt(stepIndex(selectedIndex, delta, rows.length));
-  };
+  const loadedDetail = detail && selected && detail.id === selected.id ? detail : null;
+  const previousQuery = usePreviousChange(loadedDetail);
+  const previous = previousQuery.data ?? null;
+  const { controller: tableController, page: serverPage } = useServerPage({
+    server,
+    pageSize: LOG_PAGE_SIZE,
+    total: total,
+    data: changeQuery.data,
+    failed: changeQuery.isError,
+    queryFor: (state) => changeLogQuery(changeServerStateToParams(state, actionId)),
+  });
+  const pager = useRecordPager({
+    rows,
+    getId: (entry) => entry.id,
+    activeId: selectedId,
+    onSelect: openEntry,
+    page: serverPage,
+  });
 
   const targetItem = (action: AdminAction, entry: ChangeLogEntry) => {
     if (action.targetUser) {
       const targetUser = action.targetUser;
-      const cell = (
-        <ProfileCell
-          name={targetUser.name}
-          subtitle={[targetUser.username, targetUser.email].filter(Boolean).join(" · ") || undefined}
-        />
-      );
       return {
         label: tl("colTarget"),
-        value: targetUser.id ? (
-          <RecordLink
-            href={recordHref("adminAccount", targetUser.id)}
+        value: (
+          <AdminProfileLink
+            id={targetUser.id}
+            name={targetUser.name}
+            subtitle={[targetUser.username, targetUser.email].filter(Boolean).join(" · ")}
             label={t("openAccount", { name: targetUser.name })}
-          >
-            {cell}
-          </RecordLink>
-        ) : (
-          cell
+          />
         ),
       };
     }
     if (!action.targetType) return null;
     const kind = targetRecordKind(action.targetType);
     const isThisRecord = kind === tableRecordKind(entry.table) && action.targetId === entry.recordId;
+    if (isThisRecord) return null;
     const fallback = action.payloadName ?? (kind ? t(`recordKind_${kind}`) : humanizeCode(action.targetType));
     const name = <ActionTargetName action={action} fallback={fallback} />;
     return {
       label: tl("colTarget"),
-      value: kind && action.targetId && !isThisRecord ? <RecordLink href={recordHref(kind, action.targetId)}>{name}</RecordLink> : name,
+      value: kind && action.targetId ? <RecordLink href={recordHref(kind, action.targetId)}>{name}</RecordLink> : name,
     };
   };
 
-  const linkedActionItems = (action: AdminAction, entry: ChangeLogEntry) => {
-    const target = targetItem(action, entry);
+  const diffLabels = useMemo(
+    () => ({
+      field: t("diffField"),
+      before: t("diffBefore"),
+      after: t("diffAfter"),
+      removed: t("diffRemoved"),
+      added: t("diffAdded"),
+      empty: t("diffEmpty"),
+    }),
+    [t],
+  );
+
+  const actorCell = (entry: ChangeLogEntry) => (
+    <AdminProfileLink
+      id={entry.actorId}
+      name={entry.actorName}
+      subtitle={[entry.actorUsername, entry.actorEmail].filter(Boolean).join(" · ")}
+      label={t("openAccount", { name: entry.actorName })}
+    />
+  );
+
+  const originItems = (entry: ChangeLogEntry) => {
+    const action = entry.action;
+    const actionName = action?.actionName ?? t("viewAuditLog");
+    const target = action ? targetItem(action, entry) : null;
     return [
       {
-        label: tl("colResult"),
-        value: (
-          <div className="flex flex-wrap gap-2">
-            <StatusBadge tone={auditTone(action.result)} equalWidth={false}>
-              {resultLabel(action.result)}
-            </StatusBadge>
-            <StatusBadge tone={auditTone(action.severity)} equalWidth={false}>
-              {severityLabel(action.severity)}
-            </StatusBadge>
-          </div>
+        label: t("auditEntry"),
+        value: entry.actionId ? (
+          <RecordLink href={recordHref("auditLog", entry.actionId)} label={t("openAuditEntry", { name: actionName })}>
+            <span className="font-medium">{actionName}</span>
+          </RecordLink>
+        ) : (
+          t("noAction")
         ),
       },
+      ...(action
+        ? [
+            {
+              label: t("auditResult"),
+              value: (
+                <div className="flex flex-wrap gap-2">
+                  <StatusBadge tone={auditTone(action.result)} equalWidth={false}>
+                    {resultLabel(action.result)}
+                  </StatusBadge>
+                  <StatusBadge tone={auditTone(action.severity)} equalWidth={false}>
+                    {severityLabel(action.severity)}
+                  </StatusBadge>
+                </div>
+              ),
+            },
+          ]
+        : []),
       ...(target ? [target] : []),
-      ...(action.device ? [{ label: tl("detailDevice"), value: action.device }] : []),
+      ...(action?.device ? [{ label: tl("detailDevice"), value: action.device }] : []),
+      ...(action?.ipHash ? [{ label: tl("detailIpHash"), value: <HashValue value={action.ipHash} short label={tl("detailIpHash")} /> }] : []),
     ];
+  };
+
+  const changedRow = (entry: ChangeLogEntry) => {
+    const kind = tableRecordKind(entry.table);
+    if (!kind) return <span className="break-all">{entry.recordId}</span>;
+    return (
+      <RecordLink href={recordHref(kind, entry.recordId)}>
+        <RecordName kind={kind} id={entry.recordId} fallback={t(`recordKind_${kind}`)} />
+      </RecordLink>
+    );
   };
 
   const columns = useMemo<ColumnDef<ChangeLogEntry, unknown>[]>(
@@ -240,7 +305,7 @@ export function ChangeLog() {
       {
         id: "who",
         accessorFn: (entry) => entry.actorName,
-        size: 170,
+        ...columnWidth("name"),
         header: t("colActor"),
         enableSorting: false,
         meta: {
@@ -255,7 +320,7 @@ export function ChangeLog() {
       {
         id: "action",
         accessorFn: (entry) => entry.action?.actionName ?? entry.actionCode ?? "",
-        size: 200,
+        ...columnWidth("text", { min: 180, max: 360 }),
         header: t("colAction"),
         enableSorting: false,
         meta: {
@@ -274,7 +339,7 @@ export function ChangeLog() {
               {target && <span className="truncate text-xs text-muted-foreground">{target}</span>}
             </div>
           ) : row.original.actionId ? (
-            <span className="text-xs text-muted-foreground">{t("viewAction")}</span>
+            <span className="text-xs text-muted-foreground">{t("viewAuditLog")}</span>
           ) : (
             <span className="text-muted-foreground">{t("noAction")}</span>
           );
@@ -283,14 +348,14 @@ export function ChangeLog() {
       {
         id: "table",
         accessorFn: (entry) => tableLabel(entry.table),
-        size: 160,
+        ...columnWidth("label"),
         header: t("colTable"),
         cell: ({ row }) => <span className="block truncate text-sm">{tableLabel(row.original.table)}</span>,
       },
       {
         id: "fields",
         accessorFn: (entry) => entry.changes.map((change) => humanizeLabel(change.column)).join(", "),
-        size: 200,
+        ...columnWidth("text", { min: 180, max: 360 }),
         header: t("colFields"),
         enableSorting: false,
         cell: ({ row }) => {
@@ -325,7 +390,7 @@ export function ChangeLog() {
       {
         id: "before",
         accessorFn: (entry) => entry.changes[0]?.before ?? "",
-        size: 170,
+        ...columnWidth("text", { min: 160, max: 320 }),
         header: t("colBefore"),
         enableSorting: false,
         cell: ({ row }) => changeCell(row.original, "before"),
@@ -333,7 +398,7 @@ export function ChangeLog() {
       {
         id: "after",
         accessorFn: (entry) => entry.changes[0]?.after ?? "",
-        size: 170,
+        ...columnWidth("text", { min: 160, max: 320 }),
         header: t("colAfter"),
         enableSorting: false,
         cell: ({ row }) => changeCell(row.original, "after"),
@@ -343,7 +408,7 @@ export function ChangeLog() {
   );
 
   return (
-    <PageContainer>
+    <PageContainer fill>
       <Card>
         <CardHeader>
           <CardTitle>{t("title")}</CardTitle>
@@ -374,19 +439,30 @@ export function ChangeLog() {
             </div>
           ) : (
             <DataTable
+              fill
               columns={columns}
               data={rows}
-              pageSize={10}
+              pageSize={LOG_PAGE_SIZE}
               manualServer
               rowCount={total}
               onServerStateChange={onServerStateChange}
               searchPlaceholder={t("search")}
               emptyLabel={t("empty")}
               itemsLabel={t("items")}
-              onRowClick={(entry) => openAt(rows.indexOf(entry))}
+              onRowClick={openEntry}
               rowAriaLabel={(entry) => `${opLabel(entry.operation)} · ${tableLabel(entry.table)}`}
-              rowClassName={(entry) => (active && entry.id === active.id ? "bg-accent" : undefined)}
-              toolbar={<CsvExportButton onExport={onExport} />}
+              getRowId={(entry) => entry.id}
+              activeRowId={selectedId}
+              controllerRef={tableController}
+              toolbar={
+                <>
+                  <PeriodFilter
+                    value={server?.columnFilters.find((filter) => filter.id === "timestamp")?.value}
+                    onChange={(range) => tableController.current?.setColumnFilter("timestamp", range)}
+                  />
+                  <CsvExportButton onExport={onExport} />
+                </>
+              }
               getSearchText={(entry) =>
                 `${entry.schema ?? ""} ${entry.table} ${entry.recordId} ${entry.actorName}`
               }
@@ -405,42 +481,30 @@ export function ChangeLog() {
         </CardContent>
       </Card>
 
-      <Sheet open={selectedIndex != null} onOpenChange={(open) => !open && setSelectedIndex(null)}>
-        {selected && (
-          <SheetContent onSwipeNext={() => page(1)} onSwipePrev={() => page(-1)}>
-            <SheetHeader>
-              <div className="flex items-center gap-1 pe-8">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => page(-1)}
-                  disabled={selectedIndex === 0}
-                  aria-label={tc("prevRecord")}
-                >
-                  <ChevronUp className="size-4" />
-                </Button>
-                <span className="text-xs text-muted-foreground tabular">
-                  {tc("recordPosition", { index: (selectedIndex ?? 0) + 1, total: rows.length })}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => page(1)}
-                  disabled={selectedIndex === rows.length - 1}
-                  aria-label={tc("nextRecord")}
-                >
-                  <ChevronDown className="size-4" />
-                </Button>
-              </div>
-              <SheetTitle>{selected.action?.actionName || selected.table}</SheetTitle>
-              <SheetDescription className="sr-only">{selected.table}</SheetDescription>
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <StatusBadge tone={auditTone(selected.operation)} equalWidth={false}>
-                  {opLabel(selected.operation)}
-                </StatusBadge>
-              </div>
-            </SheetHeader>
-            <SheetBody ref={detailRef} className="flex flex-col gap-5">
+      <Sheet inspect open={selectedId != null} onOpenChange={(open) => !open && close()}>
+        {selectedId != null && liveHead == null ? (
+          <RecordDrawerFallback loading={detailLoading} error={detailCause} onRetry={reload} />
+        ) : selected && (
+          <SheetContent onSwipeNext={() => pager.step(1)} onSwipePrev={() => pager.step(-1)}>
+            <RecordDrawerHeader
+              pager={pager}
+              link={recordHref("changeLog", selected.id)}
+              title={selected.action?.actionName || t("untitledChange")}
+              subtitle={<span className="tabular">{t("logId", { id: selected.id })}</span>}
+              summary={[
+                { label: t("colTimestamp"), value: <DateTimeValue epoch={selected.createdAt} locale={locale} /> },
+                {
+                  label: t("colOperation"),
+                  value: (
+                    <StatusBadge tone={auditTone(selected.operation)} equalWidth={false}>
+                      {opLabel(selected.operation)}
+                    </StatusBadge>
+                  ),
+                },
+                { label: t("colFields"), value: t("fieldsCount", { count: selected.changes.length }) },
+              ]}
+            />
+            <SheetBody ref={detailRef} className="flex flex-col gap-6">
               {detailLoading ? (
                 <div className="flex flex-col gap-3">
                   <Skeleton className="h-4 w-40" />
@@ -451,121 +515,64 @@ export function ChangeLog() {
                 <LoadError error={detailCause} message={t("loadError")} onRetry={reload} className="py-10" />
               ) : (
                 <>
-                  <DetailList
-                    items={[
-                      {
-                        label: t("colActor"),
-                        value: (() => {
-                          const cell = (
-                            <ProfileCell
-                              name={detail.actorName}
-                              subtitle={[detail.actorUsername, detail.actorEmail].filter(Boolean).join(" · ") || undefined}
-                            />
-                          );
-                          return detail.actorId ? (
-                            <RecordLink
-                              href={recordHref("adminAccount", detail.actorId)}
-                              label={t("openAccount", { name: detail.actorName })}
-                            >
-                              {cell}
-                            </RecordLink>
-                          ) : (
-                            cell
-                          );
-                        })(),
-                      },
-                      {
-                        label: t("colTimestamp"),
-                        value: (() => {
-                          const { date, time } = fmtDateTimeParts(detail.createdAt, locale);
-                          return `${date} ${time}`;
-                        })(),
-                      },
-                      { label: t("colTable"), value: tableLabel(detail.table) },
-                      { label: t("detailId"), value: <span className="tabular">{detail.id}</span> },
-                      { label: t("colSchema"), value: detail.schema || "-" },
-                      {
-                        label: t("colRecord"),
-                        value: (() => {
-                          const kind = tableRecordKind(detail.table);
-                          return kind ? (
-                            <RecordLink href={recordHref(kind, detail.recordId)}>{t(`recordKind_${kind}`)}</RecordLink>
-                          ) : (
-                            <span className="break-all">{detail.recordId}</span>
-                          );
-                        })(),
-                      },
-                      {
-                        label: t("prevRowHash"),
-                        value: detail.prevRowHash ? (
-                          <ReferenceCode value={detail.prevRowHash} />
-                        ) : (
-                          <span className="font-normal text-muted-foreground">{t("prevRowHashNone")}</span>
-                        ),
-                      },
-                      {
-                        label: t("rowHash"),
-                        value: detail.rowHash ? (
-                          <ReferenceCode value={detail.rowHash} />
-                        ) : (
-                          <span className="font-normal text-muted-foreground">{t("rowHashNone")}</span>
-                        ),
-                      },
-                    ]}
-                  />
+                  <DetailSection title={t("sectionOrigin")}>
+                    {actorCell(detail)}
+                    <DetailList divided items={originItems(detail)} />
+                  </DetailSection>
 
-                  {detail.actionId && (
-                    <section className="flex flex-col gap-3">
-                      <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                        {t("linkedAction")}
-                      </h4>
-                      <DetailList
-                        items={[
-                          {
-                            label: t("colAction"),
-                            value: (
-                              <RecordLink
-                                href={recordHref("actionLog", detail.actionId)}
-                                label={t("openAction", { name: detail.action?.actionName ?? t("viewAction") })}
-                              >
-                                <span className="font-medium">{detail.action?.actionName ?? t("viewAction")}</span>
-                              </RecordLink>
-                            ),
-                          },
-                          ...(detail.action ? linkedActionItems(detail.action, detail) : []),
-                        ]}
-                      />
-                      {detail.action && detail.action.roleNames.length > 0 && (
-                        <ChipSection title={tl("detailRoles", { count: detail.action.roleNames.length })}>
-                          <RoleNameChips names={detail.action.roleNames} />
-                        </ChipSection>
-                      )}
-                      {detail.action && detail.action.permissionNames.length > 0 && (
-                        <ChipSection title={tl("detailPermissions", { count: detail.action.permissionNames.length })}>
-                          <div className="flex flex-wrap gap-1.5">
-                            {detail.action.permissionNames.map((name, index) => (
-                              <Chip key={`${name}-${index}`} className="leading-snug whitespace-normal">
-                                {name}
-                              </Chip>
-                            ))}
-                          </div>
-                        </ChipSection>
-                      )}
-                    </section>
-                  )}
+                  <DetailSection title={t("sectionRecord")}>
+                    <DetailList
+                      divided
+                      items={[
+                        { label: t("colTable"), value: tableLabel(detail.table) },
+                        { label: t("colRecord"), value: changedRow(detail) },
+                        { label: t("colSchema"), value: detail.schema || "-" },
+                        {
+                          label: t("rowHash"),
+                          value: detail.rowHash ? (
+                            <HashValue value={detail.rowHash} label={t("rowHash")} />
+                          ) : (
+                            <span className="font-normal text-muted-foreground">{t("rowHashNone")}</span>
+                          ),
+                        },
+                        {
+                          label: t("prevRowHash"),
+                          value: detail.prevRowHash ? (
+                            <span className="flex min-w-0 flex-col items-start gap-1">
+                              <HashValue value={detail.prevRowHash} label={t("prevRowHash")} />
+                              {previous && (
+                                <Button variant="link" size="sm" className="h-auto px-0" onClick={() => openPinned(previous)}>
+                                  {t("openPreviousChange")}
+                                </Button>
+                              )}
+                            </span>
+                          ) : (
+                            <span className="font-normal text-muted-foreground">{t("prevRowHashNone")}</span>
+                          ),
+                        },
+                      ]}
+                    />
+                  </DetailSection>
 
-                  <section className="flex flex-col gap-2">
-                    <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                      {t("detailDiff")}
-                    </h4>
-                    {detail.changes.length === 0 ? (
-                      <p className="rounded-lg border bg-muted/30 px-3 py-4 text-center text-sm text-muted-foreground">
-                        {t("noColumnData")}
-                      </p>
-                    ) : (
-                      <DiffViewer changes={detail.changes} renderValue={renderChangeValue} />
-                    )}
-                  </section>
+                  <DetailSection title={t("sectionChanges")}>
+                    <FieldsJsonPanel
+                      title={t("detailDiff")}
+                      json={toJsonText(changesJson(detail.changes))}
+                      copyJson={() => toJsonText(changesJson(detail.changes))}
+                      fields={
+                        detail.changes.length === 0 ? (
+                          <p className="py-2 text-center text-sm text-muted-foreground">{t("noColumnData")}</p>
+                        ) : (
+                          <DiffViewer
+                            changes={detail.changes}
+                            renderValue={renderChangeValue}
+                            labelFor={humanizeLabel}
+                            labels={diffLabels}
+                          />
+                        )
+                      }
+                    />
+                  </DetailSection>
                 </>
               )}
             </SheetBody>

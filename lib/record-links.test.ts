@@ -31,7 +31,7 @@ describe("record links", () => {
     expect(recordHref("role", 9)).toBe("/admin/roles/9");
     expect(recordHref("template", 1)).toBe("/admin/notifications/templates?open=1");
     expect(recordHref("alertRoute", 7)).toBe("/admin/notifications/routing?open=7");
-    expect(recordHref("actionLog", "34")).toBe("/admin/audit/actions?open=34");
+    expect(recordHref("auditLog", "34")).toBe("/admin/audit/log?open=34");
     expect(recordHref("securityPolicy", "16")).toBe("/admin/settings/security");
   });
 

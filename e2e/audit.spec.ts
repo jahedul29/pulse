@@ -6,7 +6,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("lists semantic actions and opens a detail drawer", async ({ page }) => {
-  await page.goto("/admin/audit/actions");
+  await page.goto("/admin/audit/log");
   const row = page.getByRole("link", { name: "CLIENT_REFUND" });
   await expect(row).toBeVisible();
   await expect(row.getByText("Order", { exact: true })).toBeVisible();
@@ -19,7 +19,7 @@ test("lists semantic actions and opens a detail drawer", async ({ page }) => {
   await expect(drawer.getByText("Permissions (1)")).toBeVisible();
   await expect(drawer.getByText("Manage Orders module.")).toBeVisible();
   await expect(drawer.getByText("corr-1")).toBeVisible();
-  await expect(drawer.getByText("c".repeat(64))).toBeVisible();
+  await expect(drawer.getByTitle("c".repeat(64))).toBeVisible();
   await expect(drawer.getByText("Request details")).toBeVisible();
 });
 
@@ -30,10 +30,10 @@ test("drills from a row-level change into its linked action", async ({ page }) =
   await page.getByRole("link", { name: "Update · Orders" }).click();
   await expect(page.getByText("a".repeat(64))).toBeVisible();
   await expect(page.getByText("b".repeat(64))).toBeVisible();
-  const viewAction = page.getByRole("link", { name: "Open action log entry Refunded a client order" });
+  const viewAction = page.getByRole("link", { name: "Open audit log entry Refunded a client order" });
   await expect(viewAction).toBeVisible();
   await expect(page.getByRole("link", { name: "Open admin account Dana Okonkwo" })).toBeVisible();
   await viewAction.click();
 
-  await expect(page).toHaveURL(/\/admin\/audit\/actions\?open=/);
+  await expect(page).toHaveURL(/\/admin\/audit\/log\?open=/);
 });

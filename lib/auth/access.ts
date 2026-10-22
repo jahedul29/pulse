@@ -52,19 +52,32 @@ const ROUTE_RULES: RouteRule[] = [
   { matches: within("/admin/notifications/alerts"), anyOf: [PERMISSIONS.LIVE_ALERTS_VIEW] },
   { matches: within("/admin/notifications/mapping"), anyOf: [PERMISSIONS.EDR_EVENT_TYPES_VIEW] },
   { matches: within("/admin/locations"), anyOf: [PERMISSIONS.TECHNICAL_VIEW] },
+  { matches: within("/admin/audit/log"), probe: ADMIN_ACTION_LOGS_PATH },
   { matches: within("/admin/audit/actions"), probe: ADMIN_ACTION_LOGS_PATH },
   { matches: within("/admin/audit/changes"), probe: CHANGE_LOGS_PATH },
   { matches: within("/admin/audit/logins"), probe: LOGIN_AUDIT_LOGS_PATH },
 ];
 
-export const PROBE_ENDPOINTS: readonly string[] = ROUTE_RULES.flatMap((rule) => (rule.probe ? [rule.probe] : []));
+export const PROBE_ENDPOINTS: readonly string[] = [
+  ...new Set(ROUTE_RULES.flatMap((rule) => (rule.probe ? [rule.probe] : []))),
+];
+
+const RENAMED_PATHS: [string, string][] = [["/admin/audit/actions", "/admin/audit/log"]];
+
+export function currentPath(path: string | null): string | null {
+  if (!path) return path;
+  for (const [from, to] of RENAMED_PATHS) {
+    if (path === from || path.startsWith(`${from}?`) || path.startsWith(`${from}/`)) return to + path.slice(from.length);
+  }
+  return path;
+}
 
 export const START_PAGES = [
   "/personnel",
   "/admin/user-management",
   "/admin/roles",
   "/admin/access",
-  "/admin/audit/actions",
+  "/admin/audit/log",
   "/admin/audit/changes",
   "/admin/settings/security",
   "/admin/audit/logins",
@@ -131,9 +144,9 @@ export function landingPath(
   probes: ProbeResults = {},
 ): string {
   const reachable = (path: string) => accessState(session, path, probes) !== "denied";
-  const requested = safeInternalPath(returnTo);
+  const requested = currentPath(safeInternalPath(returnTo));
   if (requested && reachable(requested)) return requested;
-  const landing = safeInternalPath(landingPage);
+  const landing = currentPath(safeInternalPath(landingPage));
   if (landing && isKnownRoute(landing) && reachable(landing)) return landing;
   return firstAccessiblePath(session, probes) ?? START_PAGES[0];
 }

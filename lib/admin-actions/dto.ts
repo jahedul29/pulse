@@ -1,5 +1,5 @@
 import { accountName, toEpoch, type AdminAccountRef } from "@/lib/audit/dto";
-import { maskColumnValue, maskInputValue } from "@/lib/audit/mask";
+import { maskColumnValue, maskInputValue, maskKey, parseJsonText } from "@/lib/audit/mask";
 import { deviceLabelFromUA } from "@/lib/device";
 import type { ActionInput, AdminAction, ChangeLogEntry, ColumnChange, TargetUser } from "./types";
 
@@ -120,6 +120,8 @@ export function flattenPayload(value: unknown, prefix = ""): ActionInput[] {
     return prefix ? [{ key: prefix, label: humanizeLabel(prefix), value: "-" }] : [];
   }
   if (typeof value !== "object") {
+    const nested = typeof value === "string" ? parseJsonText(value) : undefined;
+    if (nested !== undefined && nested !== null && typeof nested === "object") return flattenPayload(nested, prefix);
     return [{ key: prefix, label: humanizeLabel(prefix), value: maskInputValue(prefix, stringifyLeaf(value)) }];
   }
   if (Array.isArray(value)) {
@@ -135,8 +137,26 @@ export function flattenPayload(value: unknown, prefix = ""): ActionInput[] {
     return value.flatMap((item, index) => flattenPayload(item, `${prefix}[${index}]`));
   }
   return Object.entries(value as Record<string, unknown>).flatMap(([key, nested]) =>
-    flattenPayload(nested, prefix ? `${prefix}.${key}` : key),
+    flattenPayload(nested, prefix ? `${prefix}.${maskKey(key)}` : maskKey(key)),
   );
+}
+
+export function maskPayload(value: unknown, prefix = ""): unknown {
+  if (value === null || value === undefined) return null;
+  if (Array.isArray(value)) return value.map((item, index) => maskPayload(item, `${prefix}[${index}]`));
+  if (typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, nested]) => [
+        maskKey(key),
+        maskPayload(nested, prefix ? `${prefix}.${key}` : key),
+      ]),
+    );
+  }
+  const nested = typeof value === "string" ? parseJsonText(value) : undefined;
+  if (nested !== undefined && nested !== null && typeof nested === "object") return JSON.stringify(maskPayload(nested, prefix));
+  const text = String(value);
+  const masked = maskInputValue(prefix, text);
+  return masked === text ? value : masked;
 }
 
 function textOf(value: unknown): string | null {
@@ -193,7 +213,11 @@ export function meaningfulInputs(action: AdminAction): ActionInput[] {
 }
 
 export function actionDtoToDetail(dto: AdminActionLogDto): AdminAction {
-  return { ...actionDtoToRow(dto), inputs: flattenPayload(dto.request_payload) };
+  return {
+    ...actionDtoToRow(dto),
+    inputs: flattenPayload(dto.request_payload),
+    payload: maskPayload(dto.request_payload),
+  };
 }
 
 const PSEUDO_COLUMN = /^\d+$/;

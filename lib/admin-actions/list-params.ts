@@ -36,8 +36,10 @@ function applyFilter(value: unknown, field: string, filters: Filters) {
   else if (typeof value === "string" && value.trim()) filters[field] = value.trim();
 }
 
+export const LOG_PAGE_SIZE = 20;
+
 export function actionServerStateToParams(state: ServerTableState | null): ListParams {
-  if (!state) return { page: 1, perPage: 10, sort: { created_at: "desc" } };
+  if (!state) return { page: 1, perPage: LOG_PAGE_SIZE, sort: { created_at: "desc" } };
   const sort: Record<string, "asc" | "desc"> = {};
   for (const entry of state.sorting) {
     const field = ACTION_SORT[entry.id];
@@ -74,7 +76,7 @@ export function changeServerStateToParams(
   if (!state) {
     return {
       page: 1,
-      perPage: 10,
+      perPage: LOG_PAGE_SIZE,
       sort: { created_at: "desc" },
       filters: Object.keys(seed).length ? seed : undefined,
     };

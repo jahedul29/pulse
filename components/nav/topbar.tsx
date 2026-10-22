@@ -21,7 +21,7 @@ const ADMIN_TITLE_KEYS: Record<string, string> = {
   "/admin/settings/sessions": "sessions.title",
   "/admin/roles": "rbac.rolesTitle",
   "/admin/access": "rbac.accessTitle",
-  "/admin/audit/actions": "actionLog.title",
+  "/admin/audit/log": "auditLog.title",
   "/admin/audit/changes": "changeLog.title",
   "/calendar-settings": "calendarSettings.title",
   "/admin/settings/security": "securityPolicy.title",

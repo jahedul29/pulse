@@ -5,6 +5,7 @@ import {
   changeDtoToRow,
   flattenPayload,
   humanizeCode,
+  maskPayload,
   payloadName,
   type AdminActionLogDto,
   type ChangeLogDto,
@@ -296,3 +297,55 @@ describe("audit extended info", () => {
     expect(changeDtoToRow(base).rowHash).toBeNull();
   });
 });
+
+describe("maskPayload", () => {
+  it("keeps the payload shape and value types, masking sensitive and email values", () => {
+    expect(
+      maskPayload({
+        center: { lat: 24.05, lng: 54.53 },
+        email: "jane@acme.ae",
+        password: "hunter2",
+        points: [{ mgrs: "39Q YF 21500 92500" }],
+        active: true,
+      }),
+    ).toEqual({
+      center: { lat: 24.05, lng: 54.53 },
+      email: "j***@***.ae",
+      password: "h••••",
+      points: [{ mgrs: "39Q YF 21500 92500" }],
+      active: true,
+    });
+  });
+
+  it("turns a missing payload into null", () => {
+    expect(maskPayload(undefined)).toBeNull();
+  });
+});
+
+describe("actionDtoToDetail payload", () => {
+  it("keeps a masked copy of the request payload for the JSON view", () => {
+    const detail = actionDtoToDetail({
+      id: "A-1",
+      action_code: "users.update",
+      result: "success",
+      severity: "info",
+      request_payload: { email: "jane@acme.ae", status: "ACTIVE" },
+    });
+    expect(detail.payload).toEqual({ email: "j***@***.ae", status: "ACTIVE" });
+  });
+});
+
+describe("payload masking of nested JSON and email keys", () => {
+  it("masks secrets inside a JSON string and email keys in the JSON view", () => {
+    const masked = maskPayload({ data: JSON.stringify({ password: "hunter22", note: "ok" }), "jane@acme.ae": "x" }) as Record<string, unknown>;
+    expect(JSON.parse(masked.data as string)).toEqual({ password: "h••••", note: "ok" });
+    expect(Object.keys(masked)).toContain("j***@***.ae");
+  });
+
+  it("flattens a JSON string into masked fields", () => {
+    expect(flattenPayload({ data: JSON.stringify({ pin: "1234" }) })).toEqual([
+      { key: "data.pin", label: "Data · Pin", value: "1••••" },
+    ]);
+  });
+});
+

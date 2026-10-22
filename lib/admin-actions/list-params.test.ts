@@ -42,7 +42,7 @@ describe("changeServerStateToParams", () => {
   it("seeds the admin_action_log_id filter from the deep-link even with no table state", () => {
     expect(changeServerStateToParams(null, "A-1")).toEqual({
       page: 1,
-      perPage: 10,
+      perPage: 20,
       sort: { created_at: "desc" },
       filters: { admin_action_log_id: "A-1" },
     });
@@ -89,7 +89,7 @@ describe("audit date range + action filters", () => {
   const from = new Date(2026, 8, 23, 0, 0, 0, 0).getTime();
   const to = new Date(2026, 8, 23, 23, 59, 59, 999).getTime();
 
-  it("maps the action log Created at range, action code and target type filters", () => {
+  it("maps the audit log Created at range, action code and target type filters", () => {
     const params = actionServerStateToParams(
       state({
         columnFilters: [

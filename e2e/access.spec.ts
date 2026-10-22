@@ -39,7 +39,7 @@ test("explains a 403 from the API instead of offering Try again", async ({ page 
 test("lists an audit log once the backend allows it", async ({ page }) => {
   await page.goto("/admin/roles");
   const nav = page.getByRole("navigation").first();
-  await expect(nav.getByRole("link", { name: "Action log" })).toBeVisible();
+  await expect(nav.getByRole("link", { name: "Audit log" })).toBeVisible();
   await expect(nav.getByRole("link", { name: "Login audit" })).toBeVisible();
 });
 
@@ -51,11 +51,11 @@ test("hides and blocks an audit log the backend refuses", async ({ page }) => {
       body: JSON.stringify({ success: false, message: "This action is unauthorized.", status: 403 }),
     }),
   );
-  await page.goto("/admin/audit/actions");
+  await page.goto("/admin/audit/log");
   await expect(page.getByRole("heading", { name: "You're not authorized to view this page" })).toBeVisible();
   const nav = page.getByRole("navigation").first();
   const group = nav.getByRole("button", { name: /RBAC & Audit Logs/ });
   if ((await group.getAttribute("aria-expanded")) !== "true") await group.click();
   await expect(nav.getByRole("link", { name: "Change log" })).toBeVisible();
-  await expect(nav.getByRole("link", { name: "Action log" })).toHaveCount(0);
+  await expect(nav.getByRole("link", { name: "Audit log" })).toHaveCount(0);
 });

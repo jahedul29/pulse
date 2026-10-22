@@ -39,6 +39,7 @@ export interface AdminAction {
   adminEmail?: string;
   device?: string;
   inputs: ActionInput[];
+  payload?: unknown;
 }
 
 export type ChangeOp = "insert" | "update" | "delete";

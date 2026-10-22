@@ -14,7 +14,6 @@ import { ADMIN_ACTION_LOGS_PATH, CHANGE_LOGS_PATH } from "@/lib/api/audit-paths"
 
 export type { ListParams };
 
-
 export async function listAdminActions(params: ListParams): Promise<Paginated<AdminAction>> {
   const { data, meta } = await apiList<AdminActionLogDto>(ADMIN_ACTION_LOGS_PATH, {
     query: buildListQuery(params),
@@ -57,4 +56,39 @@ export function getChangeLog(id: string): Promise<ChangeLogEntry> {
 
 export function exportChangeLogCsv(params: ListParams): Promise<string> {
   return fetchCsvExport(CHANGE_LOGS_PATH, params);
+}
+
+export async function countActionChanges(actionId: string): Promise<number> {
+  const { data, meta } = await apiList<ChangeLogDto>(CHANGE_LOGS_PATH, {
+    query: buildListQuery({ page: 1, perPage: 1, filters: { admin_action_log_id: actionId } }),
+  });
+  return meta?.total ?? data.length;
+}
+
+export const PREVIOUS_CHANGE_SCAN = 10;
+
+export async function findPreviousChange(entry: ChangeLogEntry): Promise<ChangeLogEntry | null> {
+  if (!entry.prevRowHash) return null;
+  const filters: Record<string, string> = { table_name: entry.table, row_pk: entry.recordId };
+  if (entry.createdAt > 0) filters.created_at_to = new Date(entry.createdAt).toISOString();
+  const { data } = await apiList<ChangeLogDto>(CHANGE_LOGS_PATH, {
+    query: {
+      ...buildListQuery({ page: 1, perPage: PREVIOUS_CHANGE_SCAN, sort: { created_at: "desc" }, filters }),
+      relations: ["actor", "adminActionLog"],
+    },
+  });
+  const previous = data.find((row) => String(row.id) !== entry.id && row.row_hash === entry.prevRowHash);
+  return previous ? changeDtoToRow(previous) : null;
+}
+
+export const TARGET_HISTORY_LIMIT = 50;
+
+export async function listTargetHistory(targetId: string): Promise<{ entries: AdminAction[]; total: number }> {
+  const { data, meta } = await listAdminActions({
+    page: 1,
+    perPage: TARGET_HISTORY_LIMIT,
+    sort: { created_at: "desc" },
+    filters: { target_id: targetId },
+  });
+  return { entries: [...data].reverse(), total: meta?.total ?? data.length };
 }

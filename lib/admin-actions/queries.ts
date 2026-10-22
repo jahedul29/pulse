@@ -1,17 +1,29 @@
-import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useQuery, queryOptions } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/api/query-keys";
 import { ADMIN_ACTION_LOGS_PATH, CHANGE_LOGS_PATH } from "@/lib/api/audit-paths";
 import { useProbeAllowed } from "@/lib/auth/access-probes";
-import { getActionFilterOptions, listAdminActions, listChangeLog, type ListParams } from "./audit-api";
+import {
+  countActionChanges,
+  findPreviousChange,
+  getActionFilterOptions,
+  listAdminActions,
+  listChangeLog,
+  listTargetHistory,
+  type ListParams,
+} from "./audit-api";
+import type { ChangeLogEntry } from "./types";
 
-export function useAdminActions(params: ListParams) {
-  const allowed = useProbeAllowed(ADMIN_ACTION_LOGS_PATH);
-  return useQuery({
+export function adminActionsQuery(params: ListParams) {
+  return queryOptions({
     queryKey: queryKeys.adminActions(params),
     queryFn: () => listAdminActions(params),
     placeholderData: keepPreviousData,
-    enabled: allowed,
   });
+}
+
+export function useAdminActions(params: ListParams, paused = false) {
+  const allowed = useProbeAllowed(ADMIN_ACTION_LOGS_PATH);
+  return useQuery({ ...adminActionsQuery(params), enabled: allowed, refetchOnWindowFocus: !paused });
 }
 
 export function useAdminActionSearch(search: string, enabled: boolean) {
@@ -40,12 +52,44 @@ export function useActionFilterOptions() {
   });
 }
 
-export function useChangeLog(params: ListParams) {
-  const allowed = useProbeAllowed(CHANGE_LOGS_PATH);
-  return useQuery({
+export function changeLogQuery(params: ListParams) {
+  return queryOptions({
     queryKey: queryKeys.changeLog(params),
     queryFn: () => listChangeLog(params),
     placeholderData: keepPreviousData,
-    enabled: allowed,
+  });
+}
+
+export function useChangeLog(params: ListParams, paused = false) {
+  const allowed = useProbeAllowed(CHANGE_LOGS_PATH);
+  return useQuery({ ...changeLogQuery(params), enabled: allowed, refetchOnWindowFocus: !paused });
+}
+
+export function useActionChangeCount(actionId: string | null) {
+  const allowed = useProbeAllowed(CHANGE_LOGS_PATH);
+  return useQuery({
+    queryKey: queryKeys.actionChangeCount(actionId ?? ""),
+    queryFn: () => countActionChanges(actionId ?? ""),
+    enabled: allowed && actionId != null,
+    staleTime: 60_000,
+  });
+}
+
+export function usePreviousChange(entry: ChangeLogEntry | null) {
+  const allowed = useProbeAllowed(CHANGE_LOGS_PATH);
+  return useQuery({
+    queryKey: queryKeys.previousChange(entry?.id ?? ""),
+    queryFn: () => (entry ? findPreviousChange(entry) : Promise.resolve(null)),
+    enabled: allowed && entry != null && entry.prevRowHash != null,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useTargetHistory(targetId: string | null) {
+  const allowed = useProbeAllowed(ADMIN_ACTION_LOGS_PATH);
+  return useQuery({
+    queryKey: queryKeys.targetHistory(targetId ?? ""),
+    queryFn: () => listTargetHistory(targetId ?? ""),
+    enabled: allowed && targetId != null,
   });
 }

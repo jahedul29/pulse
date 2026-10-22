@@ -4,24 +4,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import type { ColumnDef } from "@tanstack/react-table";
-import { ChevronDown, ChevronUp } from "lucide-react";
 
 import { fmtDateTimeParts } from "@/lib/format";
 import { downloadCsvText } from "@/lib/export/csv";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sheet,
   SheetBody,
   SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
 } from "@/components/ui/sheet";
 import { DataTable, type ServerTableState } from "@/components/common/data-table";
+import { RecordDrawerHeader } from "@/components/common/record-drawer-header";
 import { auditTone } from "@/lib/audit/tone";
-import { stepIndex } from "@/lib/paging";
+import { useRecordPager } from "@/lib/use-record-pager";
 import { useRecordDetail } from "@/lib/use-record-detail";
 import { useRetained } from "@/lib/use-retained";
 import { StatusBadge } from "@/components/common/status-badge";
@@ -29,40 +25,50 @@ import { ProfileCell } from "@/components/common/profile-cell";
 import { DetailList } from "@/components/common/detail-list";
 import { Chip } from "@/components/common/chip";
 import { RecordLink } from "@/components/common/record-link";
-import { ReferenceCode } from "@/components/common/reference-code";
+import { DateTimeValue } from "@/components/common/date-time-value";
+import { DetailSection } from "@/components/common/detail-section";
+import { FieldsJsonPanel } from "@/components/common/fields-json-panel";
+import { HashValue } from "@/components/common/hash-value";
 import { ActionTargetName, ReferenceValue, RoleNameChips } from "@/components/admin/record-refs";
-import { isHttpRoute, recordHref, targetRecordKind } from "@/lib/record-links";
+import { actionChangesHref, isHttpRoute, recordHref, targetRecordKind } from "@/lib/record-links";
 import { humanizeCode, meaningfulInputs } from "@/lib/admin-actions/dto";
 import { AdminUserFilter } from "@/components/admin/admin-user-filter";
-import { useActionFilterOptions, useAdminActions } from "@/lib/admin-actions/queries";
+import {
+  adminActionsQuery,
+  useActionChangeCount,
+  useActionFilterOptions,
+  useAdminActions,
+} from "@/lib/admin-actions/queries";
+import { jsonPreview, toJsonText } from "@/lib/admin-actions/export-json";
 import { getAdminAction, exportAdminActionsCsv } from "@/lib/admin-actions/audit-api";
 import { CsvExportButton } from "@/components/admin/csv-export-button";
-import { actionServerStateToParams } from "@/lib/admin-actions/list-params";
+import { LOG_PAGE_SIZE, actionServerStateToParams } from "@/lib/admin-actions/list-params";
+import { PeriodFilter } from "@/components/admin/period-filter";
 import { TARGET_SERVICES, type AdminAction } from "@/lib/admin-actions/types";
 import { LoadError } from "@/components/common/load-error";
 import { PageContainer } from "@/components/common/page-container";
+import { columnWidth } from "@/lib/table/column-widths";
+import { RecordDrawerFallback } from "@/components/common/record-drawer-fallback";
+import { AdminProfileLink } from "@/components/common/admin-profile-link";
+import { useServerPage } from "@/lib/use-server-page";
 
 const RESULTS: string[] = ["SUCCESS", "PARTIAL", "FAILURE"];
 const SEVERITIES: string[] = ["INFO", "WARNING", "CRITICAL"];
 
-function NameChips({ title, names }: { title: string; names: string[] }) {
-  if (names.length === 0) return null;
+function NameChips({ names }: { names: string[] }) {
   return (
-    <div className="flex flex-col gap-2">
-      <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{title}</h4>
-      <div className="flex flex-wrap gap-1.5">
-        {names.map((name, index) => (
-          <Chip key={`${name}-${index}`} className="leading-snug whitespace-normal">
-            {name}
-          </Chip>
-        ))}
-      </div>
+    <div className="flex flex-wrap gap-1.5 py-0.5">
+      {names.map((name, index) => (
+        <Chip key={`${name}-${index}`} className="leading-snug whitespace-normal">
+          {name}
+        </Chip>
+      ))}
     </div>
   );
 }
 
-export function ActionLog() {
-  const t = useTranslations("actionLog");
+export function AuditLog() {
+  const t = useTranslations("auditLog");
   const tc = useTranslations("common");
   const locale = useLocale();
   const router = useRouter();
@@ -95,8 +101,9 @@ export function ActionLog() {
   const openId = searchParams.get("open");
 
   const [server, setServer] = useState<ServerTableState | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(openId);
   const params = useMemo(() => actionServerStateToParams(server), [server]);
-  const actionsQuery = useAdminActions(params);
+  const actionsQuery = useAdminActions(params, selectedId != null);
   const filterOptionsQuery = useActionFilterOptions();
   const actionCodeOptions = useMemo(
     () => (filterOptionsQuery.data?.actionCodes ?? []).map((code) => ({ value: code, label: code })),
@@ -112,10 +119,9 @@ export function ActionLog() {
 
   const onExport = useCallback(async () => {
     const csv = await exportAdminActionsCsv(params);
-    downloadCsvText("admin-action-logs.csv", csv);
+    downloadCsvText("audit-log.csv", csv);
   }, [params]);
 
-  const [selectedId, setSelectedId] = useState<string | null>(openId);
   const index = selectedId ? rows.findIndex((action) => action.id === selectedId) : -1;
   const detailRef = useRef<HTMLDivElement>(null);
   const {
@@ -132,12 +138,65 @@ export function ActionLog() {
   }, [selectedId]);
   const close = () => {
     setSelectedId(null);
-    if (openId) router.replace("/admin/audit/actions");
+    if (openId) router.replace("/admin/audit/log");
   };
-  const page = (delta: number) => {
-    if (index < 0) return;
-    setSelectedId(rows[stepIndex(index, delta, rows.length)].id);
+  const loadedDetail = detail && selected && detail.id === selected.id ? detail : null;
+  const changeCountQuery = useActionChangeCount(loadedDetail?.id ?? null);
+  const changeCount = changeCountQuery.data ?? 0;
+  const targetValue = (action: AdminAction) => {
+    const targetUser = action.targetUser;
+    if (targetUser) {
+      return (
+        <AdminProfileLink
+          id={targetUser.id}
+          name={targetUser.name}
+          subtitle={[targetUser.username, targetUser.email].filter(Boolean).join(" · ")}
+          label={t("openAccount", { name: targetUser.name })}
+        />
+      );
+    }
+    const kind = targetRecordKind(action.targetType);
+    const name = <ActionTargetName action={action} fallback={targetFallback(action)} />;
+    return kind && action.targetId ? <RecordLink href={recordHref(kind, action.targetId)}>{name}</RecordLink> : name;
   };
+  const changeItems = (action: AdminAction) => [
+    ...(action.summary && !isHttpRoute(action.summary) ? [{ label: t("detailSummary"), value: action.summary }] : []),
+    ...(action.roleNames.length > 0
+      ? [{ label: t("detailRoles", { count: action.roleNames.length }), value: <RoleNameChips names={action.roleNames} /> }]
+      : []),
+    ...(action.permissionNames.length > 0
+      ? [
+          {
+            label: t("detailPermissions", { count: action.permissionNames.length }),
+            value: <NameChips names={action.permissionNames} />,
+          },
+        ]
+      : []),
+    ...(changeCount > 0
+      ? [
+          {
+            label: t("dbChanges"),
+            value: <RecordLink href={actionChangesHref(action.id)}>{t("dbChangesCount", { count: changeCount })}</RecordLink>,
+          },
+        ]
+      : []),
+  ];
+  const { controller: tableController, page: serverPage } = useServerPage({
+    server,
+    pageSize: LOG_PAGE_SIZE,
+    total: total,
+    data: actionsQuery.data,
+    failed: actionsQuery.isError,
+    queryFor: (state) => adminActionsQuery(actionServerStateToParams(state)),
+  });
+  const selectAction = useCallback((action: AdminAction) => setSelectedId(action.id), []);
+  const pager = useRecordPager({
+    rows,
+    getId: (action) => action.id,
+    activeId: selectedId,
+    onSelect: selectAction,
+    page: serverPage,
+  });
 
   const columns = useMemo<ColumnDef<AdminAction, unknown>[]>(
     () => [
@@ -176,7 +235,7 @@ export function ActionLog() {
       {
         id: "actor",
         accessorFn: (action) => action.actorName,
-        size: 180,
+        ...columnWidth("name"),
         header: t("colActor"),
         enableSorting: false,
         meta: {
@@ -191,7 +250,7 @@ export function ActionLog() {
       {
         id: "actionCode",
         accessorFn: (action) => action.actionName,
-        size: 210,
+        ...columnWidth("text", { min: 180, max: 360 }),
         header: t("colActionCode"),
         meta: { filter: "select", filterOptions: actionCodeOptions, filterLabel: t("colActionCode") },
         cell: ({ row }) => <span className="block truncate text-sm font-medium">{row.original.actionName}</span>,
@@ -199,7 +258,7 @@ export function ActionLog() {
       {
         id: "targetType",
         accessorFn: (action) => humanizeCode(action.targetType),
-        size: 170,
+        ...columnWidth("label"),
         header: t("detailTargetType"),
         meta: { filter: "select", filterOptions: targetTypeOptions, filterLabel: t("detailTargetType") },
         cell: ({ row }) => <span className="block truncate text-sm">{humanizeCode(row.original.targetType) || "-"}</span>,
@@ -207,7 +266,7 @@ export function ActionLog() {
       {
         id: "target",
         accessorFn: (action) => action.targetUser?.name ?? action.payloadName ?? "",
-        size: 220,
+        ...columnWidth("name"),
         header: t("colTarget"),
         enableSorting: false,
         cell: ({ row }) => (
@@ -219,7 +278,7 @@ export function ActionLog() {
       {
         id: "service",
         accessorFn: (action) => action.serviceLabel ?? "",
-        size: 160,
+        ...columnWidth("label"),
         header: t("colService"),
         enableSorting: false,
         meta: {
@@ -251,7 +310,7 @@ export function ActionLog() {
   );
 
   return (
-    <PageContainer>
+    <PageContainer fill>
       <Card>
         <CardHeader>
           <CardTitle>{t("title")}</CardTitle>
@@ -268,9 +327,10 @@ export function ActionLog() {
             </div>
           ) : (
             <DataTable
+              fill
               columns={columns}
               data={rows}
-              pageSize={10}
+              pageSize={LOG_PAGE_SIZE}
               manualServer
               rowCount={total}
               onServerStateChange={onServerStateChange}
@@ -279,8 +339,18 @@ export function ActionLog() {
               itemsLabel={t("items")}
               onRowClick={(action) => setSelectedId(action.id)}
               rowAriaLabel={(action) => action.actionName}
-              rowClassName={(action) => (action.id === selectedId ? "bg-accent" : undefined)}
-              toolbar={<CsvExportButton onExport={onExport} />}
+              getRowId={(action) => action.id}
+              activeRowId={selectedId}
+              controllerRef={tableController}
+              toolbar={
+                <>
+                  <PeriodFilter
+                    value={server?.columnFilters.find((filter) => filter.id === "timestamp")?.value}
+                    onChange={(range) => tableController.current?.setColumnFilter("timestamp", range)}
+                  />
+                  <CsvExportButton onExport={onExport} />
+                </>
+              }
               getSearchText={(action) =>
                 `${action.actionName} ${action.summary} ${action.actorName} ${action.targetUser?.name ?? ""}`
               }
@@ -299,47 +369,37 @@ export function ActionLog() {
         </CardContent>
       </Card>
 
-      <Sheet open={selectedId != null} onOpenChange={(open) => !open && close()}>
-        {selected && (
-          <SheetContent onSwipeNext={() => page(1)} onSwipePrev={() => page(-1)}>
-            <SheetHeader>
-              {index >= 0 && (
-                <div className="flex items-center gap-1 pe-8">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => page(-1)}
-                    disabled={index === 0}
-                    aria-label={tc("prevRecord")}
-                  >
-                    <ChevronUp className="size-4" />
-                  </Button>
-                  <span className="text-xs text-muted-foreground tabular">
-                    {tc("recordPosition", { index: index + 1, total: rows.length })}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => page(1)}
-                    disabled={index === rows.length - 1}
-                    aria-label={tc("nextRecord")}
-                  >
-                    <ChevronDown className="size-4" />
-                  </Button>
-                </div>
-              )}
-              <SheetTitle>{selected.actionName}</SheetTitle>
-              <SheetDescription className="sr-only">{selected.actionName}</SheetDescription>
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <StatusBadge tone={auditTone(selected.result)} equalWidth={false}>
-                  {resultLabel(selected.result)}
-                </StatusBadge>
-                <StatusBadge tone={auditTone(selected.severity)} equalWidth={false}>
-                  {severityLabel(selected.severity)}
-                </StatusBadge>
-              </div>
-            </SheetHeader>
-            <SheetBody ref={detailRef} className="flex flex-col gap-4">
+      <Sheet inspect open={selectedId != null} onOpenChange={(open) => !open && close()}>
+        {selectedId != null && liveHead == null ? (
+          <RecordDrawerFallback loading={detailLoading} error={detailCause} onRetry={reload} />
+        ) : selected && (
+          <SheetContent onSwipeNext={() => pager.step(1)} onSwipePrev={() => pager.step(-1)}>
+            <RecordDrawerHeader
+              pager={pager}
+              link={recordHref("auditLog", selected.id)}
+              title={selected.actionName}
+              subtitle={<span className="tabular">{t("logId", { id: selected.id })}</span>}
+              summary={[
+                { label: t("colTimestamp"), value: <DateTimeValue epoch={selected.createdAt} locale={locale} /> },
+                {
+                  label: t("colResult"),
+                  value: (
+                    <StatusBadge tone={auditTone(selected.result)} equalWidth={false}>
+                      {resultLabel(selected.result)}
+                    </StatusBadge>
+                  ),
+                },
+                {
+                  label: t("colSeverity"),
+                  value: (
+                    <StatusBadge tone={auditTone(selected.severity)} equalWidth={false}>
+                      {severityLabel(selected.severity)}
+                    </StatusBadge>
+                  ),
+                },
+              ]}
+            />
+            <SheetBody ref={detailRef} className="flex flex-col gap-6">
               {detailLoading ? (
                 <div className="flex flex-col gap-3">
                   <Skeleton className="h-4 w-40" />
@@ -350,106 +410,68 @@ export function ActionLog() {
                 <LoadError error={detailCause} message={t("loadError")} onRetry={reload} className="py-10" />
               ) : (
                 <>
-                  <DetailList
-                    items={[
-                      {
-                        label: t("colActor"),
-                        value: detail.actorId ? (
-                          <RecordLink href={recordHref("adminAccount", detail.actorId)} label={t("openAccount", { name: detail.actorName })}>
-                            <ProfileCell name={detail.actorName} subtitle={detail.adminEmail || undefined} />
-                          </RecordLink>
+                  <DetailSection title={t("sectionUser")}>
+                    <AdminProfileLink
+                      id={detail.actorId}
+                      name={detail.actorName}
+                      subtitle={detail.adminEmail}
+                      label={t("openAccount", { name: detail.actorName })}
+                    />
+                    <DetailList
+                      divided
+                      items={[
+                        { label: t("detailDevice"), value: detail.device || "-" },
+                        { label: t("detailIpHash"), value: detail.ipHash ? <HashValue value={detail.ipHash} short label={t("detailIpHash")} /> : "-" },
+                      ]}
+                    />
+                  </DetailSection>
+
+                  <DetailSection title={t("sectionTarget")}>
+                    <DetailList
+                      divided
+                      items={[
+                        { label: t("detailTargetType"), value: humanizeCode(detail.targetType) || "-" },
+                        { label: t("colTarget"), value: targetValue(detail) },
+                      ]}
+                    />
+                  </DetailSection>
+
+                  <DetailSection title={t("sectionChange")}>
+                    {changeItems(detail).length > 0 && <DetailList divided items={changeItems(detail)} />}
+                    <FieldsJsonPanel
+                      title={t("detailPayload")}
+                      json={toJsonText(jsonPreview(detail.payload, (count) => tc("moreItems", { count })))}
+                      copyJson={() => toJsonText(detail.payload)}
+                      fields={
+                        meaningfulInputs(detail).length === 0 ? (
+                          <p className="py-2 text-center text-sm text-muted-foreground">{t("noPayload")}</p>
                         ) : (
-                          <ProfileCell name={detail.actorName} subtitle={detail.adminEmail || undefined} />
-                        ),
-                      },
-                      { label: t("detailTargetType"), value: humanizeCode(detail.targetType) || "-" },
-                      {
-                        label: t("colTarget"),
-                        value: (() => {
-                          const targetUser = detail.targetUser;
-                          if (targetUser) {
-                            const cell = (
-                              <ProfileCell
-                                name={targetUser.name}
-                                subtitle={[targetUser.username, targetUser.email].filter(Boolean).join(" · ") || undefined}
-                              />
-                            );
-                            return targetUser.id ? (
-                              <RecordLink href={recordHref("adminAccount", targetUser.id)} label={t("openAccount", { name: targetUser.name })}>
-                                {cell}
-                              </RecordLink>
-                            ) : (
-                              cell
-                            );
-                          }
-                          const kind = targetRecordKind(detail.targetType);
-                          const name = <ActionTargetName action={detail} fallback={targetFallback(detail)} />;
-                          return kind && detail.targetId ? (
-                            <RecordLink href={recordHref(kind, detail.targetId)}>{name}</RecordLink>
-                          ) : (
-                            name
-                          );
-                        })(),
-                      },
-                      { label: t("colService"), value: detail.serviceLabel || "-" },
-                      ...(detail.summary && !isHttpRoute(detail.summary)
-                        ? [{ label: t("detailSummary"), value: detail.summary }]
-                        : []),
-                      {
-                        label: t("colTimestamp"),
-                        value: (() => {
-                          const { date, time } = fmtDateTimeParts(detail.createdAt, locale);
-                          return `${date} ${time}`;
-                        })(),
-                      },
-                      { label: t("detailDevice"), value: detail.device || "-" },
-                      { label: t("detailId"), value: <span className="tabular">{detail.id}</span> },
-                      {
-                        label: t("detailCorrelationId"),
-                        value: detail.correlationId ? <ReferenceCode value={detail.correlationId} /> : "-",
-                      },
-                      {
-                        label: t("detailIpHash"),
-                        value: detail.ipHash ? <ReferenceCode value={detail.ipHash} /> : "-",
-                      },
-                    ]}
-                  />
-                  <NameChips
-                    title={t("detailPermissions", { count: detail.permissionNames.length })}
-                    names={detail.permissionNames}
-                  />
-                  {detail.roleNames.length > 0 && (
-                    <div className="flex flex-col gap-2">
-                      <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                        {t("detailRoles", { count: detail.roleNames.length })}
-                      </h4>
-                      <RoleNameChips names={detail.roleNames} />
-                    </div>
-                  )}
-                  <div className="flex flex-col gap-2">
-                    <h4 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                      {t("detailPayload")}
-                    </h4>
-                    <div className="rounded-lg border bg-muted/30 p-3">
-                      {meaningfulInputs(detail).length === 0 ? (
-                        <p className="py-2 text-center text-sm text-muted-foreground">{t("noPayload")}</p>
-                      ) : (
-                        <DetailList
-                          items={meaningfulInputs(detail).map((input) => ({
-                            label: input.label,
-                            value: (
-                              <ReferenceValue
-                                fieldKey={input.key}
-                                value={input.value}
-                                locale={locale}
-                                fallbacks={refFallbacks}
-                              />
-                            ),
-                          }))}
-                        />
-                      )}
-                    </div>
-                  </div>
+                          <DetailList
+                            divided
+                            items={meaningfulInputs(detail).map((input) => ({
+                              label: input.label,
+                              value: (
+                                <ReferenceValue fieldKey={input.key} value={input.value} locale={locale} fallbacks={refFallbacks} />
+                              ),
+                            }))}
+                          />
+                        )
+                      }
+                    />
+                  </DetailSection>
+
+                  <DetailSection title={t("sectionServiceTracing")}>
+                    <DetailList
+                      divided
+                      items={[
+                        { label: t("colService"), value: detail.serviceLabel || "-" },
+                        {
+                          label: t("detailCorrelationId"),
+                          value: detail.correlationId ? <HashValue value={detail.correlationId} label={t("detailCorrelationId")} /> : "-",
+                        },
+                      ]}
+                    />
+                  </DetailSection>
                 </>
               )}
             </SheetBody>

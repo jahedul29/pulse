@@ -7,7 +7,10 @@ export type RecordKind =
   | "securityPolicy"
   | "template"
   | "alertRoute"
-  | "actionLog"
+  | "auditLog"
+  | "changeLog"
+  | "delivery"
+  | "liveAlert"
   | "region"
   | "country";
 
@@ -63,10 +66,21 @@ export function recordHref(kind: RecordKind, id: string | number): string {
   if (kind === "role") return `/admin/roles/${encoded}`;
   if (kind === "template") return `/admin/notifications/templates?open=${encoded}`;
   if (kind === "alertRoute") return `/admin/notifications/routing?open=${encoded}`;
-  if (kind === "actionLog") return `/admin/audit/actions?open=${encoded}`;
+  if (kind === "auditLog") return `/admin/audit/log?open=${encoded}`;
+  if (kind === "changeLog") return `/admin/audit/changes?open=${encoded}`;
+  if (kind === "delivery") return `/admin/notifications/log?open=${encoded}`;
+  if (kind === "liveAlert") return `/admin/notifications/alerts?open=${encoded}`;
   if (kind === "region") return regionHref(id);
   if (kind === "country") return countryRegionsHref(id);
   return "/admin/settings/security";
+}
+
+export function actionChangesHref(actionId: string | number): string {
+  return `/admin/audit/changes?action=${encodeURIComponent(String(actionId))}`;
+}
+
+export function userAccessHref(userId: string): string {
+  return `/admin/access?user=${encodeURIComponent(userId)}`;
 }
 
 export function referenceKind(key: string): ReferenceKind | null {

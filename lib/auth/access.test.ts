@@ -5,6 +5,7 @@ import {
   firstAccessiblePath,
   hasPendingAccess,
   hasRouteRule,
+  currentPath,
   landingPath,
   PROBE_ENDPOINTS,
   START_PAGES,
@@ -54,8 +55,8 @@ describe("canAccessPath", () => {
 
   it("decides the audit logs from the backend's answer to a probe request", () => {
     expect(PROBE_ENDPOINTS).toEqual([ADMIN_ACTION_LOGS_PATH, CHANGE_LOGS_PATH, LOGIN_AUDIT_LOGS_PATH]);
-    expect(accessState(session(), "/admin/audit/actions")).toBe("unknown");
-    expect(accessState(session(), "/admin/audit/actions", { [ADMIN_ACTION_LOGS_PATH]: false })).toBe("denied");
+    expect(accessState(session(), "/admin/audit/log")).toBe("unknown");
+    expect(accessState(session(), "/admin/audit/log", { [ADMIN_ACTION_LOGS_PATH]: false })).toBe("denied");
     expect(accessState(session(), "/admin/audit/changes?action=4", { [CHANGE_LOGS_PATH]: true })).toBe("allowed");
     expect(canAccessPath(session(), "/admin/audit/logins")).toBe(false);
   });
@@ -95,7 +96,7 @@ describe("landingPath", () => {
 
   it("lands on a probed audit page only once the probe allows it", () => {
     expect(landingPath(session(), {})).toBe(START_PAGES[0]);
-    expect(landingPath(session(), {}, { [ADMIN_ACTION_LOGS_PATH]: true })).toBe("/admin/audit/actions");
+    expect(landingPath(session(), {}, { [ADMIN_ACTION_LOGS_PATH]: true })).toBe("/admin/audit/log");
     expect(landingPath(session(), { returnTo: "/admin/audit/changes" })).toBe("/admin/audit/changes");
     expect(landingPath(session(), { returnTo: "/admin/audit/changes" }, { [CHANGE_LOGS_PATH]: false })).toBe(START_PAGES[0]);
   });
@@ -144,3 +145,17 @@ describe("record deep links", () => {
     expect(canAccessPath(accountsOnly, "/admin/user-management?invite=i-1")).toBe(false);
   });
 });
+
+describe("renamed routes", () => {
+  it("sends a saved link to the old audit log route to its new address, query kept", () => {
+    expect(currentPath("/admin/audit/actions?open=12")).toBe("/admin/audit/log?open=12");
+    expect(currentPath("/admin/audit/actions")).toBe("/admin/audit/log");
+    expect(currentPath("/admin/audit/actionsx")).toBe("/admin/audit/actionsx");
+    expect(currentPath(null)).toBeNull();
+  });
+
+  it("checks the old address with the audit log's access probe", () => {
+    expect(accessState(session(), "/admin/audit/actions", { [ADMIN_ACTION_LOGS_PATH]: false })).toBe("denied");
+  });
+});
+
