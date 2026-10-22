@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/lib/ui-store";
 import { Logo } from "@/components/common/logo";
-import { NavItems } from "./nav-items";
+import { NavGroupsToggle, NavItems } from "./nav-items";
 
 export function Sidebar() {
   const t = useTranslations();
@@ -27,6 +27,11 @@ export function Sidebar() {
           <div className="flex h-9 min-w-0 flex-col justify-center">
             <div className="truncate font-heading text-base font-semibold leading-5">{t("common.appName")}</div>
             <div className="truncate text-xs leading-4 text-muted-foreground">{t("common.appTagline")}</div>
+          </div>
+        )}
+        {!collapsed && (
+          <div className="ms-auto">
+            <NavGroupsToggle />
           </div>
         )}
       </div>

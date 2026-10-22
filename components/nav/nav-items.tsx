@@ -6,6 +6,8 @@ import {
   Bell,
   CalendarCog,
   ChevronDown,
+  ChevronsDownUp,
+  ChevronsUpDown,
   GitCompare,
   Earth,
   Flag,
@@ -14,7 +16,6 @@ import {
   Lock,
   MapPinned,
   MessageSquareText,
-  // Route,
   ScrollText,
   Shield,
   ShieldCheck,
@@ -29,6 +30,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { accessState, canAccessPath } from "@/lib/auth/access";
 import { useAccessSnapshot } from "@/lib/auth/access-probes";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -47,7 +49,7 @@ const USER_MGMT_ITEMS: NavGroupItem[] = [
 const RBAC_ITEMS: NavGroupItem[] = [
   { href: "/admin/roles", key: "roles", icon: ShieldCheck },
   { href: "/admin/access", key: "adminAccess", icon: UserCog },
-  { href: "/admin/audit/actions", key: "actionLog", icon: Activity },
+  { href: "/admin/audit/log", key: "auditLog", icon: Activity },
   { href: "/admin/audit/changes", key: "changeLog", icon: GitCompare },
   { href: "/admin/settings/security", key: "securityPolicy", icon: Lock },
   { href: "/calendar-settings", key: "calendarSettings", icon: CalendarCog },
@@ -210,19 +212,10 @@ function NavGroup({
   );
 }
 
-export function NavItems({
-  collapsed = false,
-  onNavigate,
-}: {
-  collapsed?: boolean;
-  onNavigate?: () => void;
-}) {
-  const t = useTranslations("nav");
-  const pathname = usePathname();
+function useNavGroups() {
   const isClient = useIsClient();
   const { session: storedSession, probes } = useAccessSnapshot();
   const session = isClient ? storedSession : null;
-  const allowed = (href: string) => canAccessPath(session, href, probes);
   const visible = (items: NavGroupItem[]) =>
     items.flatMap((item) => {
       const state = accessState(session, item.href, probes);
@@ -233,35 +226,66 @@ export function NavItems({
   const rbacItems = visible(RBAC_ITEMS);
   const notificationItems = visible(NOTIFICATION_ITEMS);
   const locationItems = visible(LOCATION_ITEMS);
+  const groups = [
+    { key: "userMgmtGroup", items: userMgmtItems },
+    { key: "rbacGroup", items: rbacItems },
+    { key: "notificationsGroup", items: notificationItems },
+    { key: "locationsGroup", items: locationItems },
+  ].filter((group) => group.items.length > 0);
+  const groupKeys = groups.map((group) => group.key);
+  return { session, probes, userMgmtItems, rbacItems, notificationItems, locationItems, groups, groupKeys };
+}
 
-  const activeGroup = userMgmtItems.some((i) => isActive(pathname, i.href))
-    ? "userMgmtGroup"
-    : rbacItems.some((i) => isActive(pathname, i.href))
-      ? "rbacGroup"
-      : notificationItems.some((i) => isActive(pathname, i.href))
-        ? "notificationsGroup"
-        : locationItems.some((i) => isActive(pathname, i.href))
-          ? "locationsGroup"
-          : null;
+export function NavGroupsToggle() {
+  const t = useTranslations("nav");
+  const { session, groupKeys } = useNavGroups();
+  const openNavGroups = useUiStore((state) => state.openNavGroups);
+  const setAllNavGroups = useUiStore((state) => state.setAllNavGroups);
+  if (!session || groupKeys.length === 0) return null;
+  const anyOpen = groupKeys.some((key) => openNavGroups.includes(key));
+  const label = anyOpen ? t("collapseAllGroups") : t("expandAllGroups");
+  const Icon = anyOpen ? ChevronsDownUp : ChevronsUpDown;
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <button
+            type="button"
+            onClick={() => setAllNavGroups(groupKeys, !anyOpen)}
+            aria-label={label}
+            className="grid size-8 shrink-0 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          />
+        }
+      >
+        <Icon className="size-4" />
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+export function NavItems({
+  collapsed = false,
+  onNavigate,
+}: {
+  collapsed?: boolean;
+  onNavigate?: () => void;
+}) {
+  const t = useTranslations("nav");
+  const pathname = usePathname();
+  const { session, probes, userMgmtItems, rbacItems, notificationItems, locationItems, groups } = useNavGroups();
+  const allowed = (href: string) => canAccessPath(session, href, probes);
+
+  const activeGroup = groups.find((group) => group.items.some((item) => isActive(pathname, item.href)))?.key ?? null;
   const openNavGroups = useUiStore((state) => state.openNavGroups);
   const setNavGroupOpen = useUiStore((state) => state.setNavGroupOpen);
-  const [closedActive, setClosedActive] = useState<string | null>(null);
-  const [seenActive, setSeenActive] = useState(activeGroup);
-  if (seenActive !== activeGroup) {
-    setSeenActive(activeGroup);
-    setClosedActive(null);
-  }
 
   useEffect(() => {
     if (activeGroup) setNavGroupOpen(activeGroup, true);
   }, [activeGroup, setNavGroupOpen]);
 
-  const isOpen = (key: string) => (key === activeGroup ? closedActive !== key : openNavGroups.includes(key));
-  const toggleGroup = (key: string) => {
-    const open = isOpen(key);
-    setNavGroupOpen(key, !open);
-    if (key === activeGroup) setClosedActive(open ? key : null);
-  };
+  const isOpen = (key: string) => openNavGroups.includes(key);
+  const toggleGroup = (key: string) => setNavGroupOpen(key, !isOpen(key));
 
   if (!session) {
     return (

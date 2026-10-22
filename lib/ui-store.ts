@@ -42,6 +42,7 @@ interface UiState {
   setRegionEditor: (patch: Partial<RegionEditorPrefs>) => void;
   openNavGroups: string[];
   setNavGroupOpen: (group: string, open: boolean) => void;
+  setAllNavGroups: (groups: string[], open: boolean) => void;
   lastMapView: SavedMapView | null;
   setLastMapView: (view: SavedMapView) => void;
 }
@@ -68,6 +69,12 @@ export const useUiStore = create<UiState>()(
               : state.openNavGroups.filter((openGroup) => openGroup !== group),
           };
         }),
+      setAllNavGroups: (groups, open) =>
+        set((state) => ({
+          openNavGroups: open
+            ? [...new Set([...state.openNavGroups, ...groups])]
+            : state.openNavGroups.filter((openGroup) => !groups.includes(openGroup)),
+        })),
     }),
     {
       name: "abapro-ui",

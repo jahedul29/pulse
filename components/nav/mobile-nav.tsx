@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useUiStore } from "@/lib/ui-store";
 import { Logo } from "@/components/common/logo";
-import { NavItems } from "./nav-items";
+import { NavGroupsToggle, NavItems } from "./nav-items";
 
 export function MobileNav() {
   const t = useTranslations();
@@ -37,14 +37,17 @@ export function MobileNav() {
             <div className="truncate font-heading text-base font-semibold leading-5">{t("common.appName")}</div>
             <div className="truncate text-xs leading-4 text-muted-foreground">{t("common.appTagline")}</div>
           </div>
-          <button
-            type="button"
-            onClick={() => setMobileOpen(false)}
-            aria-label={t("nav.closeMenu")}
-            className="ms-auto grid size-8 cursor-pointer place-items-center rounded-lg text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground"
-          >
-            <X className="size-4" />
-          </button>
+          <div className="ms-auto flex items-center gap-1">
+            <NavGroupsToggle />
+            <button
+              type="button"
+              onClick={() => setMobileOpen(false)}
+              aria-label={t("nav.closeMenu")}
+              className="grid size-8 cursor-pointer place-items-center rounded-lg text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
