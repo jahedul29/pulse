@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, ChevronDown, Lock } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronsDownUp, ChevronsUpDown, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { ButtonRow } from "@/components/ui/button-row";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -73,6 +73,9 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
   const [original, setOriginal] = useState<Set<number>>(new Set());
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const seededRef = useRef<number | null>(null);
+
+  const anyOpen = groups.some((group) => !collapsed.has(group.key));
+  const toggleAllGroups = () => setCollapsed(anyOpen ? new Set(groups.map((group) => group.key)) : new Set());
 
   const toggleGroup = (key: string) =>
     setCollapsed((prev) => {
@@ -142,7 +145,7 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
 
   if (isError) {
     return (
-      <PageContainer variant="form" className="flex flex-col gap-6">
+      <PageContainer className="flex flex-col gap-6">
         <Card>
           <CardContent>
             <LoadError
@@ -163,7 +166,7 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
 
   if (loading) {
     return (
-      <PageContainer variant="form" className="flex flex-col gap-6">
+      <PageContainer className="flex flex-col gap-6">
         <Card>
           <CardHeader>
             <Skeleton className="h-6 w-40" />
@@ -180,7 +183,7 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
 
   if (!role) {
     return (
-      <PageContainer variant="form" className="flex flex-col gap-6">
+      <PageContainer className="flex flex-col gap-6">
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
             <div className="flex flex-col gap-1">
@@ -195,7 +198,7 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
   }
 
   return (
-    <PageContainer variant="form" className="flex flex-col gap-6">
+    <PageContainer className="flex flex-col gap-6">
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-center gap-2">
@@ -205,7 +208,15 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
               {role.is_system ? t("typeBuiltin") : t("typeCustom")}
             </StatusBadge>
           </div>
-          <p className="text-sm text-muted-foreground">{t("matrixModulesSubtitle")}</p>
+          <CardDescription>{t("matrixModulesSubtitle")}</CardDescription>
+          {groups.length > 0 && (
+            <CardAction>
+              <Button variant="outline" size="sm" onClick={toggleAllGroups}>
+                {anyOpen ? <ChevronsDownUp className="size-4" /> : <ChevronsUpDown className="size-4" />}
+                {anyOpen ? t("collapseAll") : t("expandAll")}
+              </Button>
+            </CardAction>
+          )}
         </CardHeader>
 
         <CardContent className="flex flex-col gap-4">
@@ -261,15 +272,15 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
                     )}
                   >
                     <div className="overflow-hidden">
-                      <div className="flex flex-col gap-1 p-2" inert={open ? undefined : true}>
+                      <div className="grid gap-1 p-2 lg:grid-cols-2" inert={open ? undefined : true}>
                         {group.permissions.map((permission) => {
                       const on = selected.has(permission.id);
                       return (
                         <Label
                           key={permission.id}
                           className={cn(
-                            "flex min-w-0 cursor-pointer items-center gap-3 rounded-lg px-3 py-2 font-normal transition-colors hover:bg-muted/60",
-                            on && "bg-primary/[0.05] hover:bg-primary/[0.09]",
+                            "flex min-w-0 cursor-pointer items-center gap-3 rounded-lg px-3 py-2 font-normal transition-colors",
+                            on ? "bg-primary/[0.06] hover:bg-primary/[0.1]" : "bg-muted/60 hover:bg-muted",
                             locked && "cursor-default",
                           )}
                         >
@@ -281,7 +292,9 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
                           />
                           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                             <div className="flex min-w-0 items-center gap-1.5">
-                              <span className="truncate text-sm">{permissionLabel(permission)}</span>
+                              <span className="truncate text-sm" title={permissionLabel(permission)}>
+                                {permissionLabel(permission)}
+                              </span>
                               {permission.is_sensitive && (
                                 <Chip
                                   variant="soft"
@@ -291,7 +304,7 @@ export function PermissionMatrix({ roleId }: { roleId: string }) {
                                 </Chip>
                               )}
                             </div>
-                            <span className="truncate text-xs text-muted-foreground tabular">
+                            <span className="truncate text-xs text-muted-foreground tabular" title={permissionCode(permission)}>
                               {permissionCode(permission)}
                             </span>
                           </div>

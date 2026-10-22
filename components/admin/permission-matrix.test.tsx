@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import mockMessages from "../../messages/en.json";
 import { PermissionMatrix } from "./permission-matrix";
 import { useAuthStore } from "@/lib/auth/store";
@@ -62,6 +63,34 @@ describe("PermissionMatrix", () => {
     expect(screen.getAllByText("client:read").length).toBeGreaterThan(0);
     expect(screen.getAllByText("client:update").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+  });
+
+  it("lays a module's permissions out two per row on wide screens", async () => {
+    render(<PermissionMatrix roleId="1" />);
+
+    const [code] = await screen.findAllByText("client:read");
+    expect(code.closest("label")?.parentElement).toHaveClass("lg:grid-cols-2");
+  });
+
+  it("gives each permission a light background until it is granted", async () => {
+    render(<PermissionMatrix roleId="1" />);
+
+    const [granted] = await screen.findAllByText("client:read");
+    const [open] = screen.getAllByText("client:update");
+    expect(granted.closest("label")).toHaveClass("bg-primary/[0.06]");
+    expect(open.closest("label")).toHaveClass("bg-muted/60");
+  });
+
+  it("collapses and expands every module at once", async () => {
+    const user = userEvent.setup();
+    render(<PermissionMatrix roleId="1" />);
+    const clients = await screen.findByRole("button", { name: /^Clients/ });
+
+    await user.click(screen.getByRole("button", { name: "Collapse all" }));
+    expect(clients).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(screen.getByRole("button", { name: "Expand all" }));
+    expect(clients).toHaveAttribute("aria-expanded", "true");
   });
 
   it("locks the matrix for an admin without the roles edit permission", async () => {
