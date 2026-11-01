@@ -89,19 +89,19 @@ describe("SpecialistWeeklyCalendar", () => {
     const parameters = defaultCalendarParameters();
     parameters.analyst.weekly.maxDaysOff = 1;
     act(() => useCalendarParameters.getState().apply(parameters));
-    fireEvent.click(screen.getByRole("button", { name: "Mon" }));
-    fireEvent.click(screen.getByRole("button", { name: "Tue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Monday" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tuesday" }));
     expect(toast.error).toHaveBeenCalledWith("Maximum 1 day off allowed", { style: { whiteSpace: "pre-line" } });
     parameters.analyst.weekly.maxDaysOff = 3;
     act(() => useCalendarParameters.getState().apply(parameters));
-    fireEvent.click(screen.getByRole("button", { name: "Tue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tuesday" }));
     expect(useSpecialistStore.getState().specialists.find((item) => item.role === "analyst")?.weekly.daysOff).toEqual([0, 1]);
   });
 
   it("sends rule breaks to sonner instead of the inline strip", () => {
     render(<SpecialistWeeklyCalendar specialist={analyst()} />);
     closeCoach();
-    for (const label of ["Mon", "Tue", "Wed"]) fireEvent.click(screen.getByRole("button", { name: label }));
+    for (const label of ["Monday", "Tuesday", "Wednesday"]) fireEvent.click(screen.getByRole("button", { name: label }));
     expect(toast.error).toHaveBeenCalledWith("Maximum 2 days off allowed", { style: { whiteSpace: "pre-line" } });
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(useSpecialistStore.getState().specialists.find((item) => item.role === "analyst")?.weekly.daysOff).toEqual([0, 1]);

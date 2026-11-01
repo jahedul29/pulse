@@ -100,7 +100,7 @@ it("lets an admin bypass the weekly days-off limit while editing", () => {
   expect(daysOff).toBeChecked();
   fireEvent.click(daysOff);
   fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
-  for (const day of ["Mon", "Tue", "Wed"]) fireEvent.click(screen.getByRole("button", { name: day }));
+  for (const day of ["Monday", "Tuesday", "Wednesday"]) fireEvent.click(screen.getByRole("button", { name: day }));
   expect(useSpecialistStore.getState().specialists.find((person) => person.id === analyst.id)?.weekly.daysOff).toEqual([0, 1, 2]);
   expect(useCalendarParameters.getState().parameters.analyst.weekly.maxDaysOff).toBe(1);
 });
