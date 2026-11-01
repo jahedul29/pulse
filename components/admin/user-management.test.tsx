@@ -248,6 +248,53 @@ describe("UserManagement", () => {
     success.mockRestore();
   });
 
+  it("leaves people with a pending invitation out of the Invite user picker, but not people whose invitation expired", async () => {
+    const originalPending = { ...pendingInvites[0] };
+    Object.assign(pendingInvites[0], { staffId: "41" });
+    pendingInvites.push(row({ id: "inv-x", name: "Old Invite", status: "expired", staffId: "42" }));
+    (fetchInvitableStaff as jest.Mock).mockResolvedValueOnce([
+      { id: "41", name: "Grace Kim", email: "grace@abapro.health", initials: "GK", title: "", department: "", terminated: false },
+      { id: "42", name: "Omar Fields", email: "omar@abapro.health", initials: "OF", title: "", department: "", terminated: false },
+    ]);
+    try {
+      renderWithClient(<UserManagement />);
+      await screen.findByText("Dana Okonkwo");
+      await userEvent.click(screen.getByRole("button", { name: "Invite user" }));
+      const dialog = await screen.findByRole("dialog");
+      await userEvent.click(within(dialog).getByRole("button", { name: /Select a staff member/ }));
+
+      expect(await screen.findByRole("button", { name: /Omar Fields/ })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Grace Kim/ })).not.toBeInTheDocument();
+    } finally {
+      pendingInvites.pop();
+      Object.assign(pendingInvites[0], originalPending);
+    }
+  });
+
+  it("lists expired invitations in their own tab with Invite again, out of Pending", async () => {
+    pendingInvites.push(row({ id: "inv-x", name: "Old Invite", status: "expired", staffId: "42" }));
+    try {
+      renderWithClient(<UserManagement />);
+      await screen.findByText("Dana Okonkwo");
+      expect(screen.getByRole("tab", { name: "Expired invitations (1)" })).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("tab", { name: "Pending invitations (1)" }));
+      expect(await screen.findByRole("link", { name: "Pending Person" })).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Old Invite" })).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("tab", { name: "Expired invitations (1)" }));
+      const expiredRow = await screen.findByRole("link", { name: "Old Invite" });
+      expect(screen.queryByRole("link", { name: "Pending Person" })).not.toBeInTheDocument();
+      await waitFor(() =>
+        expect(within(expiredRow).getByRole("button", { name: "Invite again" })).not.toHaveAttribute("aria-disabled", "true"),
+      );
+      expect(within(expiredRow).queryByRole("button", { name: "Resend invite" })).not.toBeInTheDocument();
+      expect(within(expiredRow).queryByRole("button", { name: "Revoke invite" })).not.toBeInTheDocument();
+    } finally {
+      pendingInvites.pop();
+    }
+  });
+
   it("shows Suspend + Deactivate icon buttons for an active account, no menu", async () => {
     renderWithClient(<UserManagement />);
     const row = (await screen.findByText("Emma Novak")).closest("tr")!;
@@ -313,6 +360,19 @@ describe("UserManagement", () => {
     expect(resend).not.toHaveAttribute("aria-disabled", "true");
     expect(within(row).getByRole("button", { name: "Revoke invite" })).toBeInTheDocument();
     expect(within(row).queryByRole("button", { name: "Deactivate" })).not.toBeInTheDocument();
+  });
+
+  it("offers no invite actions for an expired invitation", async () => {
+    mockRows.push(row({ id: "u5", name: "Expired Person", status: "expired", invitationId: "inv-5" }));
+    try {
+      renderWithClient(<UserManagement />);
+      const expiredRow = (await screen.findByText("Expired Person")).closest("tr")!;
+
+      expect(within(expiredRow).queryByRole("button", { name: "Resend invite" })).not.toBeInTheDocument();
+      expect(within(expiredRow).queryByRole("button", { name: "Revoke invite" })).not.toBeInTheDocument();
+    } finally {
+      mockRows.pop();
+    }
   });
 
   it("disables Resend while the invitable_again_at cooldown is active", async () => {
@@ -418,10 +478,48 @@ describe("UserManagement", () => {
       (fetchInvitableStaff as jest.Mock).mockResolvedValueOnce([
         { id: "7", name: "Revoked Person", email: "revoked@abapro.health", initials: "RP", title: "Nurse", department: "Care", terminated: false },
       ]);
+      (sendInvitation as jest.Mock).mockResolvedValueOnce({
+        id: "inv-new",
+        staff_id: 7,
+        status: "PENDING",
+        expires_at: "2026-11-09T12:00:00.000000Z",
+      });
+      const success = jest.spyOn(toast, "success").mockImplementation(() => "toast");
       await userEvent.click(within(drawer).getByRole("button", { name: "Invite again" }));
-      const invite = await screen.findByRole("dialog", { name: "Invite user" });
-      expect(within(invite).getByText("Revoked Person")).toBeInTheDocument();
-      expect(within(invite).getByDisplayValue("revoked@abapro.health")).toBeInTheDocument();
+      const confirm = await screen.findByRole("alertdialog", { name: "Invite Revoked Person again?" });
+      expect(fetchInvitableStaff).toHaveBeenCalledWith("revoked@abapro.health");
+      expect(within(confirm).getByText(/revoked@abapro\.health/)).toBeInTheDocument();
+      expect(within(confirm).getByText("Proposed roles: Administrator.")).toBeInTheDocument();
+      expect(screen.queryByRole("dialog", { name: "Invite user" })).not.toBeInTheDocument();
+
+      await userEvent.click(within(confirm).getByRole("button", { name: "Invite again" }));
+      expect(sendInvitation).toHaveBeenCalledWith("7", ["3"]);
+      await waitFor(() =>
+        expect(success).toHaveBeenCalledWith(
+          expect.stringMatching(/^Invitation sent to revoked@abapro\.health\. The link expires 09-Nov-2026 \d{2}:\d{2}\.$/),
+        ),
+      );
+      await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+      success.mockRestore();
+    });
+
+    it("keeps the Invite again popup open when sending fails", async () => {
+      const error = jest.spyOn(toast, "error").mockImplementation(() => "toast");
+      (fetchInvitableStaff as jest.Mock).mockResolvedValueOnce([
+        { id: "7", name: "Revoked Person", email: "revoked@abapro.health", initials: "RP", title: "", department: "", terminated: false },
+      ]);
+      (sendInvitation as jest.Mock).mockRejectedValueOnce(new Error("boom"));
+      renderWithClient(<UserManagement />);
+      await screen.findByText("Dana Okonkwo");
+      await userEvent.click(screen.getByRole("tab", { name: "Revoked invitations (1)" }));
+      const revokedRow = await screen.findByRole("link", { name: "Revoked Person" });
+      await userEvent.click(within(revokedRow).getByRole("button", { name: "Invite again" }));
+      const confirm = await screen.findByRole("alertdialog", { name: "Invite Revoked Person again?" });
+      await userEvent.click(within(confirm).getByRole("button", { name: "Invite again" }));
+
+      await waitFor(() => expect(error).toHaveBeenCalled());
+      expect(screen.getByRole("alertdialog", { name: "Invite Revoked Person again?" })).toBeInTheDocument();
+      error.mockRestore();
     });
 
     it("refuses Invite again for someone who can no longer be invited", async () => {
@@ -434,7 +532,7 @@ describe("UserManagement", () => {
       await userEvent.click(within(revokedRow).getByRole("button", { name: "Invite again" }));
 
       await waitFor(() => expect(error).toHaveBeenCalledWith(expect.stringContaining("can't be invited any more")));
-      expect(screen.queryByRole("dialog", { name: "Invite user" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
       error.mockRestore();
     });
 
@@ -456,15 +554,35 @@ describe("UserManagement", () => {
 
     it("blocks Invite again while the person already has a pending invitation", async () => {
       const original = revokedInvites[0].staffId;
-      revokedInvites[0].staffId = pendingInvites[0].staffId;
+      const originalPending = { ...pendingInvites[0] };
+      Object.assign(pendingInvites[0], { staffId: "7" });
       try {
         renderWithClient(<UserManagement />);
         await screen.findByText("Dana Okonkwo");
         await userEvent.click(screen.getByRole("tab", { name: "Revoked invitations (1)" }));
         const revokedRow = await screen.findByRole("link", { name: "Revoked Person" });
-        expect(within(revokedRow).getByRole("button", { name: "Invite again" })).toHaveAttribute("aria-disabled", "true");
+        await waitFor(() =>
+          expect(within(revokedRow).getByRole("button", { name: "Invite again" })).toHaveAttribute("aria-disabled", "true"),
+        );
       } finally {
         revokedInvites[0].staffId = original;
+        Object.assign(pendingInvites[0], originalPending);
+      }
+    });
+
+    it("allows Invite again when the person's other invitation has expired", async () => {
+      const originalPending = { ...pendingInvites[0] };
+      Object.assign(pendingInvites[0], { staffId: "7", status: "expired", effectiveStatus: "expired" });
+      try {
+        renderWithClient(<UserManagement />);
+        await screen.findByText("Dana Okonkwo");
+        await userEvent.click(screen.getByRole("tab", { name: "Revoked invitations (1)" }));
+        const revokedRow = await screen.findByRole("link", { name: "Revoked Person" });
+        await waitFor(() =>
+          expect(within(revokedRow).getByRole("button", { name: "Invite again" })).not.toHaveAttribute("aria-disabled", "true"),
+        );
+      } finally {
+        Object.assign(pendingInvites[0], originalPending);
       }
     });
 
@@ -548,6 +666,26 @@ describe("UserManagement", () => {
 
     const dialog = await screen.findByRole("dialog", { name: "Emma Novak" });
     expect(within(dialog).getByText("2 of 4")).toBeInTheDocument();
+  });
+
+  it("opens the Expired tab from an ?invite= link to an expired invitation and offers only Invite again", async () => {
+    mockSearch = new URLSearchParams("invite=inv-9");
+    const original = { ...pendingInvites[0] };
+    Object.assign(pendingInvites[0], { status: "expired", effectiveStatus: "expired" });
+    try {
+      renderWithClient(<UserManagement />);
+
+      const dialog = await screen.findByRole("dialog", { name: "Pending Person" });
+      expect(screen.getByRole("tab", { name: "Expired invitations (1)", hidden: true })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(within(dialog).getByRole("button", { name: "Invite again" })).toBeInTheDocument();
+      expect(within(dialog).queryByRole("button", { name: "Resend invite" })).not.toBeInTheDocument();
+      expect(within(dialog).queryByRole("button", { name: "Revoke invite" })).not.toBeInTheDocument();
+    } finally {
+      Object.assign(pendingInvites[0], original);
+    }
   });
 
   it("opens the Pending tab and the invitation drawer from an ?invite= deep link", async () => {

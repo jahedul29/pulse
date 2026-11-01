@@ -50,8 +50,8 @@ import { useNow } from "@/lib/use-now";
 import { StatusBadge, type Tone } from "@/components/common/status-badge";
 import { DetailList } from "@/components/common/detail-list";
 import { Field } from "@/components/ui/field";
-import { InviteAdminDialog } from "@/components/admin/invite-admin-dialog";
-import { fmtRelative, fmtDateTimeParts } from "@/lib/format";
+import { InviteAdminDialog, useInviteSentToast } from "@/components/admin/invite-admin-dialog";
+import { fmtList, fmtRelative, fmtDateTimeParts } from "@/lib/format";
 import { useLanguageLabel } from "@/lib/i18n/language";
 import { useOrderedRows, useRecordPager } from "@/lib/use-record-pager";
 import { useRecordDetail } from "@/lib/use-record-detail";
@@ -62,6 +62,7 @@ import {
   usePendingInvitations,
   useRevokedInvitations,
   useResendInvitation,
+  useSendInvitation,
   useRevokeInvitation,
   useUpdateUserStatus,
   useUserDevices,
@@ -110,6 +111,8 @@ function TabLabel({ full, short }: { full: string; short: string }) {
     </>
   );
 }
+
+const TAB_TRIGGER = "max-sm:h-auto max-sm:min-h-8 max-sm:py-1.5 max-sm:leading-tight max-sm:whitespace-normal max-sm:text-center";
 
 const rowKey = (row: AdminUserRow) => row.id;
 
@@ -160,16 +163,11 @@ export function UserManagement() {
   const { mutateAsync: mutateRevokeAsync, isPending: revokePending } = useRevokeInvitation();
   const { mutateAsync: mutateResendAsync, isPending: resendPending } = useResendInvitation();
 
+  const { mutateAsync: mutateSendAsync, isPending: sendPending } = useSendInvitation();
+  const showSentToast = useInviteSentToast();
+
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteSeed, setInviteSeed] = useState<{ key: number; staff: StaffRecord | null; roleIds: string[] }>({
-    key: 0,
-    staff: null,
-    roleIds: [],
-  });
-  const openInvite = useCallback((staff: StaffRecord | null = null, roleIds: string[] = []) => {
-    setInviteSeed((current) => ({ key: current.key + 1, staff, roleIds }));
-    setInviteOpen(true);
-  }, []);
+  const [reinviting, setReinviting] = useState<{ invite: AdminUserRow; staff: StaffRecord } | null>(null);
   const [revoking, setRevoking] = useState<AdminUserRow | null>(null);
   const [suspending, setSuspending] = useState<AdminUserRow | null>(null);
   const [statusReason, setStatusReason] = useState("");
@@ -200,6 +198,7 @@ export function UserManagement() {
   if (!linkTabSynced && linkedInvite) {
     setLinkTabSynced(true);
     if (linkedInvite.status === "revoked") setTab("revoked");
+    else if (linkedInvite.status === "expired") setTab("expired");
   }
   const closeInvite = () => {
     setSelectedInvite(null);
@@ -271,7 +270,7 @@ export function UserManagement() {
     () => new Map(roleOptions.map((option) => [option.value, option.label])),
     [roleOptions],
   );
-  const pendingRows = useMemo(
+  const invitationRows = useMemo(
     () =>
       (pendingQuery.data ?? []).map((row) => ({
         ...row,
@@ -282,7 +281,10 @@ export function UserManagement() {
       })),
     [pendingQuery.data, roleNameById],
   );
+  const pendingRows = useMemo(() => invitationRows.filter((invite) => invite.status === "pending"), [invitationRows]);
+  const expiredRows = useMemo(() => invitationRows.filter((invite) => invite.status === "expired"), [invitationRows]);
   const [orderedInvites, setOrderedInviteIds] = useOrderedRows(pendingRows, rowKey);
+  const [orderedExpired, setOrderedExpiredIds] = useOrderedRows(expiredRows, rowKey);
   const revokedRows = useMemo(
     () =>
       (revokedQuery.data ?? []).map((row) => ({
@@ -298,6 +300,12 @@ export function UserManagement() {
   const shownInviteId = (selectedInvite ?? linkedInvite)?.id ?? null;
   const invitesPager = useRecordPager({
     rows: orderedInvites,
+    getId: (invite) => invite.id,
+    activeId: shownInviteId,
+    onSelect: setSelectedInvite,
+  });
+  const expiredPager = useRecordPager({
+    rows: orderedExpired,
     getId: (invite) => invite.id,
     activeId: shownInviteId,
     onSelect: setSelectedInvite,
@@ -336,13 +344,14 @@ export function UserManagement() {
   const inviteAgain = useCallback(
     async (invite: AdminUserRow) => {
       setCheckingInviteId(invite.id);
+      const search = invite.email || invite.name;
       try {
         const staff = await queryClient.fetchQuery({
-          queryKey: [...queryKeys.unlinkedStaff(), invite.name],
-          queryFn: () => fetchInvitableStaff(invite.name),
+          queryKey: [...queryKeys.unlinkedStaff(), search],
+          queryFn: () => fetchInvitableStaff(search),
         });
         const member = staff.find((candidate) => candidate.id === invite.staffId);
-        if (member) openInvite(member, invite.roleIds);
+        if (member) setReinviting({ invite, staff: member });
         else toast.error(t("inviteAgainIneligible", { name: invite.name }));
       } catch (error) {
         toast.error(apiErrorMessage(error, ta));
@@ -350,7 +359,7 @@ export function UserManagement() {
         setCheckingInviteId(null);
       }
     },
-    [queryClient, openInvite, t, ta],
+    [queryClient, t, ta],
   );
 
   const applyStatus = useCallback(
@@ -366,6 +375,18 @@ export function UserManagement() {
     [mutateStatus, t, ta],
   );
 
+  const reinviteRoleNames = (reinviting?.invite.roleIds ?? []).flatMap((roleId) => roleNameById.get(roleId) ?? []);
+  const confirmReinvite = async () => {
+    if (!reinviting) return;
+    const { invite, staff } = reinviting;
+    try {
+      const invitation = await mutateSendAsync({ staffId: staff.id, roleIds: invite.roleIds });
+      showSentToast(staff.email, invitation);
+      setReinviting(null);
+    } catch (error) {
+      toast.error(apiErrorMessage(error, ta));
+    }
+  };
   const confirmRevoke = async () => {
     if (!revoking?.invitationId) return;
     const target = revoking;
@@ -462,7 +483,6 @@ export function UserManagement() {
         title: selfBlock,
       };
       switch (user.effectiveStatus) {
-        case "expired":
         case "pending": {
           if (!canInvite) return [];
           const cooldownActive = user.invitableAgainAt != null && user.invitableAgainAt > now;
@@ -501,7 +521,7 @@ export function UserManagement() {
     [t, canManage, canInvite, selfEmail, checkSuperadmin, applyStatus, resendInvite, now, locale],
   );
 
-  const { accountsColumns, invitationColumns, revokedColumns } = useMemo(() => {
+  const { accountsColumns, invitationColumns, expiredColumns, revokedColumns } = useMemo(() => {
     const nameCol: ColumnDef<AdminUserRow, unknown> = {
       id: "name",
       accessorFn: (user) => user.name,
@@ -703,7 +723,18 @@ export function UserManagement() {
           <span className="text-muted-foreground">-</span>
         ),
     };
-    const revokedActionsCol: ColumnDef<AdminUserRow, unknown> = {
+    const expiredAtCol: ColumnDef<AdminUserRow, unknown> = {
+      id: "expiredAt",
+      accessorFn: (user) => user.invitationExpiresAt ?? 0,
+      size: 130,
+      header: t("colExpired"),
+      cell: ({ row }) => (
+        <span className="text-sm text-muted-foreground tabular">
+          {row.original.invitationExpiresAt ? fmtDateTimeParts(row.original.invitationExpiresAt, locale).date : "-"}
+        </span>
+      ),
+    };
+    const inviteAgainCol: ColumnDef<AdminUserRow, unknown> = {
       id: "actions",
       enableSorting: false,
       size: 64,
@@ -744,8 +775,9 @@ export function UserManagement() {
     };
     return {
       accountsColumns: [nameCol, emailCol, rolesCol, statusCol, lastLoginCol, createdCol, actionsCol],
-      invitationColumns: [nameCol, emailCol, rolesCol, statusCol, invitedByCol, lastSentCol, actionsCol],
-      revokedColumns: [nameCol, emailCol, rolesCol, revokedAtCol, revokedByCol, revokedActionsCol],
+      invitationColumns: [nameCol, emailCol, rolesCol, invitedByCol, lastSentCol, actionsCol],
+      expiredColumns: [nameCol, emailCol, rolesCol, lastSentCol, expiredAtCol, inviteAgainCol],
+      revokedColumns: [nameCol, emailCol, rolesCol, revokedAtCol, revokedByCol, inviteAgainCol],
     };
   }, [t, locale, roleOptions, actionsFor, canViewRoles, inviteAgainBlock, inviteAgain]);
 
@@ -755,7 +787,7 @@ export function UserManagement() {
         render={
           <Button
             size="lg"
-            onClick={() => openInvite()}
+            onClick={() => setInviteOpen(true)}
             focusableWhenDisabled
             disabled={!canOpenInvite}
             aria-label={t("inviteAdmin")}
@@ -781,14 +813,14 @@ export function UserManagement() {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={(value) => setTab(String(value))} className="gap-4 md:min-h-0 md:flex-1">
-            <TabsList className="max-w-full overflow-x-auto">
+            <TabsList className="max-w-full justify-start overflow-x-auto overflow-y-hidden [scrollbar-width:none] max-sm:grid max-sm:h-auto! max-sm:w-full max-sm:grid-cols-2 max-sm:items-stretch max-sm:gap-1 [&::-webkit-scrollbar]:hidden max-sm:[&>*:last-child:nth-child(odd)]:col-span-2">
               {canViewAccounts && (
-                <TabsTrigger value="accounts" aria-label={t("tabAccounts")}>
+                <TabsTrigger className={TAB_TRIGGER} value="accounts" aria-label={t("tabAccounts")}>
                   <TabLabel full={t("tabAccounts")} short={t("tabAccountsShort")} />
                 </TabsTrigger>
               )}
               {canViewInvites && (
-                <TabsTrigger value="pending" aria-label={t("tabPending", { count: pendingRows.length })}>
+                <TabsTrigger className={TAB_TRIGGER} value="pending" aria-label={t("tabPending", { count: pendingRows.length })}>
                   <TabLabel
                     full={t("tabPending", { count: pendingRows.length })}
                     short={t("tabPendingShort", { count: pendingRows.length })}
@@ -796,7 +828,15 @@ export function UserManagement() {
                 </TabsTrigger>
               )}
               {canViewInvites && (
-                <TabsTrigger value="revoked" aria-label={t("tabRevoked", { count: revokedRows.length })}>
+                <TabsTrigger className={TAB_TRIGGER} value="expired" aria-label={t("tabExpired", { count: expiredRows.length })}>
+                  <TabLabel
+                    full={t("tabExpired", { count: expiredRows.length })}
+                    short={t("tabExpiredShort", { count: expiredRows.length })}
+                  />
+                </TabsTrigger>
+              )}
+              {canViewInvites && (
+                <TabsTrigger className={TAB_TRIGGER} value="revoked" aria-label={t("tabRevoked", { count: revokedRows.length })}>
                   <TabLabel
                     full={t("tabRevoked", { count: revokedRows.length })}
                     short={t("tabRevokedShort", { count: revokedRows.length })}
@@ -886,6 +926,44 @@ export function UserManagement() {
               )}
             </TabsContent>
 
+            <TabsContent value="expired" className="md:flex md:min-h-0 md:flex-1 md:flex-col">
+              {pendingQuery.isError ? (
+                <LoadError error={pendingQuery.error} message={t("pendingLoadError")} onRetry={() => pendingQuery.refetch()} />
+              ) : pendingQuery.isPending ? (
+                <div className="flex flex-col gap-2">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <Skeleton key={index} className="h-11 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <DataTable
+                  fill
+                  columns={expiredColumns}
+                  data={expiredRows}
+                  pageSize={10}
+                  searchPlaceholder={t("search")}
+                  emptyLabel={t("expiredEmpty")}
+                  itemsLabel={t("items")}
+                  onRowClick={(invite) => setSelectedInvite(invite)}
+                  rowAriaLabel={(invite) => invite.name}
+                  getRowId={(invite) => invite.id}
+                  activeRowId={shownInviteId}
+                  onOrderedIdsChange={setOrderedExpiredIds}
+                  getSearchText={(user) => `${user.name} ${user.email}`}
+                  filterLabels={{
+                    filter: tc("filter"),
+                    clear: tc("clear"),
+                    clearFilters: tc("clearFilters"),
+                    search: t("filterSearch"),
+                    from: tc("from"),
+                    to: tc("to"),
+                  }}
+                  enableFreeze
+                  maxFreeze={2}
+                />
+              )}
+            </TabsContent>
+
             <TabsContent value="revoked" className="md:flex md:min-h-0 md:flex-1 md:flex-col">
               {revokedQuery.isError ? (
                 <LoadError error={revokedQuery.error} message={t("revokedLoadError")} onRetry={() => revokedQuery.refetch()} />
@@ -928,11 +1006,9 @@ export function UserManagement() {
       </Card>
 
       <InviteAdminDialog
-        key={inviteSeed.key}
         open={inviteOpen}
         onOpenChange={setInviteOpen}
-        initialStaff={inviteSeed.staff}
-        initialRoleIds={inviteSeed.roleIds}
+        blockedStaffIds={pendingStaffIds}
       />
 
       <AlertDialog
@@ -954,6 +1030,29 @@ export function UserManagement() {
               className="bg-danger text-danger-foreground hover:bg-danger/90"
             >
               {t("revokeConfirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={reinviting != null}
+        onOpenChange={(open) => !open && !sendPending && setReinviting(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{reinviting ? t("reinviteTitle", { name: reinviting.invite.name }) : ""}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {reinviting ? t("reinviteBody", { email: reinviting.staff.email }) : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {reinviteRoleNames.length > 0 && (
+            <p className="text-sm text-muted-foreground">{t("reinviteRoles", { roles: fmtList(reinviteRoleNames, locale) })}</p>
+          )}
+          <AlertDialogFooter layout="split">
+            <AlertDialogCancel disabled={sendPending}>{tc("cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmReinvite} loading={sendPending}>
+              {t("actionInviteAgain")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1209,11 +1308,12 @@ export function UserManagement() {
           (() => {
             const record = inviteDetail ?? shownInvite;
             const revoked = record.status === "revoked";
+            const expired = record.status === "expired";
             const revokedAt = record.revokedAt ?? null;
             const revokedById = record.revokedBy ?? null;
             const revokedByName = record.revokedByName ?? null;
             const revokedByEmail = record.revokedByEmail ?? null;
-            const pager = revoked ? revokedPager : invitesPager;
+            const pager = revoked ? revokedPager : expired ? expiredPager : invitesPager;
             const inviteAgainReason = inviteAgainBlock(record);
             const cooldownActive = record.invitableAgainAt != null && record.invitableAgainAt > now;
             const inviteRoles = (record.roleIds ?? []).flatMap((roleId) => {
@@ -1357,7 +1457,7 @@ export function UserManagement() {
                     </>
                   )}
                 </SheetBody>
-                {canInvite && revoked && (
+                {canInvite && (revoked || expired) && (
                   <SheetFooter>
                     <Tooltip>
                       <TooltipTrigger
@@ -1381,7 +1481,7 @@ export function UserManagement() {
                     </Tooltip>
                   </SheetFooter>
                 )}
-                {canInvite && !revoked && (
+                {canInvite && !revoked && !expired && (
                   <SheetFooter layout="split">
                     <Button
                       size="lg"

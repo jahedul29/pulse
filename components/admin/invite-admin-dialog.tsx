@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm, useController } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
@@ -36,23 +36,37 @@ import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 
 const TRIGGER = "w-full justify-between font-normal";
 
+export function useInviteSentToast() {
+  const t = useTranslations("userManagement");
+  const locale = useLocale();
+  return useCallback(
+    (email: string, invitation?: { expires_at?: string | null } | null) => {
+      const expiresAt = invitation?.expires_at ? Date.parse(invitation.expires_at) : Number.NaN;
+      toast.success(
+        Number.isNaN(expiresAt)
+          ? t("sentToast", { email })
+          : t("sentToastExpires", { email, date: fmtDateTime(expiresAt, locale) }),
+      );
+    },
+    [t, locale],
+  );
+}
+
 export function InviteAdminDialog({
   open,
   onOpenChange,
-  initialStaff = null,
-  initialRoleIds = [],
+  blockedStaffIds,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initialStaff?: StaffRecord | null;
-  initialRoleIds?: string[];
+  blockedStaffIds?: ReadonlySet<string>;
 }) {
   const t = useTranslations("userManagement");
   const tc = useTranslations("common");
   const ta = useTranslations("apiErrors");
-  const locale = useLocale();
+  const showSentToast = useInviteSentToast();
 
-  const [picked, setPicked] = useState<StaffRecord | null>(initialStaff);
+  const [picked, setPicked] = useState<StaffRecord | null>(null);
   const [staffOpen, setStaffOpen] = useState(false);
   const [staffQuery, setStaffQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -67,7 +81,7 @@ export function InviteAdminDialog({
   const form = useForm<InviteForm>({
     resolver: zodResolver(schema),
     mode: "onSubmit",
-    defaultValues: { staffId: initialStaff?.id ?? "", email: initialStaff?.email ?? "", roleIds: initialRoleIds },
+    defaultValues: { staffId: "", email: "", roleIds: [] },
   });
   const { register, handleSubmit, reset, setValue, formState } = form;
   const staffField = useController({ control: form.control, name: "staffId" });
@@ -97,7 +111,10 @@ export function InviteAdminDialog({
   };
 
   const staffQueryResult = useInvitableStaff(debouncedQuery, open);
-  const shownStaff = useMemo(() => staffQueryResult.data ?? [], [staffQueryResult.data]);
+  const shownStaff = useMemo(
+    () => (staffQueryResult.data ?? []).filter((staffMember) => !blockedStaffIds?.has(staffMember.id)),
+    [staffQueryResult.data, blockedStaffIds],
+  );
 
   const pickStaff = (staffMember: StaffRecord) => {
     setPicked(staffMember);
@@ -109,12 +126,7 @@ export function InviteAdminDialog({
   const onSubmit = async (values: InviteForm) => {
     try {
       const invitation = await sendInvite.mutateAsync({ staffId: values.staffId, roleIds: values.roleIds });
-      const expiresAt = invitation?.expires_at ? Date.parse(invitation.expires_at) : Number.NaN;
-      toast.success(
-        Number.isNaN(expiresAt)
-          ? t("sentToast", { email: values.email.trim() })
-          : t("sentToastExpires", { email: values.email.trim(), date: fmtDateTime(expiresAt, locale) }),
-      );
+      showSentToast(values.email.trim(), invitation);
       handleOpenChange(false);
     } catch (error) {
       toast.error(apiErrorMessage(error, ta));
