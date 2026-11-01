@@ -81,17 +81,24 @@ test("keeps a revoked invitation in the Revoked tab and invites the person again
   await expect(invite).toBeHidden();
 
   await page.getByRole("tab", { name: /Pending invitations/ }).click();
-  const pendingRow = page.getByRole("link", { name: "Bruno Costa" });
+  const pendingRow = page.getByRole("tabpanel", { name: /Pending invitations/ }).getByRole("link", { name: "Bruno Costa" });
   await pendingRow.getByRole("button", { name: "Revoke invite" }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Revoke invite" }).click();
 
   await page.getByRole("tab", { name: /Revoked invitations/ }).click();
-  const revokedRow = page.getByRole("link", { name: "Bruno Costa" });
+  const revokedRow = page.getByRole("tabpanel", { name: /Revoked invitations/ }).getByRole("link", { name: "Bruno Costa" });
   await expect(revokedRow).toBeVisible();
 
   await revokedRow.getByRole("button", { name: "Invite again" }).click();
-  const again = page.getByRole("dialog", { name: "Invite user" });
-  await expect(again).toBeVisible();
-  await expect(again.getByRole("textbox", { name: "Email" })).toHaveValue("bruno.costa@abapro.health");
+  const again = page.getByRole("alertdialog", { name: "Invite Bruno Costa again?" });
+  await expect(again.getByText("A new invitation will be sent to bruno.costa@abapro.health.")).toBeVisible();
+  await again.getByRole("button", { name: "Invite again" }).click();
+  await expect(again).toBeHidden();
+  await expect(revokedRow.getByRole("button", { name: "Invite again" })).toHaveAttribute("aria-disabled", "true");
+
+  await page.getByRole("tab", { name: /Pending invitations/ }).click();
+  await expect(
+    page.getByRole("tabpanel", { name: /Pending invitations/ }).getByRole("link", { name: "Bruno Costa" }),
+  ).toBeVisible();
 });
 

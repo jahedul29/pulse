@@ -294,7 +294,7 @@ export async function mockAdminIdentity(
       const sent = request.postDataJSON() as { staff_id: number };
       const member = staff.find((entry) => entry.id === sent.staff_id);
       const invitation = {
-        id: `inv-${sent.staff_id}`,
+        id: `inv-${sent.staff_id}-${invitations.length + 1}`,
         staff_id: sent.staff_id,
         email: member?.personal_email ?? "",
         status: "pending",
@@ -302,7 +302,7 @@ export async function mockAdminIdentity(
         staff: member,
       };
       invitations.push(invitation);
-      users.push({
+      if (!users.some((user) => user.id === `u-${sent.staff_id}`)) users.push({
         id: `u-${sent.staff_id}`,
         staff_id: sent.staff_id,
         email: member?.personal_email ?? "",
