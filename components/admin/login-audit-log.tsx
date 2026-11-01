@@ -12,7 +12,6 @@ import { DataTable, type ServerTableState } from "@/components/common/data-table
 import { StatusBadge } from "@/components/common/status-badge";
 import { ProfileCell } from "@/components/common/profile-cell";
 import { AdminUserFilter } from "@/components/admin/admin-user-filter";
-import { maskIdentifier } from "@/lib/audit/mask";
 import { auditTone } from "@/lib/audit/tone";
 import { useLoginAudit } from "@/lib/audit/queries";
 import { exportLoginAuditCsv } from "@/lib/audit/audit-api";
@@ -36,10 +35,6 @@ const RESULTS: string[] = [
 const METHODS: string[] = ["PASSWORD_MFA", "REFRESH_TOKEN"];
 
 const NON_FAILURE = new Set<string>(["SUCCESS"]);
-
-function shownIdentifier(entry: LoginAuditEntry): string {
-  return entry.adminAccountId ? entry.attemptedIdentifier : maskIdentifier(entry.attemptedIdentifier);
-}
 
 function fmtStamp(ms: number, locale: string): string {
   const { time, date } = fmtDateTimeParts(ms, locale);
@@ -122,7 +117,7 @@ export function LoginAuditLog() {
         header: t("colIdentifier"),
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="text-xs text-muted-foreground">{shownIdentifier(row.original)}</span>
+          <span className="text-xs text-muted-foreground">{row.original.attemptedIdentifier}</span>
         ),
       },
       {
@@ -197,7 +192,7 @@ export function LoginAuditLog() {
               searchPlaceholder={t("search")}
               emptyLabel={t("empty")}
               itemsLabel={t("items")}
-              getSearchText={(entry) => `${shownIdentifier(entry)} ${entry.adminName ?? ""}`}
+              getSearchText={(entry) => `${entry.attemptedIdentifier} ${entry.adminName ?? ""}`}
               toolbar={<CsvExportButton onExport={onExport} />}
               filterLabels={{
                 filter: t("filter"),
