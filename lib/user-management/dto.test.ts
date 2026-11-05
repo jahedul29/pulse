@@ -87,7 +87,6 @@ describe("userDtoToRow", () => {
     expect(row.initials).toBe("DO");
     expect(row.status).toBe("active");
     expect(row.effectiveStatus).toBe("active");
-    expect(row.resendReady).toBe(false);
     expect(row.preferredLanguage).toBe("en");
   });
 

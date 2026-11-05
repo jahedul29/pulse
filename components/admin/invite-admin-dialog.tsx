@@ -52,15 +52,7 @@ export function useInviteSentToast() {
   );
 }
 
-export function InviteAdminDialog({
-  open,
-  onOpenChange,
-  blockedStaffIds,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  blockedStaffIds?: ReadonlySet<string>;
-}) {
+export function InviteAdminDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const t = useTranslations("userManagement");
   const tc = useTranslations("common");
   const ta = useTranslations("apiErrors");
@@ -111,10 +103,7 @@ export function InviteAdminDialog({
   };
 
   const staffQueryResult = useInvitableStaff(debouncedQuery, open);
-  const shownStaff = useMemo(
-    () => (staffQueryResult.data ?? []).filter((staffMember) => !blockedStaffIds?.has(staffMember.id)),
-    [staffQueryResult.data, blockedStaffIds],
-  );
+  const shownStaff = staffQueryResult.data ?? [];
 
   const pickStaff = (staffMember: StaffRecord) => {
     setPicked(staffMember);

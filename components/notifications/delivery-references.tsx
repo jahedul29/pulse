@@ -11,6 +11,7 @@ import { LoadError } from "@/components/common/load-error";
 import { RecordDrawerHeader } from "@/components/common/record-drawer-header";
 import { RecordLink } from "@/components/common/record-link";
 import { StatusBadge } from "@/components/common/status-badge";
+import { LevelBadge } from "@/components/common/level-badge";
 import { SheetBody, SheetContent } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -22,6 +23,7 @@ import {
 import { recordHref } from "@/lib/record-links";
 import type { RecordPager } from "@/lib/use-record-pager";
 import { AdminProfileLink } from "@/components/common/admin-profile-link";
+import { TemplateHtml } from "@/components/notifications/template-html";
 
 type Translate = (key: string, values?: Record<string, string>) => string;
 type DetailItem = { label: string; value: ReactNode };
@@ -103,19 +105,19 @@ export function DeliveryDrawerContent({
   const sentAt = stampOf(record);
   const title = record.title || t("log.untitledDelivery");
   return (
-    <SheetContent onSwipeNext={() => pager.step(1)} onSwipePrev={() => pager.step(-1)}>
+    <SheetContent showCloseButton={false} onSwipeNext={() => pager.step(1)} onSwipePrev={() => pager.step(-1)}>
       <RecordDrawerHeader
         pager={pager}
         link={link}
         title={title}
         summary={[
-          { label: t("log.colTimestamp"), value: sentAt == null ? "-" : <DateTimeValue epoch={sentAt} locale={locale} /> },
+          { label: t("log.colTimestamp"), value: sentAt == null ? "-" : <DateTimeValue epoch={sentAt} locale={locale} precise /> },
           {
             label: t("log.colSeverity"),
             value: record.severity ? (
-              <StatusBadge tone={severityTone(record.severity)} equalWidth={false}>
+              <LevelBadge tone={severityTone(record.severity)}>
                 {t(`deliverySeverity.${record.severity}`)}
-              </StatusBadge>
+              </LevelBadge>
             ) : (
               "-"
             ),
@@ -130,7 +132,7 @@ export function DeliveryDrawerContent({
           },
         ]}
       />
-      <SheetBody className="flex flex-col gap-6">
+      <SheetBody className="flex flex-col gap-2">
         {error ? (
           <LoadError error={error} message={loadErrorLabel} onRetry={onRetry} className="py-10" />
         ) : loading ? (
@@ -171,7 +173,7 @@ export function DeliveryDrawerContent({
             </DetailSection>
             {record.body && (
               <DetailSection title={t("log.messageBody")}>
-                <p className="rounded-lg border bg-muted/30 p-3 text-sm whitespace-pre-line">{record.body}</p>
+                <TemplateHtml html={record.body} dir="auto" className="rounded-lg border bg-muted/30 p-3" />
               </DetailSection>
             )}
           </>

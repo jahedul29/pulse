@@ -5,20 +5,34 @@ const tMsgs = {
   codeFormat: "code-fmt",
   nameRequired: "name-req",
   channelRequired: "channel-req",
-  subjectRequired: "subject-req",
+  headerTitleRequired: "header-req",
+  senderTooLong: "sender-long",
   bodyRequired: "body-req",
+  buttonLabelRequired: "button-req",
 };
 
 const validTemplate = {
   code: "SYS_X",
   name: "System notice",
+  type: "NOTIFICATION" as const,
   channelId: "1",
-  subjectEn: "Subject",
+  icon: "user_paused",
+  senderName: "ABAPRO",
+  headerTitleEn: "Account status change",
+  headerTitleAr: "",
+  headerSubtitleEn: "",
+  headerSubtitleAr: "",
+  subjectEn: "",
   subjectAr: "",
   bodyEn: "<p>hi</p>",
   bodyAr: "",
+  buttonLabelEn: "OK",
+  buttonLabelAr: "",
   isActive: true,
 };
+
+const issuePaths = (result: { success: boolean; error?: { issues: { path: PropertyKey[] }[] } }) =>
+  result.error?.issues.map((issue) => issue.path.join(".")) ?? [];
 
 describe("templateSchema (create)", () => {
   const schema = templateSchema(tMsgs, { isCreate: true });
@@ -35,12 +49,29 @@ describe("templateSchema (create)", () => {
     expect(schema.safeParse({ ...validTemplate, channelId: "" }).success).toBe(false);
   });
 
-  it("rejects an empty English subject", () => {
-    expect(schema.safeParse({ ...validTemplate, subjectEn: "  " }).success).toBe(false);
+  it("no longer requires a subject", () => {
+    expect(schema.safeParse({ ...validTemplate, subjectEn: "", subjectAr: "" }).success).toBe(true);
   });
 
   it("rejects empty English body", () => {
     expect(schema.safeParse({ ...validTemplate, bodyEn: "<p></p>" }).success).toBe(false);
+  });
+
+  it("requires an English button label", () => {
+    expect(issuePaths(schema.safeParse({ ...validTemplate, buttonLabelEn: "  " }))).toEqual(["buttonLabelEn"]);
+  });
+
+  it("requires an English bar title on notifications only", () => {
+    expect(issuePaths(schema.safeParse({ ...validTemplate, headerTitleEn: "" }))).toEqual(["headerTitleEn"]);
+    expect(schema.safeParse({ ...validTemplate, type: "POPUP", headerTitleEn: "" }).success).toBe(true);
+  });
+
+  it("accepts only the popup and notification types", () => {
+    expect(schema.safeParse({ ...validTemplate, type: "BANNER" }).success).toBe(false);
+  });
+
+  it("keeps the sender name within the backend's 100 characters", () => {
+    expect(issuePaths(schema.safeParse({ ...validTemplate, senderName: "x".repeat(101) }))).toEqual(["senderName"]);
   });
 
   it("accepts a valid new template (Arabic optional)", () => {

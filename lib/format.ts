@@ -70,6 +70,10 @@ export function fmtDate(iso: string, locale = "en"): string {
   return `${String(day).padStart(2, "0")}-${month}-${y}`;
 }
 
+function partGetter(parts: Intl.DateTimeFormatPart[]) {
+  return (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
+}
+
 const dateTimeFmtCache = new Map<string, Intl.DateTimeFormat>();
 
 function dateTimeFmt(locale: string): Intl.DateTimeFormat {
@@ -89,12 +93,43 @@ function dateTimeFmt(locale: string): Intl.DateTimeFormat {
 }
 
 export function fmtDateTimeParts(epochMs: number, locale = "en"): { time: string; date: string } {
-  const parts = dateTimeFmt(locale).formatToParts(new Date(epochMs));
-  const get = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((part) => part.type === type)?.value ?? "";
+  const get = partGetter(dateTimeFmt(locale).formatToParts(new Date(epochMs)));
   return {
     time: `${get("hour")}:${get("minute")}`,
     date: `${get("day")}-${get("month")}-${get("year")}`,
+  };
+}
+
+const preciseFmtCache = new Map<string, Intl.DateTimeFormat>();
+
+function preciseFmt(locale: string): Intl.DateTimeFormat {
+  let fmt = preciseFmtCache.get(locale);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat(`${locale}-u-nu-latn`, {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23",
+      timeZoneName: "short",
+    });
+    preciseFmtCache.set(locale, fmt);
+  }
+  return fmt;
+}
+
+export function fmtPreciseDateTimeParts(
+  epochMs: number,
+  locale = "en",
+): { date: string; time: string; zone: string } {
+  const date = new Date(epochMs);
+  const get = partGetter(preciseFmt(locale).formatToParts(date));
+  return {
+    date: `${get("day")}-${get("month")}-${get("year")}`,
+    time: `${get("hour")}:${get("minute")}:${get("second")}`,
+    zone: partGetter(preciseFmt("en").formatToParts(date))("timeZoneName"),
   };
 }
 

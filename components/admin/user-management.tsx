@@ -51,7 +51,7 @@ import { StatusBadge, type Tone } from "@/components/common/status-badge";
 import { DetailList } from "@/components/common/detail-list";
 import { Field } from "@/components/ui/field";
 import { InviteAdminDialog, useInviteSentToast } from "@/components/admin/invite-admin-dialog";
-import { fmtList, fmtRelative, fmtDateTimeParts } from "@/lib/format";
+import { fmtList, fmtRelative } from "@/lib/format";
 import { useLanguageLabel } from "@/lib/i18n/language";
 import { useOrderedRows, useRecordPager } from "@/lib/use-record-pager";
 import { useRecordDetail } from "@/lib/use-record-detail";
@@ -83,6 +83,7 @@ import { PageContainer } from "@/components/common/page-container";
 import { columnWidth } from "@/lib/table/column-widths";
 import { AdminProfileLink } from "@/components/common/admin-profile-link";
 import { useServerPage } from "@/lib/use-server-page";
+import { TableDate, TableDateText } from "@/components/common/table-date";
 
 const CONFIRM_WORD = "DEACTIVATE";
 const STATUS_REASON_MAX = 255;
@@ -184,13 +185,14 @@ export function UserManagement() {
   const [tab, setTab] = useState(linkedInviteId ? "pending" : "accounts");
   const activeTab = !canViewInvites ? "accounts" : !canViewAccounts && tab === "accounts" ? "pending" : tab;
   const loadInvitation = useCallback((id: string) => fetchInvitation(id), []);
+  const openInviteId = canViewInvites ? (selectedInvite?.id ?? linkedInviteId) : null;
   const {
     data: inviteDetail,
     loading: inviteLoading,
     error: inviteError,
     cause: inviteCause,
     reload: inviteReload,
-  } = useRecordDetail(canViewInvites ? (selectedInvite?.id ?? linkedInviteId) : null, loadInvitation);
+  } = useRecordDetail(openInviteId, loadInvitation);
   const linkedInvite =
     linkedInviteId && !selectedInvite && inviteDetail?.id === linkedInviteId ? inviteDetail : null;
   const shownInvite = useRetained(selectedInvite ?? linkedInvite);
@@ -395,7 +397,9 @@ export function UserManagement() {
       toast.success(t("revokedToast", { name: target.name }));
       setRevoking(null);
     } catch (error) {
-      toast.error(isForbidden(error) ? ta("forbidden") : t("changeFailed"));
+      toast.error(apiErrorMessage(error, ta));
+    } finally {
+      if (target.id === openInviteId) inviteReload();
     }
   };
   const resendInvite = useCallback(
@@ -406,9 +410,11 @@ export function UserManagement() {
         toast.success(t("resentToast", { name: user.name }));
       } catch (error) {
         toast.error(apiErrorMessage(error, ta));
+      } finally {
+        if (user.id === openInviteId) inviteReload();
       }
     },
-    [mutateResendAsync, t, ta],
+    [mutateResendAsync, t, ta, openInviteId, inviteReload],
   );
   const confirmDeactivate = async () => {
     if (!deactivating || confirmText !== CONFIRM_WORD) return;
@@ -536,7 +542,7 @@ export function UserManagement() {
       ...columnWidth("email"),
       header: t("colEmail"),
       enableSorting: false,
-      cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.original.email}</span>,
+      cell: ({ row }) => <span className="text-muted-foreground">{row.original.email}</span>,
     };
     const rolesCol: ColumnDef<AdminUserRow, unknown> = {
       id: "roles",
@@ -591,9 +597,9 @@ export function UserManagement() {
       header: t("colLastLogin"),
       meta: { filter: "dateRange", filterLabel: t("colLastLogin") },
       cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground">
+        <TableDateText className={row.original.lastLogin == null ? "text-muted-foreground" : undefined}>
           {row.original.lastLogin == null ? t("never") : fmtRelative(row.original.lastLogin, locale)}
-        </span>
+        </TableDateText>
       ),
     };
     const createdCol: ColumnDef<AdminUserRow, unknown> = {
@@ -602,11 +608,7 @@ export function UserManagement() {
       size: 140,
       header: t("colCreated"),
       meta: { filter: "dateRange", filterLabel: t("colCreated") },
-      cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground tabular">
-          {row.original.invitedAt ? fmtDateTimeParts(row.original.invitedAt, locale).date : "-"}
-        </span>
-      ),
+      cell: ({ row }) => <TableDate epoch={row.original.invitedAt || null} locale={locale} withTime={false} />,
     };
     const invitedByCol: ColumnDef<AdminUserRow, unknown> = {
       id: "invitedBy",
@@ -630,13 +632,7 @@ export function UserManagement() {
       size: 150,
       header: t("colLastSent"),
       enableSorting: false,
-      cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground tabular">
-          {row.original.lastInviteSentAt
-            ? fmtDateTimeParts(row.original.lastInviteSentAt, locale).date
-            : "-"}
-        </span>
-      ),
+      cell: ({ row }) => <TableDate epoch={row.original.lastInviteSentAt || null} locale={locale} withTime={false} />,
     };
     const actionsCol: ColumnDef<AdminUserRow, unknown> = {
       id: "actions",
@@ -704,11 +700,7 @@ export function UserManagement() {
       accessorFn: (user) => user.revokedAt ?? 0,
       size: 130,
       header: t("colRevoked"),
-      cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground tabular">
-          {row.original.revokedAt ? fmtDateTimeParts(row.original.revokedAt, locale).date : "-"}
-        </span>
-      ),
+      cell: ({ row }) => <TableDate epoch={row.original.revokedAt || null} locale={locale} withTime={false} />,
     };
     const revokedByCol: ColumnDef<AdminUserRow, unknown> = {
       id: "revokedBy",
@@ -728,11 +720,7 @@ export function UserManagement() {
       accessorFn: (user) => user.invitationExpiresAt ?? 0,
       size: 130,
       header: t("colExpired"),
-      cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground tabular">
-          {row.original.invitationExpiresAt ? fmtDateTimeParts(row.original.invitationExpiresAt, locale).date : "-"}
-        </span>
-      ),
+      cell: ({ row }) => <TableDate epoch={row.original.invitationExpiresAt || null} locale={locale} withTime={false} />,
     };
     const inviteAgainCol: ColumnDef<AdminUserRow, unknown> = {
       id: "actions",
@@ -1005,11 +993,7 @@ export function UserManagement() {
         </CardContent>
       </Card>
 
-      <InviteAdminDialog
-        open={inviteOpen}
-        onOpenChange={setInviteOpen}
-        blockedStaffIds={pendingStaffIds}
-      />
+      <InviteAdminDialog open={inviteOpen} onOpenChange={setInviteOpen} />
 
       <AlertDialog
         open={revoking != null}
@@ -1141,7 +1125,7 @@ export function UserManagement() {
 
       <Sheet inspect open={selectedId != null || linkedId != null} onOpenChange={(open) => !open && closeDetail()}>
         {selected && (
-          <SheetContent onSwipeNext={() => accountsPager.step(1)} onSwipePrev={() => accountsPager.step(-1)}>
+          <SheetContent showCloseButton={false} onSwipeNext={() => accountsPager.step(1)} onSwipePrev={() => accountsPager.step(-1)}>
             <RecordDrawerHeader
               pager={accountsPager}
               link={recordHref("adminAccount", selected.id)}
@@ -1150,7 +1134,7 @@ export function UserManagement() {
               summary={[
                 {
                   label: t("colLastLogin"),
-                  value: selected.lastLogin == null ? t("never") : <DateTimeValue epoch={selected.lastLogin} locale={locale} />,
+                  value: selected.lastLogin == null ? t("never") : <DateTimeValue epoch={selected.lastLogin} locale={locale} precise />,
                 },
                 {
                   label: t("colStatus"),
@@ -1162,11 +1146,11 @@ export function UserManagement() {
                 },
                 {
                   label: t("colCreated"),
-                  value: selected.invitedAt ? <DateTimeValue epoch={selected.invitedAt} locale={locale} /> : "-",
+                  value: selected.invitedAt ? <DateTimeValue epoch={selected.invitedAt} locale={locale} precise /> : "-",
                 },
               ]}
             />
-            <SheetBody ref={detailRef} className="flex flex-col gap-6">
+            <SheetBody ref={detailRef} className="flex flex-col gap-2">
               {detailLoading ? (
                 <div className="flex flex-col gap-3">
                   <Skeleton className="h-4 w-40" />
@@ -1321,7 +1305,7 @@ export function UserManagement() {
               return name ? [{ id: roleId, name }] : [];
             });
             return (
-              <SheetContent onSwipeNext={() => pager.step(1)} onSwipePrev={() => pager.step(-1)}>
+              <SheetContent showCloseButton={false} onSwipeNext={() => pager.step(1)} onSwipePrev={() => pager.step(-1)}>
                 <RecordDrawerHeader
                   pager={pager}
                   link={recordHref("invitation", shownInvite.id)}
@@ -1331,13 +1315,13 @@ export function UserManagement() {
                     revoked
                       ? {
                           label: t("colSent"),
-                          value: record.invitedAt ? <DateTimeValue epoch={record.invitedAt} locale={locale} /> : "-",
+                          value: record.invitedAt ? <DateTimeValue epoch={record.invitedAt} locale={locale} precise /> : "-",
                         }
                       : {
                           label: t("colLastSent"),
                           value:
                             record.lastInviteSentAt != null ? (
-                              <DateTimeValue epoch={record.lastInviteSentAt} locale={locale} />
+                              <DateTimeValue epoch={record.lastInviteSentAt} locale={locale} precise />
                             ) : (
                               "-"
                             ),
@@ -1353,20 +1337,20 @@ export function UserManagement() {
                     revoked
                       ? {
                           label: t("colRevoked"),
-                          value: revokedAt != null ? <DateTimeValue epoch={revokedAt} locale={locale} /> : "-",
+                          value: revokedAt != null ? <DateTimeValue epoch={revokedAt} locale={locale} precise /> : "-",
                         }
                       : {
                           label: t("invitationExpiresLabel"),
                           value:
                             record.invitationExpiresAt != null ? (
-                              <DateTimeValue epoch={record.invitationExpiresAt} locale={locale} />
+                              <DateTimeValue epoch={record.invitationExpiresAt} locale={locale} precise />
                             ) : (
                               "-"
                             ),
                         },
                   ]}
                 />
-                <SheetBody className="flex flex-col gap-6">
+                <SheetBody className="flex flex-col gap-2">
                   {inviteError ? (
                     <LoadError error={inviteCause} message={t("invitationLoadError")} onRetry={inviteReload} />
                   ) : inviteLoading ? (

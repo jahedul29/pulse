@@ -20,7 +20,7 @@ const delivery = {
   channel: { id: 1, code: "IN_APP", name: "In-app inbox", is_active: true },
   template: { id: 1, code: "EDR_SESSION_MISSED", name: "Missed", channel_id: 1, subject: { EN: "s" }, body: { EN: "<p>body</p>" }, is_active: true },
   alert_route_id: 3,
-  alert_route: { id: 3, code: "SEED_SITE_DOWN", name: "Site down" },
+  alert_route: { id: 3, code: "SITE_DOWN", name: "Site down" },
   admin_account: { id: "u1", email: "layla@abapro.health", staff: { first_name: "Layla", last_name: "Haddad" } },
 };
 
@@ -93,6 +93,22 @@ describe("NotificationLog", () => {
       "/admin/notifications/routing?open=3",
     );
     expect(within(dialog).getByText("The session was missed by the client.")).toBeInTheDocument();
+  });
+
+  it("renders an HTML message body as formatted text, not raw tags", async () => {
+    const original = delivery.body;
+    delivery.body = '<p>Hello Layla,</p><p>Open <a class="highlight" data-action="open_account_status">account status</a></p>';
+    try {
+      render(<NotificationLog />);
+      await userEvent.click(await screen.findByRole("link", { name: "Layla Haddad EDR_SESSION_MISSED" }));
+      const dialog = await screen.findByRole("dialog");
+
+      expect(within(dialog).getByText("Hello Layla,").tagName).toBe("P");
+      expect(dialog.querySelector('a.highlight[data-action="open_account_status"]')).toHaveTextContent("account status");
+      expect(within(dialog).queryByText(/<p>/)).not.toBeInTheDocument();
+    } finally {
+      delivery.body = original;
+    }
   });
 
   it("lays the drawer out like the table, with a link to the delivery", async () => {

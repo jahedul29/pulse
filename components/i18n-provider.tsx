@@ -3,12 +3,10 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 import { IntlErrorCode, NextIntlClientProvider } from "next-intl";
 import { DirectionProvider } from "@base-ui/react/direction-provider";
-import en from "@/messages/en.json";
-import ar from "@/messages/ar.json";
+import { MESSAGES } from "@/lib/i18n/messages";
 import { enFallback } from "@/lib/i18n/fallback";
 import { TIME_ZONE, dirFor, type Locale } from "@/i18n/routing";
 
-const MESSAGES = { en, ar } as const;
 const COOKIE = "NEXT_LOCALE";
 const ONE_YEAR = 60 * 60 * 24 * 365;
 

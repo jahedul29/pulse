@@ -11,11 +11,11 @@ import { Sheet } from "@/components/ui/sheet";
 import { DataTable, type ServerTableState } from "@/components/common/data-table";
 import { useRecordPager } from "@/lib/use-record-pager";
 import { StatusBadge } from "@/components/common/status-badge";
+import { LevelBadge } from "@/components/common/level-badge";
 import { ProfileCell } from "@/components/common/profile-cell";
 import { Chip } from "@/components/common/chip";
 import { DeliveryDrawerContent } from "@/components/notifications/delivery-references";
 import { recordHref } from "@/lib/record-links";
-import { fmtDateTimeParts } from "@/lib/format";
 import { useRetained } from "@/lib/use-retained";
 import { deliveriesListQuery, useDeliveries, useDelivery } from "@/lib/notifications/queries";
 import { ChannelFilter } from "@/components/notifications/channel-select";
@@ -36,6 +36,7 @@ import { PageContainer } from "@/components/common/page-container";
 import { columnWidth } from "@/lib/table/column-widths";
 import { RecordDrawerFallback } from "@/components/common/record-drawer-fallback";
 import { useServerPage } from "@/lib/use-server-page";
+import { TableDate } from "@/components/common/table-date";
 
 export function NotificationLog() {
   const t = useTranslations("notifications");
@@ -89,13 +90,7 @@ export function NotificationLog() {
         header: t("log.colTimestamp"),
         cell: ({ row }) => {
           const stamp = row.original.sent_at ?? row.original.created_at;
-          if (!stamp) return <span className="text-xs text-muted-foreground">-</span>;
-          const { date, time } = fmtDateTimeParts(Date.parse(stamp), locale);
-          return (
-            <span className="text-xs whitespace-nowrap tabular">
-              {date} {time}
-            </span>
-          );
+          return <TableDate epoch={stamp ? Date.parse(stamp) : null} locale={locale} />;
         },
       },
       {
@@ -173,9 +168,9 @@ export function NotificationLog() {
         },
         cell: ({ row }) =>
           row.original.severity ? (
-            <StatusBadge tone={severityTone(row.original.severity)} equalWidth={false} className="min-w-[5rem]">
+            <LevelBadge tone={severityTone(row.original.severity)} className="min-w-[5rem]">
               {t(`deliverySeverity.${row.original.severity}`)}
-            </StatusBadge>
+            </LevelBadge>
           ) : (
             <span className="text-muted-foreground">-</span>
           ),

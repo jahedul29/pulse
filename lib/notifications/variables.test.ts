@@ -1,14 +1,16 @@
-import { MERGE_VARIABLES, htmlToPlainText, renderTemplate } from "./variables";
+import { MERGE_VARIABLES, htmlToPlainText, plainTextToHtml, renderTemplate } from "./variables";
 
 describe("renderTemplate", () => {
-  it("replaces known tokens with the English sample", () => {
-    expect(renderTemplate("Hi {clientName}, code {code}.", "en")).toBe(
-      "Hi Layla Haddad, code 482913.",
-    );
+  it("replaces {first_name} with the English sample", () => {
+    expect(renderTemplate("<p>Hello {first_name},</p>", "en")).toBe("<p>Hello Layla,</p>");
   });
 
   it("uses the Arabic sample under the ar locale", () => {
-    expect(renderTemplate("{clientName}", "ar")).toBe("ليلى حداد");
+    expect(renderTemplate("مرحباً {first_name}،", "ar")).toBe("مرحباً ليلى،");
+  });
+
+  it("offers only the backend's first_name variable", () => {
+    expect(MERGE_VARIABLES.map((variable) => variable.token)).toEqual(["first_name"]);
   });
 
   it("leaves unknown tokens untouched", () => {
@@ -42,6 +44,13 @@ describe("htmlToPlainText", () => {
   });
 
   it("preserves merge tokens for later substitution", () => {
-    expect(htmlToPlainText("<p>Hi {clientName}</p>")).toBe("Hi {clientName}");
+    expect(htmlToPlainText("<p>Hi {first_name}</p>")).toBe("Hi {first_name}");
+  });
+});
+
+describe("plainTextToHtml", () => {
+  it("turns each line into an escaped paragraph", () => {
+    expect(plainTextToHtml("Hello <b>\n\nSecond line")).toBe("<p>Hello &lt;b&gt;</p><p>Second line</p>");
+    expect(plainTextToHtml("  ")).toBe("");
   });
 });

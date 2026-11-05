@@ -30,7 +30,7 @@ export interface AdminActionLogDto {
   correlation_id?: string | null;
   user_agent?: string | null;
   created_at?: string | null;
-  main?: { target_service_label?: string | null } | null;
+  main?: { target_service_label?: string | null; edr_id?: string | null } | null;
   extended?: { ip_hash?: string | null } | null;
 }
 
@@ -196,6 +196,7 @@ export function actionDtoToRow(dto: AdminActionLogDto): AdminAction {
     result: dto.result,
     severity: dto.severity,
     correlationId: dto.correlation_id ?? "",
+    edrId: dto.main?.edr_id ?? "",
     ipHash: dto.extended?.ip_hash ?? "",
     adminEmail: dto.admin_account?.email ?? "",
     device: dto.user_agent ? deviceLabelFromUA(dto.user_agent) : "",

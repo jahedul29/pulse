@@ -6,7 +6,6 @@ import { useLocale, useTranslations } from "next-intl";
 import type { ColumnDef } from "@tanstack/react-table";
 import { X } from "lucide-react";
 
-import { fmtDateTimeParts } from "@/lib/format";
 import { downloadCsvText } from "@/lib/export/csv";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,12 +22,13 @@ import { useRecordPager } from "@/lib/use-record-pager";
 import { useRecordDetail } from "@/lib/use-record-detail";
 import { ProfileCell } from "@/components/common/profile-cell";
 import { StatusBadge } from "@/components/common/status-badge";
+import { LevelBadge } from "@/components/common/level-badge";
 import { DetailList } from "@/components/common/detail-list";
-import { DiffViewer } from "@/components/common/diff-viewer";
+import { DiffLegend, DiffViewer } from "@/components/common/diff-viewer";
 import { RecordLink } from "@/components/common/record-link";
 import { DateTimeValue } from "@/components/common/date-time-value";
 import { DetailSection } from "@/components/common/detail-section";
-import { FieldsJsonPanel } from "@/components/common/fields-json-panel";
+import { FieldsJsonPanel, PanelEmpty } from "@/components/common/fields-json-panel";
 import { HashValue } from "@/components/common/hash-value";
 import { ActionTargetName, RecordName, ReferenceValue } from "@/components/admin/record-refs";
 import { actionChangesHref, recordHref, tableRecordKind, targetRecordKind } from "@/lib/record-links";
@@ -49,10 +49,19 @@ import { columnWidth } from "@/lib/table/column-widths";
 import { RecordDrawerFallback } from "@/components/common/record-drawer-fallback";
 import { AdminProfileLink } from "@/components/common/admin-profile-link";
 import { useServerPage } from "@/lib/use-server-page";
+import { TableDate } from "@/components/common/table-date";
 
 const OPS: string[] = ["INSERT", "UPDATE", "DELETE"];
 const FIELD_PREVIEW = 2;
 
+
+function OperationBadge({ operation, label }: { operation: string; label: string }) {
+  return (
+    <StatusBadge tone={auditTone(operation)} equalWidth={false} className="min-w-[5rem]">
+      {label}
+    </StatusBadge>
+  );
+}
 
 export function ChangeLog() {
   const t = useTranslations("changeLog");
@@ -261,9 +270,9 @@ export function ChangeLog() {
                   <StatusBadge tone={auditTone(action.result)} equalWidth={false}>
                     {resultLabel(action.result)}
                   </StatusBadge>
-                  <StatusBadge tone={auditTone(action.severity)} equalWidth={false}>
+                  <LevelBadge tone={auditTone(action.severity)}>
                     {severityLabel(action.severity)}
-                  </StatusBadge>
+                  </LevelBadge>
                 </div>
               ),
             },
@@ -272,6 +281,7 @@ export function ChangeLog() {
       ...(target ? [target] : []),
       ...(action?.device ? [{ label: tl("detailDevice"), value: action.device }] : []),
       ...(action?.ipHash ? [{ label: tl("detailIpHash"), value: <HashValue value={action.ipHash} short label={tl("detailIpHash")} /> }] : []),
+      ...(action?.edrId ? [{ label: tl("colEdrId"), value: <HashValue value={action.edrId} label={tl("colEdrId")} /> }] : []),
     ];
   };
 
@@ -293,14 +303,7 @@ export function ChangeLog() {
         size: 168,
         header: t("colTimestamp"),
         meta: { filter: "dateRange", filterLabel: t("colTimestamp") },
-        cell: ({ row }) => {
-          const { date, time } = fmtDateTimeParts(row.original.createdAt, locale);
-          return (
-            <span className="text-xs whitespace-nowrap tabular">
-              {date} {time}
-            </span>
-          );
-        },
+        cell: ({ row }) => <TableDate epoch={row.original.createdAt} locale={locale} />,
       },
       {
         id: "who",
@@ -350,7 +353,7 @@ export function ChangeLog() {
         accessorFn: (entry) => tableLabel(entry.table),
         ...columnWidth("label"),
         header: t("colTable"),
-        cell: ({ row }) => <span className="block truncate text-sm">{tableLabel(row.original.table)}</span>,
+        cell: ({ row }) => <span className="block truncate">{tableLabel(row.original.table)}</span>,
       },
       {
         id: "fields",
@@ -382,9 +385,7 @@ export function ChangeLog() {
           filterLabel: t("colOperation"),
         },
         cell: ({ row }) => (
-          <StatusBadge tone={auditTone(row.original.operation)} equalWidth={false} className="min-w-[5rem]">
-            {opLabel(row.original.operation)}
-          </StatusBadge>
+          <OperationBadge operation={row.original.operation} label={opLabel(row.original.operation)} />
         ),
       },
       {
@@ -485,26 +486,24 @@ export function ChangeLog() {
         {selectedId != null && liveHead == null ? (
           <RecordDrawerFallback loading={detailLoading} error={detailCause} onRetry={reload} />
         ) : selected && (
-          <SheetContent onSwipeNext={() => pager.step(1)} onSwipePrev={() => pager.step(-1)}>
+          <SheetContent showCloseButton={false} onSwipeNext={() => pager.step(1)} onSwipePrev={() => pager.step(-1)}>
             <RecordDrawerHeader
               pager={pager}
               link={recordHref("changeLog", selected.id)}
               title={selected.action?.actionName || t("untitledChange")}
               subtitle={<span className="tabular">{t("logId", { id: selected.id })}</span>}
               summary={[
-                { label: t("colTimestamp"), value: <DateTimeValue epoch={selected.createdAt} locale={locale} /> },
+                { label: t("colTimestamp"), value: <DateTimeValue epoch={selected.createdAt} locale={locale} precise /> },
                 {
                   label: t("colOperation"),
                   value: (
-                    <StatusBadge tone={auditTone(selected.operation)} equalWidth={false}>
-                      {opLabel(selected.operation)}
-                    </StatusBadge>
+                    <OperationBadge operation={selected.operation} label={opLabel(selected.operation)} />
                   ),
                 },
                 { label: t("colFields"), value: t("fieldsCount", { count: selected.changes.length }) },
               ]}
             />
-            <SheetBody ref={detailRef} className="flex flex-col gap-6">
+            <SheetBody ref={detailRef} className="flex flex-col gap-2">
               {detailLoading ? (
                 <div className="flex flex-col gap-3">
                   <Skeleton className="h-4 w-40" />
@@ -557,11 +556,12 @@ export function ChangeLog() {
                   <DetailSection title={t("sectionChanges")}>
                     <FieldsJsonPanel
                       title={t("detailDiff")}
+                      fieldsFooter={detail.changes.length > 0 ? <DiffLegend labels={diffLabels} /> : undefined}
                       json={toJsonText(changesJson(detail.changes))}
                       copyJson={() => toJsonText(changesJson(detail.changes))}
                       fields={
                         detail.changes.length === 0 ? (
-                          <p className="py-2 text-center text-sm text-muted-foreground">{t("noColumnData")}</p>
+                          <PanelEmpty>{t("noColumnData")}</PanelEmpty>
                         ) : (
                           <DiffViewer
                             changes={detail.changes}

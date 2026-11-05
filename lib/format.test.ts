@@ -8,6 +8,7 @@ import {
   fmtCompact,
   fmtDelta,
   fmtDateTimeParts,
+  fmtPreciseDateTimeParts,
   fmtDateTime,
   startOfTomorrow,
 } from "./format";
@@ -45,6 +46,16 @@ describe("format helpers", () => {
   it("fmtDateTimeParts renders the browser-local date and time", () => {
     const ms = new Date(2026, 7, 17, 9, 5).getTime();
     expect(fmtDateTimeParts(ms)).toEqual({ time: "09:05", date: "17-Aug-2026" });
+  });
+
+  it("fmtPreciseDateTimeParts adds seconds on a 24-hour clock and the time zone", () => {
+    const ms = new Date(2026, 7, 17, 21, 5, 9).getTime();
+    const parts = fmtPreciseDateTimeParts(ms);
+    expect(parts.date).toBe("17-Aug-2026");
+    expect(parts.time).toBe("21:05:09");
+    expect(parts.zone.length).toBeGreaterThan(0);
+    expect(fmtPreciseDateTimeParts(ms, "ar").time).toBe("21:05:09");
+    expect(fmtPreciseDateTimeParts(ms, "ar").zone).toBe(parts.zone);
   });
 
   it("fmtDateTimeParts keeps latin digits under the Arabic locale", () => {

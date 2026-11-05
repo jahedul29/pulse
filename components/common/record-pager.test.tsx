@@ -42,3 +42,14 @@ describe("RecordPager shortcut", () => {
     expect(step).not.toHaveBeenCalled();
   });
 });
+
+describe("RecordPager layout", () => {
+  it("puts both arrows side by side, styled alike, with the position after them", () => {
+    const { view } = renderPager();
+    const group = view.getByRole("group");
+    const children = Array.from(group.children);
+    expect(children.map((child) => child.tagName)).toEqual(["BUTTON", "BUTTON", "SPAN"]);
+    expect(children[0].className).toBe(children[1].className);
+    expect(children[2]).toHaveTextContent("recordPosition");
+  });
+});

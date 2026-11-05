@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { apiErrorMessage } from "@/lib/api/error-message";
 import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
-import { fmtCount, fmtDateTimeParts } from "@/lib/format";
+import { fmtCount } from "@/lib/format";
 import { countryBody, countryFormValues } from "@/lib/locations/forms";
 import { alternateName, localizedName } from "@/lib/locations/names";
 import { useAllCities, useAllCountries, useCreateCountry, useDeleteCountry, useUpdateCountry } from "@/lib/locations/queries";
@@ -27,6 +27,7 @@ import { DeleteLocationDialog } from "./delete-location-dialog";
 import { LocationRowActions } from "./location-row-actions";
 import { firstError, LoadError } from "@/components/common/load-error";
 import { columnWidth } from "@/lib/table/column-widths";
+import { TableDate } from "@/components/common/table-date";
 
 type DialogState = { mode: "create" } | { mode: "edit"; country: CountryDto };
 
@@ -90,7 +91,7 @@ export function CountriesList() {
         accessorFn: (country) => country.code,
         size: 110,
         header: t("colCode"),
-        cell: ({ row }) => <span className="tabular text-sm">{row.original.code}</span>,
+        cell: ({ row }) => <span className="tabular">{row.original.code}</span>,
       },
       {
         id: "regions",
@@ -100,7 +101,7 @@ export function CountriesList() {
         cell: ({ row }) => {
           const count = regionCount(row.original);
           return (
-            <span className="tabular text-sm text-muted-foreground">
+            <span className="tabular text-muted-foreground">
               {count === null ? "-" : t("regionCount", { count, formatted: fmtCount(count, locale) })}
             </span>
           );
@@ -132,9 +133,11 @@ export function CountriesList() {
         size: 140,
         header: t("colCreated"),
         cell: ({ row }) => (
-          <span className="tabular text-xs text-muted-foreground">
-            {row.original.created_at ? fmtDateTimeParts(new Date(row.original.created_at).getTime(), locale).date : "-"}
-          </span>
+          <TableDate
+            epoch={row.original.created_at ? new Date(row.original.created_at).getTime() : null}
+            locale={locale}
+            withTime={false}
+          />
         ),
       },
       {

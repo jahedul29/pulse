@@ -8,13 +8,20 @@ const template = {
   id: 1,
   code: "AUTH_OTP",
   name: "OTP message",
+  type: "NOTIFICATION",
   channel_id: 1,
+  icon: "user_check",
+  sender_name: "ABAPRO",
+  header_title: { EN: "Your code is ready" },
+  header_subtitle: null,
   subject: { EN: "Your code" },
-  body: { EN: "<p>Your code is {code}.</p>" },
+  body: { EN: '<p>Hello {first_name}, <span class="highlight">your code</span> is ready.</p>' },
+  button_label: { EN: "OK" },
   is_active: true,
 };
 
 const createMock = jest.fn();
+const updateMock = jest.fn();
 
 let mockSearch = new URLSearchParams();
 const mockReplace = jest.fn();
@@ -41,7 +48,7 @@ jest.mock("../../lib/notifications/queries", () => ({
     fetchNextPage: jest.fn(),
   }),
   useCreateTemplate: () => ({ mutateAsync: createMock, isPending: false }),
-  useUpdateTemplate: () => ({ mutateAsync: jest.fn(), isPending: false }),
+  useUpdateTemplate: () => ({ mutateAsync: updateMock, isPending: false }),
   useDeleteTemplate: () => ({ mutateAsync: jest.fn(), isPending: false }),
 }));
 
@@ -69,6 +76,14 @@ jest.mock("next-intl", () => {
       if (vars) for (const [name, val] of Object.entries(vars)) str = str.replace(`{${name}}`, String(val));
       return str;
     },
+    createTranslator:
+      ({ messages: bundle, namespace }: { messages: Record<string, unknown>; namespace: string }) =>
+      (key: string) => {
+        const value = `${namespace}.${key}`
+          .split(".")
+          .reduce<unknown>((node, segment) => (node as Record<string, unknown>)?.[segment], bundle);
+        return typeof value === "string" ? value : key;
+      },
   };
 });
 
@@ -80,29 +95,54 @@ beforeEach(() => {
 });
 
 describe("MessageTemplates", () => {
-  afterEach(() => createMock.mockReset());
+  afterEach(() => {
+    createMock.mockReset();
+    updateMock.mockReset();
+  });
 
-  it("lists templates and opens the EN/AR editor", async () => {
+  it("lists templates with their type and opens the EN/AR editor", async () => {
     render(<MessageTemplates />);
 
-    expect(await screen.findByText("AUTH_OTP")).toBeInTheDocument();
+    const row = await screen.findByRole("link", { name: "AUTH_OTP" });
+    expect(within(row).getByText("Notification")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "New template" }));
 
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByLabelText("English copy")).toBeInTheDocument();
     expect(within(dialog).getByLabelText("Arabic copy")).toBeInTheDocument();
-    expect(within(dialog).getByLabelText(/^Subject \(English\)/)).toBeInTheDocument();
-    expect(within(dialog).getByText("Subject (English)").closest("label")).toHaveTextContent("required");
+    expect(within(dialog).getByText("Bar title (English)").closest("label")).toHaveTextContent("required");
+    expect(within(dialog).getByText("Subject (English)").closest("label")).not.toHaveTextContent("required");
+    expect(within(dialog).getByLabelText(/^Sender name/)).toHaveValue("ABAPRO");
+    expect(within(dialog).getByLabelText(/^Button label \(English\)/)).toHaveValue("OK");
+    expect(within(dialog).getByLabelText(/^Button label \(Arabic\)/)).toHaveValue("حسناً");
     expect(within(dialog).getByRole("button", { name: "Create template" })).toBeInTheDocument();
   });
 
-  it("opens a read-only detail drawer on row click", async () => {
+  it("shows only the message and button fields for a popup", async () => {
+    render(<MessageTemplates />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "New template" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("combobox", { name: /^Type/ }));
+    await userEvent.click(await screen.findByRole("option", { name: "Popup" }));
+
+    expect(within(dialog).queryByLabelText(/^Bar title \(English\)/)).not.toBeInTheDocument();
+    expect(within(dialog).queryByLabelText(/^Subject \(English\)/)).not.toBeInTheDocument();
+    expect(within(dialog).queryByLabelText(/^Sender name/)).not.toBeInTheDocument();
+    expect(within(dialog).getByLabelText("English copy")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText(/^Button label \(English\)/)).toBeInTheDocument();
+  });
+
+  it("opens a read-only detail drawer with the app preview on row click", async () => {
     render(<MessageTemplates />);
 
     await userEvent.click(await screen.findByRole("link", { name: "AUTH_OTP" }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("AUTH_OTP")).toBeInTheDocument();
-    expect(within(dialog).getAllByText(/Your code/).length).toBeGreaterThan(0);
+    expect(within(dialog).getByText("Checked user")).toBeInTheDocument();
+    expect(within(dialog).getAllByText("Notification bar").length).toBeGreaterThan(0);
+    expect(within(dialog).getByText("Your code is ready")).toBeInTheDocument();
+    expect(dialog.querySelector("span.highlight")).toHaveTextContent("your code");
     expect(within(dialog).getByRole("button", { name: "Edit" })).toBeInTheDocument();
   });
 
@@ -114,9 +154,91 @@ describe("MessageTemplates", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "Create template" }));
 
     expect(await within(dialog).findByText("A message code is required.")).toBeInTheDocument();
-    expect(within(dialog).getByText("An English subject is required.")).toBeInTheDocument();
+    expect(within(dialog).getByText("An English bar title is required.")).toBeInTheDocument();
     expect(within(dialog).getByText("English copy is required.")).toBeInTheDocument();
     expect(createMock).not.toHaveBeenCalled();
+  });
+
+  it("creates a notification with the new fields and no subject", async () => {
+    createMock.mockResolvedValueOnce({});
+    render(<MessageTemplates />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "New template" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText(/^Message code/), "ACCOUNT_NOTICE");
+    await userEvent.type(within(dialog).getByLabelText(/^Name/), "Account notice");
+    await userEvent.type(within(dialog).getByLabelText(/^Bar title \(English\)/), "Account status change");
+    await userEvent.type(within(dialog).getByLabelText("English copy"), "<p>Hello</p>");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Create template" }));
+
+    expect(createMock).toHaveBeenCalledWith({
+      code: "ACCOUNT_NOTICE",
+      name: "Account notice",
+      type: "NOTIFICATION",
+      channel_id: 1,
+      icon: null,
+      sender_name: "ABAPRO",
+      header_title: { EN: "Account status change" },
+      header_subtitle: null,
+      subject: null,
+      body: { EN: "<p>Hello</p>" },
+      button_label: { EN: "OK", AR: "حسناً" },
+      is_active: true,
+    });
+  });
+
+  it("keeps Save off until something changes, then sends the edited template", async () => {
+    updateMock.mockResolvedValueOnce({});
+    render(<MessageTemplates />);
+
+    const row = await screen.findByRole("link", { name: "AUTH_OTP" });
+    await userEvent.click(within(row).getByRole("button", { name: "Edit" }));
+    const dialog = await screen.findByRole("dialog");
+    const save = within(dialog).getByRole("button", { name: "Save" });
+    expect(save).toBeDisabled();
+
+    await userEvent.type(within(dialog).getByLabelText(/^Bar subtitle \(English\)/), "Use it within 5 minutes");
+    expect(save).toBeEnabled();
+    await userEvent.click(save);
+
+    expect(updateMock).toHaveBeenCalledWith({
+      id: 1,
+      body: expect.objectContaining({
+        type: "NOTIFICATION",
+        icon: "user_check",
+        sender_name: "ABAPRO",
+        header_title: { EN: "Your code is ready" },
+        header_subtitle: { EN: "Use it within 5 minutes" },
+        subject: { EN: "Your code" },
+        body: { EN: '<p>Hello {first_name}, <span class="highlight">your code</span> is ready.</p>' },
+        button_label: { EN: "OK" },
+      }),
+    });
+  });
+
+  it("sends null for every header field when an edited template becomes a popup", async () => {
+    updateMock.mockResolvedValueOnce({});
+    render(<MessageTemplates />);
+
+    const row = await screen.findByRole("link", { name: "AUTH_OTP" });
+    await userEvent.click(within(row).getByRole("button", { name: "Edit" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("combobox", { name: /^Type/ }));
+    await userEvent.click(await screen.findByRole("option", { name: "Popup" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(updateMock).toHaveBeenCalledWith({
+      id: 1,
+      body: expect.objectContaining({
+        type: "POPUP",
+        icon: null,
+        sender_name: null,
+        header_title: null,
+        header_subtitle: null,
+        subject: null,
+        button_label: { EN: "OK" },
+      }),
+    });
   });
 
   it("opens the template drawer from an ?open= deep link and clears it on close", async () => {

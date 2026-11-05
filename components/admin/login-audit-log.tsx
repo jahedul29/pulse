@@ -4,7 +4,6 @@ import { useCallback, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { ColumnDef } from "@tanstack/react-table";
 
-import { fmtDateTimeParts } from "@/lib/format";
 import { downloadCsvText } from "@/lib/export/csv";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +20,7 @@ import type { LoginAuditEntry } from "@/lib/audit/types";
 import { LoadError } from "@/components/common/load-error";
 import { PageContainer } from "@/components/common/page-container";
 import { columnWidth } from "@/lib/table/column-widths";
+import { TableDate } from "@/components/common/table-date";
 
 const RESULTS: string[] = [
   "SUCCESS",
@@ -35,11 +35,6 @@ const RESULTS: string[] = [
 const METHODS: string[] = ["PASSWORD_MFA", "REFRESH_TOKEN"];
 
 const NON_FAILURE = new Set<string>(["SUCCESS"]);
-
-function fmtStamp(ms: number, locale: string): string {
-  const { time, date } = fmtDateTimeParts(ms, locale);
-  return `${date} ${time}`;
-}
 
 export function LoginAuditLog() {
   const t = useTranslations("loginAudit");
@@ -146,7 +141,7 @@ export function LoginAuditLog() {
           filterOptions: METHODS.map((method) => ({ value: method, label: methodLabel(method) })),
           filterLabel: t("colMethod"),
         },
-        cell: ({ row }) => <span className="text-sm">{methodLabel(row.original.method)}</span>,
+        cell: ({ row }) => <span>{methodLabel(row.original.method)}</span>,
       },
       {
         id: "timestamp",
@@ -154,11 +149,7 @@ export function LoginAuditLog() {
         size: 172,
         header: t("colTimestamp"),
         meta: { filter: "dateRange", filterLabel: t("colTimestamp") },
-        cell: ({ row }) => (
-          <span className="text-xs whitespace-nowrap tabular">
-            {fmtStamp(row.original.createdAt, locale)}
-          </span>
-        ),
+        cell: ({ row }) => <TableDate epoch={row.original.createdAt} locale={locale} />,
       },
     ],
     [t, tc, locale, resultLabel, methodLabel],

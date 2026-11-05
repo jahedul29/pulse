@@ -40,7 +40,6 @@ import {
 import { StatusBadge } from "@/components/common/status-badge";
 import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 import { DataTable, toolbarIconButtonClass, type ServerTableState } from "@/components/common/data-table";
-import { fmtDateTimeParts } from "@/lib/format";
 import { apiErrorMessage } from "@/lib/api/error-message";
 import { useCreateRole, useDeleteRole, useRoles, useUpdateRole } from "@/lib/rbac/queries";
 import { serverStateToParams } from "@/lib/rbac/list-params";
@@ -49,6 +48,7 @@ import type { RoleDto } from "@/lib/rbac/dto";
 import { LoadError } from "@/components/common/load-error";
 import { PageContainer } from "@/components/common/page-container";
 import { columnWidth } from "@/lib/table/column-widths";
+import { TableDate } from "@/components/common/table-date";
 
 export function RolesList() {
   const t = useTranslations("rbac");
@@ -208,9 +208,11 @@ export function RolesList() {
         header: t("colCreated"),
         meta: { filter: "dateRange", filterLabel: t("colCreated") },
         cell: ({ row }) => (
-          <span className="text-xs text-muted-foreground tabular">
-            {row.original.created_at ? fmtDateTimeParts(new Date(row.original.created_at).getTime(), locale).date : "-"}
-          </span>
+          <TableDate
+            epoch={row.original.created_at ? new Date(row.original.created_at).getTime() : null}
+            locale={locale}
+            withTime={false}
+          />
         ),
       },
       {

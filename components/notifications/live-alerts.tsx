@@ -11,11 +11,11 @@ import { Sheet } from "@/components/ui/sheet";
 import { DataTable, type ServerTableState } from "@/components/common/data-table";
 import { useRecordPager } from "@/lib/use-record-pager";
 import { StatusBadge } from "@/components/common/status-badge";
+import { LevelBadge } from "@/components/common/level-badge";
 import { ProfileCell } from "@/components/common/profile-cell";
 import { Chip } from "@/components/common/chip";
 import { DeliveryDrawerContent } from "@/components/notifications/delivery-references";
 import { recordHref } from "@/lib/record-links";
-import { fmtDateTimeParts } from "@/lib/format";
 import { useRetained } from "@/lib/use-retained";
 import { liveAlertsQuery, useLiveAlerts, useDelivery } from "@/lib/notifications/queries";
 import { liveAlertsStateToParams } from "@/lib/notifications/list-params";
@@ -33,8 +33,10 @@ import { LoadError } from "@/components/common/load-error";
 import { PERMISSIONS, useHasPermission } from "@/lib/auth/permissions";
 import { PageContainer } from "@/components/common/page-container";
 import { columnWidth } from "@/lib/table/column-widths";
+import { htmlToPlainText } from "@/lib/notifications/variables";
 import { RecordDrawerFallback } from "@/components/common/record-drawer-fallback";
 import { useServerPage } from "@/lib/use-server-page";
+import { TableDate } from "@/components/common/table-date";
 
 export function LiveAlerts() {
   const t = useTranslations("notifications");
@@ -94,11 +96,14 @@ export function LiveAlerts() {
           })),
           filterLabel: t("alerts.colSeverity"),
         },
-        cell: ({ row }) => (
-          <StatusBadge tone={severityTone(row.original.severity)} equalWidth={false} className="min-w-[5.5rem]">
-            {row.original.severity ? t(`deliverySeverity.${row.original.severity}`) : "-"}
-          </StatusBadge>
-        ),
+        cell: ({ row }) =>
+          row.original.severity ? (
+            <LevelBadge tone={severityTone(row.original.severity)} className="min-w-[5.5rem]">
+              {t(`deliverySeverity.${row.original.severity}`)}
+            </LevelBadge>
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          ),
       },
       {
         id: "timestamp",
@@ -110,18 +115,12 @@ export function LiveAlerts() {
         header: t("log.colTimestamp"),
         cell: ({ row }) => {
           const stamp = row.original.sent_at ?? row.original.created_at;
-          if (!stamp) return <span className="text-xs text-muted-foreground">-</span>;
-          const { date, time } = fmtDateTimeParts(Date.parse(stamp), locale);
-          return (
-            <span className="text-xs whitespace-nowrap tabular">
-              {date} {time}
-            </span>
-          );
+          return <TableDate epoch={stamp ? Date.parse(stamp) : null} locale={locale} />;
         },
       },
       {
         id: "title",
-        accessorFn: (entry) => `${entry.title ?? ""} ${entry.body ?? ""}`,
+        accessorFn: (entry) => `${entry.title ?? ""} ${htmlToPlainText(entry.body ?? "")}`,
         ...columnWidth("text", { min: 240 }),
         header: t("alerts.colTitle"),
         enableSorting: false,
@@ -129,7 +128,7 @@ export function LiveAlerts() {
           <div className="flex min-w-0 flex-col">
             <span className="truncate font-medium">{row.original.title || "-"}</span>
             {row.original.body && (
-              <span className="truncate text-xs text-muted-foreground">{row.original.body}</span>
+              <span className="truncate text-xs text-muted-foreground">{htmlToPlainText(row.original.body)}</span>
             )}
           </div>
         ),

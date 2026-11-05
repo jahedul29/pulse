@@ -183,6 +183,7 @@ export function useRevokeInvitation() {
       queryClient.invalidateQueries({ queryKey: PENDING_INVITATIONS });
       queryClient.invalidateQueries({ queryKey: REVOKED_INVITATIONS });
       queryClient.invalidateQueries({ queryKey: TARGET_HISTORIES });
+      queryClient.invalidateQueries({ queryKey: queryKeys.unlinkedStaff() });
     },
   });
 }
@@ -192,7 +193,7 @@ export function useSendInvitation() {
   return useMutation({
     mutationFn: ({ staffId, roleIds }: { staffId: string; roleIds?: string[] }) =>
       sendInvitation(staffId, roleIds),
-    onSuccess: () => {
+    onSettled: () => {
       refreshUsers(queryClient);
       queryClient.invalidateQueries({ queryKey: PENDING_INVITATIONS });
       queryClient.invalidateQueries({ queryKey: TARGET_HISTORIES });
@@ -205,10 +206,12 @@ export function useResendInvitation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (invitationId: string) => resendInvitation(invitationId),
-    onSuccess: () => {
+    onSettled: () => {
       refreshUsers(queryClient);
       queryClient.invalidateQueries({ queryKey: PENDING_INVITATIONS });
+      queryClient.invalidateQueries({ queryKey: REVOKED_INVITATIONS });
       queryClient.invalidateQueries({ queryKey: TARGET_HISTORIES });
+      queryClient.invalidateQueries({ queryKey: queryKeys.unlinkedStaff() });
     },
   });
 }

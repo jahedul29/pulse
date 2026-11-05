@@ -83,6 +83,11 @@ describe("actionDtoToRow", () => {
     expect(actionDtoToRow({ ...dto, role_names: null }).roleNames).toEqual([]);
   });
 
+  it("maps the EDR ID from main.edr_id, empty when the backend sends none", () => {
+    expect(actionDtoToRow({ ...dto, main: { edr_id: "edr-42" } }).edrId).toBe("edr-42");
+    expect(actionDtoToRow({ ...dto, main: null }).edrId).toBe("");
+  });
+
   it("falls back to System when no admin account", () => {
     expect(actionDtoToRow({ ...dto, admin_account: null }).actorName).toBe("System");
   });

@@ -4,14 +4,7 @@ export interface MergeVariable {
   sampleAr: string;
 }
 
-export const MERGE_VARIABLES: MergeVariable[] = [
-  { token: "clientName", sampleEn: "Layla Haddad", sampleAr: "ليلى حداد" },
-  { token: "therapistName", sampleEn: "Alex Rivera", sampleAr: "أليكس ريفيرا" },
-  { token: "sessionDate", sampleEn: "17-Aug-2026", sampleAr: "17-Aug-2026" },
-  { token: "sessionTime", sampleEn: "10:00", sampleAr: "10:00" },
-  { token: "code", sampleEn: "482913", sampleAr: "482913" },
-  { token: "amount", sampleEn: "AED 450.00", sampleAr: "AED 450.00" },
-];
+export const MERGE_VARIABLES: MergeVariable[] = [{ token: "first_name", sampleEn: "Layla", sampleAr: "ليلى" }];
 
 function escapeHtml(value: string): string {
   return value
@@ -28,6 +21,15 @@ export function renderTemplate(text: string, locale: string): string {
     if (!variable) return match;
     return escapeHtml(locale === "ar" ? variable.sampleAr : variable.sampleEn);
   });
+}
+
+export function plainTextToHtml(text: string): string {
+  return text
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => `<p>${escapeHtml(line)}</p>`)
+    .join("");
 }
 
 export function htmlToPlainText(html: string): string {

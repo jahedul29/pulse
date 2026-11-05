@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import type { ColumnDef } from "@tanstack/react-table";
 
-import { fmtDateTimeParts } from "@/lib/format";
 import { downloadCsvText } from "@/lib/export/csv";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,13 +20,14 @@ import { useRecordPager } from "@/lib/use-record-pager";
 import { useRecordDetail } from "@/lib/use-record-detail";
 import { useRetained } from "@/lib/use-retained";
 import { StatusBadge } from "@/components/common/status-badge";
+import { LevelBadge } from "@/components/common/level-badge";
 import { ProfileCell } from "@/components/common/profile-cell";
 import { DetailList } from "@/components/common/detail-list";
 import { Chip } from "@/components/common/chip";
 import { RecordLink } from "@/components/common/record-link";
 import { DateTimeValue } from "@/components/common/date-time-value";
 import { DetailSection } from "@/components/common/detail-section";
-import { FieldsJsonPanel } from "@/components/common/fields-json-panel";
+import { FieldsJsonPanel, PanelEmpty } from "@/components/common/fields-json-panel";
 import { HashValue } from "@/components/common/hash-value";
 import { ActionTargetName, ReferenceValue, RoleNameChips } from "@/components/admin/record-refs";
 import { actionChangesHref, isHttpRoute, recordHref, targetRecordKind } from "@/lib/record-links";
@@ -51,6 +51,7 @@ import { columnWidth } from "@/lib/table/column-widths";
 import { RecordDrawerFallback } from "@/components/common/record-drawer-fallback";
 import { AdminProfileLink } from "@/components/common/admin-profile-link";
 import { useServerPage } from "@/lib/use-server-page";
+import { TableDate } from "@/components/common/table-date";
 
 const RESULTS: string[] = ["SUCCESS", "PARTIAL", "FAILURE"];
 const SEVERITIES: string[] = ["INFO", "WARNING", "CRITICAL"];
@@ -206,14 +207,7 @@ export function AuditLog() {
         size: 168,
         header: t("colTimestamp"),
         meta: { filter: "dateRange", filterLabel: t("colTimestamp") },
-        cell: ({ row }) => {
-          const { date, time } = fmtDateTimeParts(row.original.createdAt, locale);
-          return (
-            <span className="text-xs whitespace-nowrap tabular">
-              {date} {time}
-            </span>
-          );
-        },
+        cell: ({ row }) => <TableDate epoch={row.original.createdAt} locale={locale} />,
       },
       {
         id: "result",
@@ -253,7 +247,7 @@ export function AuditLog() {
         ...columnWidth("text", { min: 180, max: 360 }),
         header: t("colActionCode"),
         meta: { filter: "select", filterOptions: actionCodeOptions, filterLabel: t("colActionCode") },
-        cell: ({ row }) => <span className="block truncate text-sm font-medium">{row.original.actionName}</span>,
+        cell: ({ row }) => <span className="block truncate font-medium">{row.original.actionName}</span>,
       },
       {
         id: "targetType",
@@ -261,7 +255,7 @@ export function AuditLog() {
         ...columnWidth("label"),
         header: t("detailTargetType"),
         meta: { filter: "select", filterOptions: targetTypeOptions, filterLabel: t("detailTargetType") },
-        cell: ({ row }) => <span className="block truncate text-sm">{humanizeCode(row.original.targetType) || "-"}</span>,
+        cell: ({ row }) => <span className="block truncate">{humanizeCode(row.original.targetType) || "-"}</span>,
       },
       {
         id: "target",
@@ -270,7 +264,7 @@ export function AuditLog() {
         header: t("colTarget"),
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="block truncate text-sm font-medium">
+          <span className="block truncate font-medium">
             <ActionTargetName action={row.original} fallback={targetFallback(row.original)} />
           </span>
         ),
@@ -286,7 +280,7 @@ export function AuditLog() {
           filterOptions: TARGET_SERVICES.map((service) => ({ value: service, label: humanizeCode(service) })),
           filterLabel: t("colService"),
         },
-        cell: ({ row }) => <span className="block truncate text-sm">{row.original.serviceLabel || "-"}</span>,
+        cell: ({ row }) => <span className="block truncate">{row.original.serviceLabel || "-"}</span>,
       },
       {
         id: "severity",
@@ -300,9 +294,19 @@ export function AuditLog() {
           filterLabel: t("colSeverity"),
         },
         cell: ({ row }) => (
-          <StatusBadge tone={auditTone(row.original.severity)} equalWidth={false} className="min-w-[5.5rem]">
+          <LevelBadge tone={auditTone(row.original.severity)} className="min-w-[5.5rem]">
             {severityLabel(row.original.severity)}
-          </StatusBadge>
+          </LevelBadge>
+        ),
+      },
+      {
+        id: "edr",
+        accessorFn: (action) => action.edrId ?? "",
+        size: 180,
+        header: t("colEdrId"),
+        enableSorting: false,
+        cell: ({ row }) => (
+          <span className="block truncate text-[13px] text-muted-foreground tabular">{row.original.edrId || "-"}</span>
         ),
       },
     ],
@@ -373,14 +377,14 @@ export function AuditLog() {
         {selectedId != null && liveHead == null ? (
           <RecordDrawerFallback loading={detailLoading} error={detailCause} onRetry={reload} />
         ) : selected && (
-          <SheetContent onSwipeNext={() => pager.step(1)} onSwipePrev={() => pager.step(-1)}>
+          <SheetContent showCloseButton={false} onSwipeNext={() => pager.step(1)} onSwipePrev={() => pager.step(-1)}>
             <RecordDrawerHeader
               pager={pager}
               link={recordHref("auditLog", selected.id)}
               title={selected.actionName}
               subtitle={<span className="tabular">{t("logId", { id: selected.id })}</span>}
               summary={[
-                { label: t("colTimestamp"), value: <DateTimeValue epoch={selected.createdAt} locale={locale} /> },
+                { label: t("colTimestamp"), value: <DateTimeValue epoch={selected.createdAt} locale={locale} precise /> },
                 {
                   label: t("colResult"),
                   value: (
@@ -392,14 +396,14 @@ export function AuditLog() {
                 {
                   label: t("colSeverity"),
                   value: (
-                    <StatusBadge tone={auditTone(selected.severity)} equalWidth={false}>
+                    <LevelBadge tone={auditTone(selected.severity)}>
                       {severityLabel(selected.severity)}
-                    </StatusBadge>
+                    </LevelBadge>
                   ),
                 },
               ]}
             />
-            <SheetBody ref={detailRef} className="flex flex-col gap-6">
+            <SheetBody ref={detailRef} className="flex flex-col gap-2">
               {detailLoading ? (
                 <div className="flex flex-col gap-3">
                   <Skeleton className="h-4 w-40" />
@@ -444,10 +448,11 @@ export function AuditLog() {
                       copyJson={() => toJsonText(detail.payload)}
                       fields={
                         meaningfulInputs(detail).length === 0 ? (
-                          <p className="py-2 text-center text-sm text-muted-foreground">{t("noPayload")}</p>
+                          <PanelEmpty>{t("noPayload")}</PanelEmpty>
                         ) : (
                           <DetailList
                             divided
+                            inset
                             items={meaningfulInputs(detail).map((input) => ({
                               label: input.label,
                               value: (
@@ -465,6 +470,10 @@ export function AuditLog() {
                       divided
                       items={[
                         { label: t("colService"), value: detail.serviceLabel || "-" },
+                        {
+                          label: t("colEdrId"),
+                          value: detail.edrId ? <HashValue value={detail.edrId} label={t("colEdrId")} /> : "-",
+                        },
                         {
                           label: t("detailCorrelationId"),
                           value: detail.correlationId ? <HashValue value={detail.correlationId} label={t("detailCorrelationId")} /> : "-",

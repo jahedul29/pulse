@@ -31,6 +31,7 @@ import { useIsClient } from "@/lib/use-is-client";
 import { cn } from "@/lib/utils";
 import { PageContainer } from "@/components/common/page-container";
 import { columnWidth } from "@/lib/table/column-widths";
+import { TABLE_DATE_CLASS } from "@/components/common/table-date";
 
 function DeviceCell({ session }: { session: DeviceSession }) {
   const ua = session.userAgent ?? "";
@@ -54,7 +55,7 @@ function DeviceCell({ session }: { session: DeviceSession }) {
 function RelTime({ ms, mounted, locale }: { ms: number; mounted: boolean; locale: string }) {
   return (
     <Tooltip>
-      <TooltipTrigger render={<span className="cursor-default whitespace-nowrap tabular" />}>
+      <TooltipTrigger render={<span className={cn("cursor-default", TABLE_DATE_CLASS)} />}>
         {mounted ? fmtRelative(ms, locale) : fmtDateTimeParts(ms, locale).date}
       </TooltipTrigger>
       <TooltipContent>{fmtDateTime(ms, locale)}</TooltipContent>

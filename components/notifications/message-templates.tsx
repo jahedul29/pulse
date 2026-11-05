@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -49,6 +50,9 @@ import { StatusBadge } from "@/components/common/status-badge";
 import { Chip } from "@/components/common/chip";
 import { DetailList } from "@/components/common/detail-list";
 import { ChannelSelect, ChannelFilter } from "@/components/notifications/channel-select";
+import { TemplateBodyTools } from "@/components/notifications/template-body-tools";
+import { TemplateIconGlyph, TemplatePreview } from "@/components/notifications/template-preview";
+import { TEMPLATE_HTML_CLASS, TemplateHtml } from "@/components/notifications/template-html";
 import { DataTable, toolbarIconButtonClass } from "@/components/common/data-table";
 import { RecordDrawerHeader } from "@/components/common/record-drawer-header";
 import { DateTimeValue } from "@/components/common/date-time-value";
@@ -57,10 +61,18 @@ import { useOrderedRows, useRecordPager } from "@/lib/use-record-pager";
 import { recordHref } from "@/lib/record-links";
 import { useRetained } from "@/lib/use-retained";
 import { apiErrorMessage } from "@/lib/api/error-message";
-import { MERGE_VARIABLES, htmlToPlainText, renderTemplate } from "@/lib/notifications/variables";
-import { sanitizeTemplateHtml } from "@/lib/notifications/sanitize";
+import { MERGE_VARIABLES, htmlToPlainText } from "@/lib/notifications/variables";
+import { TEMPLATE_BODY_MARKS } from "@/components/notifications/template-editor-marks";
 import { templateSchema, type TemplateForm } from "@/lib/notifications/schemas";
-import { localizedText } from "@/lib/notifications/dto";
+import {
+  EMPTY_TEMPLATE_FORM,
+  isLegacyTemplate,
+  templateCreateBody,
+  templateToForm,
+  templateType,
+  templateUpdateBody,
+} from "@/lib/notifications/templates";
+import { TEMPLATE_ICONS, TEMPLATE_TYPES, isTemplateIcon, localizedText, type TemplateType } from "@/lib/notifications/dto";
 import {
   useAllTemplates,
   useChannels,
@@ -81,7 +93,7 @@ function VarInserter({ label, onInsert }: { label: string; onInsert: (token: str
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        render={<Button type="button" variant="ghost" size="xs" className="gap-1 text-xs text-muted-foreground" />}
+        render={<Button type="button" variant="ghost" size="xs" className="ms-auto gap-1 text-xs text-muted-foreground" />}
       >
         <Braces className="size-3.5" />
         {label}
@@ -112,16 +124,7 @@ function hasMergeVariable(html: string): boolean {
   return MERGE_VARIABLES.some((variable) => html.includes(`{${variable.token}}`));
 }
 
-const EMPTY_FORM: TemplateForm = {
-  code: "",
-  name: "",
-  channelId: "",
-  subjectEn: "",
-  subjectAr: "",
-  bodyEn: "",
-  bodyAr: "",
-  isActive: true,
-};
+const ICON_NONE = "none";
 
 const templateKey = (template: NotificationTemplateDto) => String(template.id);
 
@@ -180,8 +183,10 @@ export function MessageTemplates() {
           codeFormat: t("templates.codeFormat"),
           nameRequired: t("templates.nameRequired"),
           channelRequired: t("templates.channelRequired"),
-          subjectRequired: t("templates.subjectRequired"),
+          headerTitleRequired: t("templates.headerTitleRequired"),
+          senderTooLong: t("templates.senderTooLong"),
           bodyRequired: t("templates.bodyRequired"),
+          buttonLabelRequired: t("templates.buttonLabelRequired"),
         },
         { isCreate: dialogMode === "create" },
       ),
@@ -191,40 +196,29 @@ export function MessageTemplates() {
   const form = useForm<TemplateForm>({
     resolver: zodResolver(schema),
     mode: "onSubmit",
-    defaultValues: EMPTY_FORM,
+    defaultValues: EMPTY_TEMPLATE_FORM,
   });
   const { reset, register, control, handleSubmit, formState } = form;
   const bodyEnVal = useWatch({ control, name: "bodyEn" });
   const bodyArVal = useWatch({ control, name: "bodyAr" });
-
-  const editorLabels = {
-    bold: t("editor.bold"),
-    italic: t("editor.italic"),
-    alignLeft: t("editor.alignLeft"),
-    alignCenter: t("editor.alignCenter"),
-    alignRight: t("editor.alignRight"),
-  };
+  const typeVal = useWatch({ control, name: "type" });
+  const isNotification = typeVal === "NOTIFICATION";
+  const iconName = useCallback(
+    (icon: string) => (isTemplateIcon(icon) ? t(`templates.icon_${icon}`) : icon),
+    [t],
+  );
 
   const defaultChannelId = useMemo(() => (channels.length ? String(channels[0].id) : ""), [channels]);
 
   const openCreate = () => {
-    reset({ ...EMPTY_FORM, channelId: defaultChannelId });
+    reset({ ...EMPTY_TEMPLATE_FORM, channelId: defaultChannelId });
     setEditing(null);
     setDialogMode("create");
   };
 
   const openEdit = useCallback(
     (template: NotificationTemplateDto) => {
-      reset({
-        code: template.code,
-        name: template.name,
-        channelId: String(template.channel_id),
-        subjectEn: template.subject?.EN ?? "",
-        subjectAr: template.subject?.AR ?? "",
-        bodyEn: template.body?.EN ?? "",
-        bodyAr: template.body?.AR ?? "",
-        isActive: template.is_active,
-      });
+      reset(templateToForm(template));
       setEditing(template);
       setDialogMode("edit");
     },
@@ -235,30 +229,12 @@ export function MessageTemplates() {
 
   const onSubmit = async (values: TemplateForm) => {
     if (createTemplate.isPending || updateTemplate.isPending) return;
-    const subject = {
-      EN: values.subjectEn.trim(),
-      ...(values.subjectAr.trim() ? { AR: values.subjectAr.trim() } : {}),
-    };
-    const body = {
-      EN: values.bodyEn,
-      ...(htmlToPlainText(values.bodyAr).trim() ? { AR: values.bodyAr } : {}),
-    };
     try {
       if (dialogMode === "edit" && editing) {
-        await updateTemplate.mutateAsync({
-          id: editing.id,
-          body: { name: values.name, channel_id: Number(values.channelId), subject, body, is_active: values.isActive },
-        });
+        await updateTemplate.mutateAsync({ id: editing.id, body: templateUpdateBody(values) });
         toast.success(t("templates.updatedToast"));
       } else {
-        await createTemplate.mutateAsync({
-          code: values.code,
-          name: values.name,
-          channel_id: Number(values.channelId),
-          subject,
-          body,
-          is_active: values.isActive,
-        });
+        await createTemplate.mutateAsync(templateCreateBody(values));
         toast.success(t("templates.createdToast", { code: values.code }));
       }
       closeDialog();
@@ -293,7 +269,21 @@ export function MessageTemplates() {
         accessorFn: (template) => template.name,
         ...columnWidth("name"),
         header: t("templates.colName"),
-        cell: ({ row }) => <span className="text-sm">{row.original.name}</span>,
+        cell: ({ row }) => <span>{row.original.name}</span>,
+      },
+      {
+        id: "type",
+        accessorFn: (template) => templateType(template),
+        size: 136,
+        header: t("templates.colType"),
+        meta: {
+          filter: "select",
+          filterOptions: TEMPLATE_TYPES.map((type) => ({ value: type, label: t(`templates.type_${type}`) })),
+          filterLabel: t("templates.colType"),
+        },
+        cell: ({ row }) => (
+          <Chip className="min-w-[7rem] justify-center">{t(`templates.type_${templateType(row.original)}`)}</Chip>
+        ),
       },
       {
         id: "channel",
@@ -517,6 +507,35 @@ export function MessageTemplates() {
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field
+                  label={t("templates.typeLabel")}
+                  required
+                  htmlFor="tpl-type"
+                  hint={t(`templates.typeHint_${typeVal}`)}
+                  reserveMessage={false}
+                >
+                  <Controller
+                    control={control}
+                    name="type"
+                    render={({ field }) => (
+                      <Select
+                        value={field.value}
+                        onValueChange={(value) => field.onChange((value ?? "NOTIFICATION") as TemplateType)}
+                      >
+                        <SelectTrigger id="tpl-type" className="w-full">
+                          <SelectValue>{(value) => (value ? t(`templates.type_${value as TemplateType}`) : "")}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TEMPLATE_TYPES.map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {t(`templates.type_${type}`)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </Field>
+                <Field
                   label={t("templates.channelLabel")}
                   required
                   htmlFor="tpl-channel"
@@ -540,34 +559,90 @@ export function MessageTemplates() {
                     )}
                   />
                 </Field>
-                <Controller
-                  control={control}
-                  name="isActive"
-                  render={({ field }) => (
-                    <SwitchField
-                      label={t("templates.statusLabel")}
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      checkedLabel={t("templates.active")}
-                      uncheckedLabel={t("templates.inactive")}
-                    />
-                  )}
-                />
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field
-                  label={t("templates.subjectEnLabel")}
-                  required
-                  htmlFor="tpl-subject-en"
-                  error={formState.errors.subjectEn?.message}
-                  reserveMessage={false}
-                >
-                  <Input id="tpl-subject-en" {...register("subjectEn")} placeholder={t("templates.subjectPlaceholder")} />
-                </Field>
-                <Field label={t("templates.subjectArLabel")} htmlFor="tpl-subject-ar" reserveMessage={false}>
-                  <Input id="tpl-subject-ar" dir="rtl" {...register("subjectAr")} />
-                </Field>
-              </div>
+              {isNotification && (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label={t("templates.iconLabel")} htmlFor="tpl-icon" reserveMessage={false}>
+                      <Controller
+                        control={control}
+                        name="icon"
+                        render={({ field }) => (
+                          <Select
+                            value={field.value || ICON_NONE}
+                            onValueChange={(value) => field.onChange(!value || value === ICON_NONE ? "" : String(value))}
+                          >
+                            <SelectTrigger id="tpl-icon" className="w-full">
+                              <SelectValue>
+                                {(value) =>
+                                  value && value !== ICON_NONE ? (
+                                    <span className="flex items-center gap-2">
+                                      <TemplateIconGlyph icon={String(value)} className="size-4 text-accent-foreground" />
+                                      {iconName(String(value))}
+                                    </span>
+                                  ) : (
+                                    t("templates.iconNone")
+                                  )
+                                }
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={ICON_NONE}>{t("templates.iconNone")}</SelectItem>
+                              {TEMPLATE_ICONS.map((icon) => (
+                                <SelectItem key={icon} value={icon}>
+                                  <span className="flex items-center gap-2">
+                                    <TemplateIconGlyph icon={icon} className="size-4 text-accent-foreground" />
+                                    {iconName(icon)}
+                                  </span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </Field>
+                    <Field
+                      label={t("templates.senderLabel")}
+                      htmlFor="tpl-sender"
+                      error={formState.errors.senderName?.message}
+                      reserveMessage={false}
+                    >
+                      <Input id="tpl-sender" {...register("senderName")} />
+                    </Field>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field
+                      label={t("templates.headerTitleEnLabel")}
+                      required
+                      htmlFor="tpl-header-title-en"
+                      hint={dialogMode === "edit" && editing && isLegacyTemplate(editing) ? t("templates.legacyHint") : undefined}
+                      error={formState.errors.headerTitleEn?.message}
+                      reserveMessage={false}
+                    >
+                      <Input id="tpl-header-title-en" {...register("headerTitleEn")} />
+                    </Field>
+                    <Field label={t("templates.headerTitleArLabel")} htmlFor="tpl-header-title-ar" reserveMessage={false}>
+                      <Input id="tpl-header-title-ar" dir="rtl" {...register("headerTitleAr")} />
+                    </Field>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label={t("templates.headerSubtitleEnLabel")} htmlFor="tpl-header-subtitle-en" reserveMessage={false}>
+                      <Input id="tpl-header-subtitle-en" {...register("headerSubtitleEn")} />
+                    </Field>
+                    <Field label={t("templates.headerSubtitleArLabel")} htmlFor="tpl-header-subtitle-ar" reserveMessage={false}>
+                      <Input id="tpl-header-subtitle-ar" dir="rtl" {...register("headerSubtitleAr")} />
+                    </Field>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label={t("templates.subjectEnLabel")} htmlFor="tpl-subject-en" reserveMessage={false}>
+                      <Input id="tpl-subject-en" {...register("subjectEn")} placeholder={t("templates.subjectPlaceholder")} />
+                    </Field>
+                    <Field label={t("templates.subjectArLabel")} htmlFor="tpl-subject-ar" reserveMessage={false}>
+                      <Input id="tpl-subject-ar" dir="rtl" {...register("subjectAr")} />
+                    </Field>
+                  </div>
+                </>
+              )}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between gap-2">
@@ -589,12 +664,17 @@ export function MessageTemplates() {
                         value={field.value}
                         onChange={field.onChange}
                         ariaLabel={t("templates.enLabel")}
-                        labels={editorLabels}
+                        basicTools={false}
+                        extensions={TEMPLATE_BODY_MARKS}
+                        contentClassName={TEMPLATE_HTML_CLASS}
                         extraTools={(editor) => (
-                          <VarInserter
-                            label={t("templates.insertVariable")}
-                            onInsert={(token) => editor.chain().focus().insertContent(`{${token}}`).run()}
-                          />
+                          <>
+                            <TemplateBodyTools editor={editor} />
+                            <VarInserter
+                              label={t("templates.insertVariable")}
+                              onInsert={(token) => editor.chain().focus().insertContent(`{${token}}`).run()}
+                            />
+                          </>
                         )}
                       />
                     )}
@@ -603,9 +683,11 @@ export function MessageTemplates() {
                   {hasMergeVariable(bodyEnVal) && (
                     <div className="flex flex-col gap-1">
                       <span className="text-xs text-muted-foreground">{t("templates.preview")}</span>
-                      <div
-                        className="rounded-lg border border-dashed bg-muted/20 p-2 text-sm"
-                        dangerouslySetInnerHTML={{ __html: sanitizeTemplateHtml(renderTemplate(bodyEnVal, "en")) }}
+                      <TemplateHtml
+                        html={bodyEnVal}
+                        dir="ltr"
+                        sample
+                        className="rounded-lg border border-dashed bg-muted/20 p-2"
                       />
                     </div>
                   )}
@@ -626,12 +708,17 @@ export function MessageTemplates() {
                         onChange={field.onChange}
                         dir="rtl"
                         ariaLabel={t("templates.arLabel")}
-                        labels={editorLabels}
+                        basicTools={false}
+                        extensions={TEMPLATE_BODY_MARKS}
+                        contentClassName={TEMPLATE_HTML_CLASS}
                         extraTools={(editor) => (
-                          <VarInserter
-                            label={t("templates.insertVariable")}
-                            onInsert={(token) => editor.chain().focus().insertContent(`{${token}}`).run()}
-                          />
+                          <>
+                            <TemplateBodyTools editor={editor} />
+                            <VarInserter
+                              label={t("templates.insertVariable")}
+                              onInsert={(token) => editor.chain().focus().insertContent(`{${token}}`).run()}
+                            />
+                          </>
                         )}
                       />
                     )}
@@ -639,15 +726,43 @@ export function MessageTemplates() {
                   {hasMergeVariable(bodyArVal) && (
                     <div className="flex flex-col gap-1">
                       <span className="text-xs text-muted-foreground">{t("templates.preview")}</span>
-                      <div
+                      <TemplateHtml
+                        html={bodyArVal}
                         dir="rtl"
-                        className="rounded-lg border border-dashed bg-muted/20 p-2 text-sm"
-                        dangerouslySetInnerHTML={{ __html: sanitizeTemplateHtml(renderTemplate(bodyArVal, "ar")) }}
+                        sample
+                        className="rounded-lg border border-dashed bg-muted/20 p-2"
                       />
                     </div>
                   )}
                 </div>
               </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  label={t("templates.buttonLabelEnLabel")}
+                  required
+                  htmlFor="tpl-button-en"
+                  error={formState.errors.buttonLabelEn?.message}
+                  reserveMessage={false}
+                >
+                  <Input id="tpl-button-en" {...register("buttonLabelEn")} />
+                </Field>
+                <Field label={t("templates.buttonLabelArLabel")} htmlFor="tpl-button-ar" reserveMessage={false}>
+                  <Input id="tpl-button-ar" dir="rtl" {...register("buttonLabelAr")} />
+                </Field>
+              </div>
+              <Controller
+                control={control}
+                name="isActive"
+                render={({ field }) => (
+                  <SwitchField
+                    label={t("templates.statusLabel")}
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    checkedLabel={t("templates.active")}
+                    uncheckedLabel={t("templates.inactive")}
+                  />
+                )}
+              />
             </DialogBody>
           </Form>
           <DialogFooter layout="split">
@@ -694,7 +809,7 @@ export function MessageTemplates() {
 
       <Sheet inspect open={detail != null || linkedId != null} onOpenChange={(open) => !open && closeDetail()}>
         {shownDetail && (
-          <SheetContent onSwipeNext={() => pager.step(1)} onSwipePrev={() => pager.step(-1)}>
+          <SheetContent showCloseButton={false} onSwipeNext={() => pager.step(1)} onSwipePrev={() => pager.step(-1)}>
             <RecordDrawerHeader
               pager={pager}
               link={recordHref("template", shownDetail.id)}
@@ -704,12 +819,12 @@ export function MessageTemplates() {
                 {
                   label: t("templates.colCreated"),
                   value: shownDetail.created_at ? (
-                    <DateTimeValue epoch={Date.parse(shownDetail.created_at)} locale={locale} />
+                    <DateTimeValue epoch={Date.parse(shownDetail.created_at)} locale={locale} precise />
                   ) : (
                     t("templates.notSet")
                   ),
                 },
-                { label: t("templates.colChannel"), value: channelName(shownDetail.channel_id) },
+                { label: t("templates.colType"), value: t(`templates.type_${templateType(shownDetail)}`) },
                 {
                   label: t("templates.colActive"),
                   value: (
@@ -720,7 +835,7 @@ export function MessageTemplates() {
                 },
               ]}
             />
-            <SheetBody className="flex flex-col gap-6">
+            <SheetBody className="flex flex-col gap-2">
               {detailQuery.isError ? (
                 <LoadError error={detailQuery.error} message={t("templates.detailLoadError")} onRetry={() => detailQuery.refetch()} />
               ) : detailQuery.isPending ? (
@@ -732,32 +847,39 @@ export function MessageTemplates() {
                 (() => {
                   const record = detailQuery.data;
                   const notSet = <span className="font-normal text-muted-foreground italic">{t("templates.notSet")}</span>;
-                  const copy = (language: "EN" | "AR") => {
-                    const html = record.body?.[language] ?? "";
-                    return (
-                      <DetailSection title={language === "EN" ? t("templates.colEn") : t("templates.colAr")}>
-                        <DetailList
-                          divided
-                          items={[{ label: t("templates.detailSubject"), value: record.subject?.[language] || notSet }]}
-                        />
-                        <div dir={language === "AR" ? "rtl" : undefined} className="rounded-lg border bg-muted/30 p-3 text-sm">
-                          {htmlToPlainText(html) ? (
-                            <div
-                              dangerouslySetInnerHTML={{
-                                __html: sanitizeTemplateHtml(renderTemplate(html, language === "AR" ? "ar" : "en")),
-                              }}
-                            />
-                          ) : (
-                            notSet
-                          )}
-                        </div>
-                      </DetailSection>
-                    );
-                  };
+                  const notification = templateType(record) === "NOTIFICATION";
+                  const preview = (language: "EN" | "AR") => (
+                    <DetailSection title={language === "EN" ? t("templates.colEn") : t("templates.colAr")}>
+                      <TemplatePreview template={record} language={language} />
+                    </DetailSection>
+                  );
                   return (
                     <>
-                      {copy("EN")}
-                      {copy("AR")}
+                      <DetailSection title={t("templates.sectionDetails")}>
+                        <DetailList
+                          divided
+                          items={[
+                            { label: t("templates.colChannel"), value: channelName(record.channel_id) },
+                            ...(notification
+                              ? [
+                                  {
+                                    label: t("templates.detailIcon"),
+                                    value: record.icon ? (
+                                      <span className="flex items-center gap-2">
+                                        <TemplateIconGlyph icon={record.icon} className="size-4 shrink-0 text-accent-foreground" />
+                                        {iconName(record.icon)}
+                                      </span>
+                                    ) : (
+                                      notSet
+                                    ),
+                                  },
+                                ]
+                              : []),
+                          ]}
+                        />
+                      </DetailSection>
+                      {preview("EN")}
+                      {preview("AR")}
                     </>
                   );
                 })()

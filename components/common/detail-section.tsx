@@ -13,9 +13,9 @@ export function DetailSection({
   className?: string;
 }) {
   return (
-    <section className={cn("flex flex-col gap-2", className)}>
+    <section className={cn("flex flex-col gap-2 border-b pb-2 last:border-b-0 last:pb-0", className)}>
       <div className="flex min-h-7 items-center justify-between gap-2">
-        <h3 className="text-xs font-bold tracking-[0.06em] text-foreground/65 uppercase rtl:tracking-normal">{title}</h3>
+        <h3 className="text-xs font-bold tracking-[0.06em] text-muted-foreground uppercase rtl:tracking-normal">{title}</h3>
         {action}
       </div>
       {children}

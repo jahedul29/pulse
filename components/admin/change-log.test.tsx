@@ -22,6 +22,7 @@ const mockAction: AdminAction = {
   severity: "INFO",
   device: "Chrome · macOS",
   ipHash: "c".repeat(64),
+  edrId: "edr-34",
   inputs: [],
 };
 
@@ -192,13 +193,16 @@ describe("ChangeLog detail drawer", () => {
       "Operation",
       "Fields changed",
     ]);
-    expect(within(strip).getByText("Insert")).toBeInTheDocument();
+    const tableBadge = within(screen.getByRole("link", { name: "Insert · Invitations", hidden: true })).getByText("Insert");
+    expect(within(strip).getByText("Insert").className).toBe(tableBadge.className);
     expect(await within(drawer).findAllByRole("heading", { level: 3 })).toHaveLength(3);
     expect(within(drawer).getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)).toEqual([
       "Origin",
       "Record",
       "Changes",
     ]);
+    expect(within(drawer).getByText("EDR ID").nextElementSibling).toHaveTextContent("edr-34");
+    expect(within(drawer).getByRole("button", { name: "Close" })).toBeInTheDocument();
   });
 
   it("shows the actor, record and linked action as links", async () => {
@@ -259,14 +263,19 @@ describe("ChangeLog detail drawer", () => {
     expect(within(drawer).getByText("Invited by admin ID")).toBeInTheDocument();
     expect(within(drawer).getByText("invited_by_admin_id")).toBeInTheDocument();
     expect(within(drawer).getByText("Removed value")).toBeInTheDocument();
+    expect(within(drawer).getByText("Invited by admin ID").closest("[role=tabpanel]")).not.toBeNull();
+    expect(within(drawer).getByText("Removed value").closest("[role=tabpanel]")).toBeNull();
+    expect(within(drawer).getByText("Empty value")).toBeInTheDocument();
   });
 
   it("shows the changes as JSON", async () => {
     const drawer = await openDrawer();
     await within(drawer).findByText("Schema");
 
+    expect(within(drawer).getByText("Removed value")).toBeInTheDocument();
     await userEvent.click(within(drawer).getByRole("tab", { name: "JSON" }));
     expect(within(drawer).getByText(/"status": \{/)).toBeInTheDocument();
+    expect(within(drawer).queryByText("Removed value")).not.toBeInTheDocument();
   });
 
   it("explains when the BE captured no column values", async () => {

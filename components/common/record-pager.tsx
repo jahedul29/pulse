@@ -61,8 +61,8 @@ export function RecordPager({
         <TooltipTrigger
           render={
             <Button
-              variant="ghost"
-              size="icon-sm"
+              variant="outline"
+              size="icon-lg"
               focusableWhenDisabled
               onClick={() => step(direction)}
               disabled={direction === 1 ? !pager.canNext : !pager.canPrev}
@@ -72,7 +72,7 @@ export function RecordPager({
             />
           }
         >
-          {direction === 1 ? <ChevronDown className="size-4" /> : <ChevronUp className="size-4" />}
+          {direction === 1 ? <ChevronDown className="size-4.5" /> : <ChevronUp className="size-4.5" />}
         </TooltipTrigger>
         <TooltipContent>
           {disabledReason ?? (
@@ -88,10 +88,10 @@ export function RecordPager({
   return (
     <div ref={root} role="group" aria-label={tc("recordPager")} className={cn("flex items-center gap-1 pe-8", className)}>
       {control(-1)}
-      <span className="text-xs text-muted-foreground tabular" aria-live="polite">
+      {control(1)}
+      <span className="ms-1.5 text-[13px] text-muted-foreground tabular" aria-live="polite">
         {tc("recordPosition", { index: pager.position, total: pager.total })}
       </span>
-      {control(1)}
     </div>
   );
 }

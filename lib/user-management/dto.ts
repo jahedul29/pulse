@@ -177,7 +177,6 @@ function withDerived(user: AdminUser, isLocked = false): AdminUserRow {
   return {
     ...user,
     effectiveStatus: isLocked ? "locked" : (user.status as EffectiveStatus),
-    resendReady: false,
   };
 }
 

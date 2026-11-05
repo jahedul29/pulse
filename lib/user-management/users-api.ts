@@ -49,7 +49,7 @@ export async function fetchPendingInvitations(): Promise<AdminUserRow[]> {
 
 export async function fetchRevokedInvitations(): Promise<AdminUserRow[]> {
   const invitations = await listAll<InvitationDto>(INVITATIONS, {
-    relations: ["staff", "invitedBy"],
+    relations: ["staff", "invitedBy", "revokedBy"],
     "filters[status]": "REVOKED",
   });
   return invitations
@@ -63,7 +63,7 @@ export function fetchUserDevices(id: string): Promise<UserDeviceDto[]> {
 
 export function fetchInvitation(id: string): Promise<AdminUserRow> {
   return apiData<InvitationDto>(`${INVITATIONS}/${encodeURIComponent(id)}`, {
-    query: { relations: ["staff", "invitedBy"] },
+    query: { relations: ["staff", "invitedBy", "revokedBy"] },
   }).then(invitationDtoToRow);
 }
 

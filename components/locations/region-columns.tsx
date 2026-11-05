@@ -4,11 +4,12 @@ import { useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useLocale, useTranslations } from "next-intl";
 import { StatusBadge } from "@/components/common/status-badge";
-import { fmtCount, fmtDateTimeParts } from "@/lib/format";
+import { fmtCount } from "@/lib/format";
 import { alternateName, localizedName } from "@/lib/locations/names";
 import type { CityDto } from "@/lib/locations/types";
 import { LocationRowActions } from "./location-row-actions";
 import { columnWidth } from "@/lib/table/column-widths";
+import { TableDate } from "@/components/common/table-date";
 
 export function useRegionColumns({
   countryNames,
@@ -52,7 +53,7 @@ export function useRegionColumns({
         accessorFn: (region) => region.code ?? "",
         size: 110,
         header: t("colCode"),
-        cell: ({ row }) => <span className="tabular text-sm">{row.original.code || "-"}</span>,
+        cell: ({ row }) => <span className="tabular">{row.original.code || "-"}</span>,
       },
       {
         id: "country",
@@ -124,9 +125,11 @@ export function useRegionColumns({
         size: 140,
         header: t("colUpdated"),
         cell: ({ row }) => (
-          <span className="tabular text-xs text-muted-foreground">
-            {row.original.updated_at ? fmtDateTimeParts(new Date(row.original.updated_at).getTime(), locale).date : "-"}
-          </span>
+          <TableDate
+            epoch={row.original.updated_at ? new Date(row.original.updated_at).getTime() : null}
+            locale={locale}
+            withTime={false}
+          />
         ),
       },
       {

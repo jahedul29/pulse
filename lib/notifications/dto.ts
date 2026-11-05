@@ -5,6 +5,37 @@ export type LocalizedText = { EN?: string; AR?: string };
 export type AudienceType = "ALL_ADMINS" | "ROLE" | "USER_IDS";
 export const AUDIENCE_TYPES: AudienceType[] = ["ALL_ADMINS", "ROLE", "USER_IDS"];
 
+export type TemplateType = "NOTIFICATION" | "POPUP";
+export const TEMPLATE_TYPES: TemplateType[] = ["NOTIFICATION", "POPUP"];
+
+export const TEMPLATE_ICONS = [
+  "user_paused",
+  "certificate",
+  "user",
+  "user_alert",
+  "user_check",
+  "user_blocked",
+  "user_arrow_up",
+  "user_star",
+] as const;
+export type TemplateIcon = (typeof TEMPLATE_ICONS)[number];
+
+export function isTemplateIcon(icon: string | null | undefined): icon is TemplateIcon {
+  return (TEMPLATE_ICONS as readonly string[]).includes(icon ?? "");
+}
+
+export const TEMPLATE_ACTIONS = [
+  "verify_email",
+  "verify_mobile",
+  "open_experience_center",
+  "open_terms_of_service",
+  "open_privacy_policy",
+  "open_payment_cancellation_policy",
+  "open_session_schedule",
+  "open_account_status",
+] as const;
+export type TemplateAction = (typeof TEMPLATE_ACTIONS)[number];
+
 export type DeliveryStatusCode = "PENDING" | "SENT" | "FAILED";
 export const DELIVERY_STATUS_CODES: DeliveryStatusCode[] = ["PENDING", "SENT", "FAILED"];
 
@@ -21,9 +52,15 @@ export interface NotificationTemplateDto {
   id: number;
   code: string;
   name: string;
+  type?: TemplateType | null;
   channel_id: number;
-  subject: LocalizedText;
+  icon?: string | null;
+  sender_name?: string | null;
+  header_title?: LocalizedText | null;
+  header_subtitle?: LocalizedText | null;
+  subject: LocalizedText | null;
   body: LocalizedText;
+  button_label?: LocalizedText | null;
   is_active: boolean;
   created_at?: string;
   channel?: NotificationChannelDto | null;
@@ -90,9 +127,15 @@ export interface NotificationAlertRouteDto {
 export interface StoreTemplateBody {
   code: string;
   name: string;
+  type: TemplateType;
   channel_id: number;
-  subject: LocalizedText;
+  icon: string | null;
+  sender_name: string | null;
+  header_title: LocalizedText | null;
+  header_subtitle: LocalizedText | null;
+  subject: LocalizedText | null;
   body: LocalizedText;
+  button_label: LocalizedText | null;
   is_active: boolean;
 }
 

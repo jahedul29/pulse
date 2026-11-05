@@ -4,17 +4,31 @@ import { cn } from "@/lib/utils";
 export function DetailList({
   items,
   divided = false,
+  inset = false,
   className,
 }: {
   items: { label: ReactNode; value: ReactNode }[];
   divided?: boolean;
+  inset?: boolean;
   className?: string;
 }) {
+  if (divided && inset) {
+    return (
+      <dl className={cn("flex flex-col divide-y", className)}>
+        {items.map((item, index) => (
+          <div key={index} className="grid grid-cols-[7.5rem_minmax(0,1fr)] items-start gap-3 px-3.5 py-2 sm:grid-cols-[8.5rem_minmax(0,1fr)]">
+            <dt className="text-[13px] text-muted-foreground">{item.label}</dt>
+            <dd className="min-w-0 text-[13px] font-medium break-words">{item.value}</dd>
+          </div>
+        ))}
+      </dl>
+    );
+  }
   if (divided) {
     return (
       <dl className={cn("flex flex-col divide-y text-sm", className)}>
         {items.map((item, index) => (
-          <div key={index} className="grid grid-cols-[7.5rem_minmax(0,1fr)] items-start gap-3 py-1 first:pt-0 last:pb-0 sm:grid-cols-[8.5rem_minmax(0,1fr)]">
+          <div key={index} className="grid grid-cols-[7.5rem_minmax(0,1fr)] items-start gap-3 py-2 first:pt-0 last:pb-0 sm:grid-cols-[8.5rem_minmax(0,1fr)]">
             <dt className="flex min-h-7 items-center text-[13px] text-muted-foreground">{item.label}</dt>
             <dd className="flex min-h-7 min-w-0 flex-col justify-center font-medium break-words">{item.value}</dd>
           </div>

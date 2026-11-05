@@ -16,7 +16,7 @@ export function StatusDot({ tone }: { tone: Tone }) {
     danger: "bg-danger",
     neutral: "bg-muted-foreground",
   };
-  return <span className={cn("size-1.5 rounded-full", color[tone])} />;
+  return <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", color[tone])} />;
 }
 
 export function StatusBadge({

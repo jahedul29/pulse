@@ -16,6 +16,7 @@ import { fmtDate } from "@/lib/format";
 import { Money } from "@/components/common/money";
 import type { Client } from "@/lib/types";
 import { columnWidth } from "@/lib/table/column-widths";
+import { TableDateText } from "@/components/common/table-date";
 
 export function ClientTable() {
   const t = useTranslations("clients");
@@ -95,11 +96,7 @@ export function ClientTable() {
       {
         accessorKey: "joinedAt",
         header: t("colJoined"),
-        cell: ({ row }) => (
-          <span className="text-xs tabular text-muted-foreground">
-            {fmtDate(row.original.joinedAt, locale)}
-          </span>
-        ),
+        cell: ({ row }) => <TableDateText>{fmtDate(row.original.joinedAt, locale)}</TableDateText>,
         meta: { headClassName: "text-end", cellClassName: "text-end" },
       },
       {

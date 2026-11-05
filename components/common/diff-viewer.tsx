@@ -37,66 +37,69 @@ export function DiffViewer({
   changes: DiffChange[];
   renderValue?: (value: string, column: string) => ReactNode;
   labelFor?: (column: string) => string;
-  labels?: DiffLabels;
+  labels?: Pick<DiffLabels, "field" | "before" | "after"> & Partial<DiffLabels>;
   className?: string;
 }) {
   const show = (value: string | null, column: string) =>
     value == null ? null : renderValue ? renderValue(value, column) : value;
-  const columns = "grid grid-cols-2 gap-x-3 gap-y-1 sm:grid-cols-[9rem_minmax(0,1fr)_minmax(0,1fr)]";
+  const columns = "grid grid-cols-2 gap-x-2.5 gap-y-1 sm:grid-cols-[8.5rem_minmax(0,1fr)_minmax(0,1fr)]";
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
-      <div className="overflow-hidden rounded-lg border">
-        {labels && (
-          <div aria-hidden className={cn(columns, "hidden border-b bg-muted/40 px-3 py-2 text-xs text-muted-foreground sm:grid")}>
-            <span>{labels.field}</span>
-            <span>{labels.before}</span>
-            <span>{labels.after}</span>
-          </div>
-        )}
-        <div className="divide-y">
-          {changes.map((change, i) => {
-            const label = labelFor?.(change.column);
-            return (
-              <div key={i} className={cn(columns, "items-start px-3 py-2.5 text-sm")}>
-                <div className="col-span-2 flex min-w-0 flex-col sm:col-span-1">
-                  {label ? (
-                    <>
-                      <span className="font-medium break-words">{label}</span>
-                      <span className="font-mono text-xs break-all text-muted-foreground">{change.column}</span>
-                    </>
-                  ) : (
-                    <span className="font-mono text-xs break-all text-muted-foreground">{change.column}</span>
-                  )}
-                </div>
-                <div className="flex min-w-0 flex-col gap-0.5">
-                  {labels && <span className="text-xs text-muted-foreground sm:sr-only">{labels.before}</span>}
-                  <DiffValue value={change.before} side="before" render={show(change.before, change.column)} />
-                </div>
-                <div className="flex min-w-0 flex-col gap-0.5">
-                  {labels && <span className="text-xs text-muted-foreground sm:sr-only">{labels.after}</span>}
-                  <DiffValue value={change.after} side="after" render={show(change.after, change.column)} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+    <div className={cn("flex flex-col", className)}>
       {labels && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            <span aria-hidden className="size-3 rounded-sm border border-danger/30 bg-danger/10 dark:bg-danger/20" />
-            {labels.removed}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span aria-hidden className="size-3 rounded-sm border border-success/40 bg-success/20" />
-            {labels.added}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span aria-hidden>{EMPTY}</span>
-            {labels.empty}
-          </span>
+        <div aria-hidden className={cn(columns, "hidden border-b px-3.5 py-2 text-xs text-muted-foreground sm:grid")}>
+          <span>{labels.field}</span>
+          <span>{labels.before}</span>
+          <span>{labels.after}</span>
         </div>
       )}
+      <div className="divide-y">
+        {changes.map((change, i) => {
+          const label = labelFor?.(change.column);
+          return (
+            <div key={i} className={cn(columns, "items-start px-3.5 py-2.5 text-sm")}>
+              <div className="col-span-2 flex min-w-0 flex-col sm:col-span-1">
+                {label ? (
+                  <>
+                    <span className="text-[13px] font-medium break-words">{label}</span>
+                    <span className="font-mono text-xs break-all text-muted-foreground">{change.column}</span>
+                  </>
+                ) : (
+                  <span className="font-mono text-xs break-all text-muted-foreground">{change.column}</span>
+                )}
+              </div>
+              <div className="flex min-w-0 flex-col gap-0.5">
+                {labels && <span className="text-xs text-muted-foreground sm:sr-only">{labels.before}</span>}
+                <DiffValue value={change.before} side="before" render={show(change.before, change.column)} />
+              </div>
+              <div className="flex min-w-0 flex-col gap-0.5">
+                {labels && <span className="text-xs text-muted-foreground sm:sr-only">{labels.after}</span>}
+                <DiffValue value={change.after} side="after" render={show(change.after, change.column)} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+const SWATCH = "size-3 shrink-0 rounded-[3px] border";
+
+export function DiffLegend({ labels, className }: { labels: Pick<DiffLabels, "removed" | "added" | "empty">; className?: string }) {
+  return (
+    <div className={cn("flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-muted-foreground", className)}>
+      <span className="inline-flex items-center gap-1.5">
+        <span aria-hidden className={cn(SWATCH, "border-danger/30 bg-danger/10 dark:bg-danger/20")} />
+        {labels.removed}
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span aria-hidden className={cn(SWATCH, "border-success/40 bg-success/20")} />
+        {labels.added}
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span aria-hidden>{EMPTY}</span>
+        {labels.empty}
+      </span>
     </div>
   );
 }

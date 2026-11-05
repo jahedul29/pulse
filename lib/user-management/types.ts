@@ -41,20 +41,12 @@ export interface AdminUser {
   willFailMutation?: boolean;
 }
 
-const RESEND_COOLDOWN_MS = 60_000;
-
 export function effectiveStatus(user: AdminUser, now: number): EffectiveStatus {
   return user.lockedUntil != null && user.lockedUntil > now ? "locked" : user.status;
 }
 
-export function canResend(user: AdminUser, now: number): boolean {
-  if (user.status !== "pending") return false;
-  return user.lastInviteSentAt == null || now - user.lastInviteSentAt >= RESEND_COOLDOWN_MS;
-}
-
 export type AdminUserRow = AdminUser & {
   effectiveStatus: EffectiveStatus;
-  resendReady: boolean;
 };
 
 export interface AdminUsersQuery {

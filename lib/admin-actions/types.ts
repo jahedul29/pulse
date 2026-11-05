@@ -35,6 +35,7 @@ export interface AdminAction {
   result: string;
   severity: string;
   correlationId?: string;
+  edrId?: string;
   ipHash?: string;
   adminEmail?: string;
   device?: string;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { refreshProfileAfterForbidden } from "@/lib/auth/profile-refresh";
 
 type Result<T> = { id: string; data: T | null; error: boolean; cause: unknown };
@@ -33,10 +33,10 @@ export function useRecordDetail<T>(
   const error = ready && res.error;
   const data = ready && !res.error ? res.data : null;
   const cause = ready ? res.cause : null;
-  const reload = () => {
+  const reload = useCallback(() => {
     setRes(null);
     setAttempt((previous) => previous + 1);
-  };
+  }, []);
 
   return { data, loading, error, cause, reload };
 }

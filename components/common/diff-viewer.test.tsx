@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { DiffViewer } from "./diff-viewer";
+import { DiffLegend, DiffViewer } from "./diff-viewer";
 
 describe("DiffViewer", () => {
   it("shows before and after values per column", () => {
@@ -15,20 +15,26 @@ describe("DiffViewer", () => {
     expect(screen.getByText("abc")).toBeInTheDocument();
   });
 
-  it("lays the changes out as a field, before and after table with a legend", () => {
-    render(
+  it("lays the changes out as flush field, before and after rows, with no frame of their own", () => {
+    const { container } = render(
       <DiffViewer
         changes={[{ column: "invited_by_admin_id", before: null, after: "Dana" }]}
         labelFor={() => "Invited by admin ID"}
-        labels={{ field: "Field", before: "Before", after: "After", removed: "Removed value", added: "Added value", empty: "Empty" }}
+        labels={{ field: "Field", before: "Before", after: "After" }}
       />,
     );
     expect(screen.getByText("Invited by admin ID")).toBeInTheDocument();
     expect(screen.getByText("invited_by_admin_id")).toBeInTheDocument();
     expect(screen.getByText("Field")).toBeInTheDocument();
-    expect(screen.getByText("Removed value")).toBeInTheDocument();
-    expect(screen.getByText("Added value")).toBeInTheDocument();
-    expect(screen.getByText("Empty")).toBeInTheDocument();
+    expect(container.firstElementChild?.children).toHaveLength(2);
+  });
+
+  it("puts a marker before each legend entry, hidden from screen readers", () => {
+    render(<DiffLegend labels={{ removed: "Removed value", added: "Added value", empty: "Empty value" }} />);
+    for (const label of ["Removed value", "Added value", "Empty value"]) {
+      const marker = screen.getByText(label).firstElementChild;
+      expect(marker).toHaveAttribute("aria-hidden");
+    }
   });
 
   it("shows changed values as monospace before and after pills, and masked values without a pill", () => {

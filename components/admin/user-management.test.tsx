@@ -8,12 +8,16 @@ import { toast } from "sonner";
 import {
   fetchAdminUserDetail,
   fetchInvitableStaff,
+  fetchInvitation,
   fetchUserDevices,
   listAdminUsers,
   listAllAdminUsers,
+  resendInvitation,
+  revokeInvitation,
   sendInvitation,
   updateUserStatus,
 } from "@/lib/user-management/users-api";
+import { ApiError } from "@/lib/api/errors";
 import type { AdminUserRow, AdminUserStatus } from "@/lib/user-management/types";
 import { ADMIN_ACTION_LOGS_PATH } from "@/lib/api/audit-paths";
 import { useAccessProbes } from "@/lib/auth/access-probes";
@@ -39,7 +43,6 @@ function row(partial: Partial<AdminUserRow> & { name: string; status: AdminUserS
     registeredDevices: 0,
     lastInviteSentAt: null,
     effectiveStatus: partial.status,
-    resendReady: false,
     ...partial,
   };
 }
@@ -248,10 +251,9 @@ describe("UserManagement", () => {
     success.mockRestore();
   });
 
-  it("leaves people with a pending invitation out of the Invite user picker, but not people whose invitation expired", async () => {
+  it("lists in the Invite user picker exactly the people the backend returns as invitable", async () => {
     const originalPending = { ...pendingInvites[0] };
     Object.assign(pendingInvites[0], { staffId: "41" });
-    pendingInvites.push(row({ id: "inv-x", name: "Old Invite", status: "expired", staffId: "42" }));
     (fetchInvitableStaff as jest.Mock).mockResolvedValueOnce([
       { id: "41", name: "Grace Kim", email: "grace@abapro.health", initials: "GK", title: "", department: "", terminated: false },
       { id: "42", name: "Omar Fields", email: "omar@abapro.health", initials: "OF", title: "", department: "", terminated: false },
@@ -264,9 +266,8 @@ describe("UserManagement", () => {
       await userEvent.click(within(dialog).getByRole("button", { name: /Select a staff member/ }));
 
       expect(await screen.findByRole("button", { name: /Omar Fields/ })).toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: /Grace Kim/ })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Grace Kim/ })).toBeInTheDocument();
     } finally {
-      pendingInvites.pop();
       Object.assign(pendingInvites[0], originalPending);
     }
   });
@@ -362,6 +363,27 @@ describe("UserManagement", () => {
     expect(within(row).queryByRole("button", { name: "Deactivate" })).not.toBeInTheDocument();
   });
 
+  it("shows the backend's reason when a revoke is refused, and keeps the confirm open", async () => {
+    const error = jest.spyOn(toast, "error").mockImplementation(() => "toast");
+    (revokeInvitation as jest.Mock).mockRejectedValueOnce(
+      new ApiError("validation", 422, "Validation failed", {
+        errors: [{ field: "id", messages: ["This invitation has expired."] }],
+      }),
+    );
+    try {
+      renderWithClient(<UserManagement />);
+      const row = (await screen.findByText("Omar Haddad")).closest("tr")!;
+      await userEvent.click(within(row).getByRole("button", { name: "Revoke invite" }));
+      const confirm = await screen.findByRole("alertdialog", { name: "Revoke invitation?" });
+      await userEvent.click(within(confirm).getByRole("button", { name: "Revoke invite" }));
+
+      await waitFor(() => expect(error).toHaveBeenCalledWith("This invitation has expired."));
+      expect(screen.getByRole("alertdialog", { name: "Revoke invitation?" })).toBeInTheDocument();
+    } finally {
+      error.mockRestore();
+    }
+  });
+
   it("offers no invite actions for an expired invitation", async () => {
     mockRows.push(row({ id: "u5", name: "Expired Person", status: "expired", invitationId: "inv-5" }));
     try {
@@ -414,6 +436,23 @@ describe("UserManagement", () => {
     await userEvent.click(await screen.findByRole("link", { name: "Pending Person" }));
     expect(await screen.findByText("Invitable again")).toBeInTheDocument();
     expect(screen.getAllByText("Last sent").length).toBeGreaterThan(0);
+  });
+
+  it("reloads the open invitation drawer after a resend, so the new cooldown applies", async () => {
+    (resendInvitation as jest.Mock).mockResolvedValueOnce({});
+    renderWithClient(<UserManagement />);
+    await screen.findByText("Dana Okonkwo");
+    await userEvent.click(screen.getByRole("tab", { name: /Pending invitations/i }));
+    await userEvent.click(await screen.findByRole("link", { name: "Pending Person" }));
+    const dialog = await screen.findByRole("dialog", { name: "Pending Person" });
+    await within(dialog).findByText("Invitable again");
+    const loads = (fetchInvitation as jest.Mock).mock.calls.filter(([id]) => id === "inv-9").length;
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Resend invite" }));
+
+    await waitFor(() =>
+      expect((fetchInvitation as jest.Mock).mock.calls.filter(([id]) => id === "inv-9").length).toBeGreaterThan(loads),
+    );
   });
 
   describe("revoked invitations", () => {

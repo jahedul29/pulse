@@ -1,11 +1,21 @@
 import { z } from "zod";
 import { htmlToPlainText } from "./variables";
-import { AUDIENCE_TYPES, SEVERITY_ORDER, type AudienceType, type DeliverySeverityCode } from "./dto";
+import {
+  AUDIENCE_TYPES,
+  SEVERITY_ORDER,
+  TEMPLATE_TYPES,
+  type AudienceType,
+  type DeliverySeverityCode,
+  type TemplateType,
+} from "./dto";
 import { RECIPIENT_ROLES } from "./types";
 import type { RecipientRole } from "./types";
 
 const AUDIENCE = AUDIENCE_TYPES as [AudienceType, ...AudienceType[]];
 const ROUTE_SEVERITIES = SEVERITY_ORDER as [DeliverySeverityCode, ...DeliverySeverityCode[]];
+const TYPES = TEMPLATE_TYPES as [TemplateType, ...TemplateType[]];
+
+export const SENDER_NAME_MAX = 100;
 
 const nonEmptyHtml = (html: string) => htmlToPlainText(html).trim().length > 0;
 
@@ -14,24 +24,41 @@ export type TemplateMessages = {
   codeFormat: string;
   nameRequired: string;
   channelRequired: string;
-  subjectRequired: string;
+  headerTitleRequired: string;
+  senderTooLong: string;
   bodyRequired: string;
+  buttonLabelRequired: string;
 };
 
 export function templateSchema(msgs: TemplateMessages, opts: { isCreate: boolean }) {
   const code = opts.isCreate
     ? z.string().trim().min(1, msgs.codeRequired).regex(/^[A-Z0-9_]+$/, msgs.codeFormat)
     : z.string();
-  return z.object({
-    code,
-    name: z.string().trim().min(1, msgs.nameRequired),
-    channelId: z.string().min(1, msgs.channelRequired),
-    subjectEn: z.string().trim().min(1, msgs.subjectRequired),
-    subjectAr: z.string().trim(),
-    bodyEn: z.string().refine(nonEmptyHtml, msgs.bodyRequired),
-    bodyAr: z.string(),
-    isActive: z.boolean(),
-  });
+  return z
+    .object({
+      code,
+      name: z.string().trim().min(1, msgs.nameRequired),
+      type: z.enum(TYPES),
+      channelId: z.string().min(1, msgs.channelRequired),
+      icon: z.string(),
+      senderName: z.string().trim().max(SENDER_NAME_MAX, msgs.senderTooLong),
+      headerTitleEn: z.string().trim(),
+      headerTitleAr: z.string().trim(),
+      headerSubtitleEn: z.string().trim(),
+      headerSubtitleAr: z.string().trim(),
+      subjectEn: z.string().trim(),
+      subjectAr: z.string().trim(),
+      bodyEn: z.string().refine(nonEmptyHtml, msgs.bodyRequired),
+      bodyAr: z.string(),
+      buttonLabelEn: z.string().trim().min(1, msgs.buttonLabelRequired),
+      buttonLabelAr: z.string().trim(),
+      isActive: z.boolean(),
+    })
+    .superRefine((value, context) => {
+      if (value.type === "NOTIFICATION" && !value.headerTitleEn) {
+        context.addIssue({ code: "custom", message: msgs.headerTitleRequired, path: ["headerTitleEn"] });
+      }
+    });
 }
 export type TemplateForm = z.infer<ReturnType<typeof templateSchema>>;
 

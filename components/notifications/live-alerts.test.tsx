@@ -16,7 +16,7 @@ const alerts = [
     channel: { id: 3, code: "SMS", name: "SMS", is_active: true },
     admin_account_id: "u1",
     alert_route_id: 1,
-    alert_route: { id: 1, code: "SEED_SITE_DOWN", name: "Site down" },
+    alert_route: { id: 1, code: "SITE_DOWN", name: "Site down" },
     admin_account: {
       id: "u1",
       email: "ops@abapro.ai",
@@ -94,6 +94,20 @@ describe("LiveAlerts", () => {
     expect(screen.getByText("Treatment plan updated")).toBeInTheDocument();
     expect(screen.getByText("High")).toBeInTheDocument();
     expect(screen.getByText("Medium")).toBeInTheDocument();
+  });
+
+  it("shows a plain dash, not a severity pill, when an alert has no severity", async () => {
+    const original = alerts[1].severity;
+    (alerts[1] as { severity: string | null }).severity = null;
+    try {
+      render(<LiveAlerts />);
+      const row = (await screen.findByText("Treatment plan updated")).closest("tr") as HTMLElement;
+      const dashes = within(row).getAllByText("-");
+      expect(dashes.length).toBeGreaterThan(0);
+      expect(dashes.every((element) => element.querySelector("[aria-hidden]") === null)).toBe(true);
+    } finally {
+      alerts[1].severity = original;
+    }
   });
 
   it("links the recipient and alert route in the detail drawer and never shows raw ids", async () => {

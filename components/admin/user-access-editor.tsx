@@ -198,7 +198,7 @@ function GrantRow({
   return (
     <li
       className={cn(
-        "grid gap-x-3 gap-y-1.5 py-3 sm:px-4 @2xl:items-center @2xl:gap-x-4",
+        "grid gap-x-3 gap-y-1.5 py-2 sm:px-4 @2xl:items-center @2xl:gap-x-4",
         action
           ? "grid-cols-[minmax(0,1fr)_auto] @2xl:grid-cols-[minmax(0,1fr)_auto_auto]"
           : "grid-cols-[minmax(0,1fr)] @2xl:grid-cols-[minmax(0,1fr)_auto]",

@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { SwitchField } from "@/components/common/switch-field";
 import { StatusBadge, StatusDot } from "@/components/common/status-badge";
+import { LevelBadge } from "@/components/common/level-badge";
 import { Chip } from "@/components/common/chip";
 import { ChipLink, RecordLink } from "@/components/common/record-link";
 import { recordHref } from "@/lib/record-links";
@@ -339,7 +340,7 @@ export function AlertRoutingEditor() {
         accessorFn: (route) => route.name,
         ...columnWidth("name"),
         header: t("routing.colName"),
-        cell: ({ row }) => <span className="text-sm">{row.original.name}</span>,
+        cell: ({ row }) => <span>{row.original.name}</span>,
       },
       {
         id: "channel",
@@ -403,9 +404,9 @@ export function AlertRoutingEditor() {
         },
         cell: ({ row }) =>
           row.original.severity ? (
-            <StatusBadge tone={severityTone(row.original.severity)} equalWidth={false} className="min-w-[5rem]">
+            <LevelBadge tone={severityTone(row.original.severity)} className="min-w-[5rem]">
               {t(`deliverySeverity.${row.original.severity}`)}
-            </StatusBadge>
+            </LevelBadge>
           ) : (
             <span className="text-muted-foreground">-</span>
           ),
@@ -816,7 +817,7 @@ export function AlertRoutingEditor() {
 
       <Sheet inspect open={detail != null || linkedId != null} onOpenChange={(open) => !open && closeDetail()}>
         {shownDetail && (
-          <SheetContent onSwipeNext={() => pager.step(1)} onSwipePrev={() => pager.step(-1)}>
+          <SheetContent showCloseButton={false} onSwipeNext={() => pager.step(1)} onSwipePrev={() => pager.step(-1)}>
             <RecordDrawerHeader
               pager={pager}
               link={recordHref("alertRoute", shownDetail.id)}
@@ -826,7 +827,7 @@ export function AlertRoutingEditor() {
                 {
                   label: t("routing.colCreated"),
                   value: shownDetail.created_at ? (
-                    <DateTimeValue epoch={Date.parse(shownDetail.created_at)} locale={locale} />
+                    <DateTimeValue epoch={Date.parse(shownDetail.created_at)} locale={locale} precise />
                   ) : (
                     t("routing.notSet")
                   ),
@@ -834,9 +835,9 @@ export function AlertRoutingEditor() {
                 {
                   label: t("routing.colSeverity"),
                   value: shownDetail.severity ? (
-                    <StatusBadge tone={severityTone(shownDetail.severity)} equalWidth={false}>
+                    <LevelBadge tone={severityTone(shownDetail.severity)}>
                       {t(`deliverySeverity.${shownDetail.severity}`)}
-                    </StatusBadge>
+                    </LevelBadge>
                   ) : (
                     "-"
                   ),
@@ -851,7 +852,7 @@ export function AlertRoutingEditor() {
                 },
               ]}
             />
-            <SheetBody className="flex flex-col gap-6">
+            <SheetBody className="flex flex-col gap-2">
               {detailQuery.isError ? (
                 <LoadError error={detailQuery.error} message={t("routing.detailLoadError")} onRetry={() => detailQuery.refetch()} />
               ) : detailQuery.isPending ? (

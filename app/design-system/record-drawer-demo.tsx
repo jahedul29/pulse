@@ -7,7 +7,7 @@ import { DataTable } from "@/components/common/data-table";
 import { DateTimeValue } from "@/components/common/date-time-value";
 import { DetailList } from "@/components/common/detail-list";
 import { DetailSection } from "@/components/common/detail-section";
-import { DiffViewer } from "@/components/common/diff-viewer";
+import { DiffLegend, DiffViewer } from "@/components/common/diff-viewer";
 import { FieldsJsonPanel } from "@/components/common/fields-json-panel";
 import { HashValue } from "@/components/common/hash-value";
 import { HiddenValue } from "@/components/common/hidden-value";
@@ -108,7 +108,7 @@ export function RecordDrawerDemo() {
       </div>
       <Sheet inspect open={selectedId != null} onOpenChange={(open) => !open && setSelectedId(null)}>
         {shown && (
-          <SheetContent onSwipeNext={() => pager.step(1)} onSwipePrev={() => pager.step(-1)}>
+          <SheetContent showCloseButton={false} onSwipeNext={() => pager.step(1)} onSwipePrev={() => pager.step(-1)}>
             <RecordDrawerHeader
               pager={pager}
               link="/design-system#tables"
@@ -126,7 +126,7 @@ export function RecordDrawerDemo() {
                 },
               ]}
             />
-            <SheetBody className="flex flex-col gap-6">
+            <SheetBody className="flex flex-col gap-2">
               <DetailSection title="User">
                 <ProfileCell name={shown.actor} subtitle="Built-in role" />
                 <DetailList
@@ -144,6 +144,7 @@ export function RecordDrawerDemo() {
                   fields={
                     <DetailList
                       divided
+                      inset
                       items={[
                         { label: "Name", value: PAYLOAD.name },
                         { label: "Active", value: "Yes" },
@@ -154,12 +155,22 @@ export function RecordDrawerDemo() {
                   json={JSON.stringify(PAYLOAD, null, 2)}
                   copyJson={() => JSON.stringify(PAYLOAD, null, 2)}
                 />
-                <DiffViewer
-                  changes={[
-                    { column: "status", before: "ACTIVE", after: "SUSPENDED" },
-                    { column: "status_reason", before: null, after: "Left the company" },
-                  ]}
-                  labels={{ field: "Field", before: "Before", after: "After", removed: "Removed", added: "Added", empty: "Empty" }}
+              </DetailSection>
+              <DetailSection title="Changes">
+                <FieldsJsonPanel
+                  title="Before and after"
+                  fields={
+                    <DiffViewer
+                      changes={[
+                        { column: "status", before: "ACTIVE", after: "SUSPENDED" },
+                        { column: "status_reason", before: null, after: "Left the company" },
+                      ]}
+                      labels={{ field: "Field", before: "Before", after: "After" }}
+                    />
+                  }
+                  json={JSON.stringify({ status: { before: "ACTIVE", after: "SUSPENDED" } }, null, 2)}
+                  copyJson={() => JSON.stringify({ status: { before: "ACTIVE", after: "SUSPENDED" } }, null, 2)}
+                  fieldsFooter={<DiffLegend labels={{ removed: "Removed value", added: "Added value", empty: "Empty value" }} />}
                 />
               </DetailSection>
             </SheetBody>

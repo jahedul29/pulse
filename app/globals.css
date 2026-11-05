@@ -82,22 +82,24 @@
   --grey-4: #7f7f7f;
   --black: #000000;
   --white: #ffffff;
+  --ink: #1b1b22;
+  --ink-muted: #5f5f6e;
   --input-field: #efe3fa;
   --lavender: #d9b8f2;
   --sidebar-line: #eceaee;
 
   --background: var(--white);
-  --foreground: var(--black);
+  --foreground: var(--ink);
   --card: var(--white);
-  --card-foreground: var(--black);
+  --card-foreground: var(--ink);
   --popover: var(--white);
-  --popover-foreground: var(--black);
+  --popover-foreground: var(--ink);
   --primary: var(--brand-color-1);
   --primary-foreground: var(--white);
   --secondary: var(--grey-1);
-  --secondary-foreground: var(--black);
+  --secondary-foreground: var(--ink);
   --muted: var(--grey-1);
-  --muted-foreground: var(--grey-4);
+  --muted-foreground: var(--ink-muted);
   --accent: var(--input-field);
   --accent-foreground: var(--brand-color-1);
   --destructive: var(--brand-color-2);
@@ -120,7 +122,7 @@
   --danger-foreground: var(--white);
   --danger-muted: #ffe1e8;
   --sidebar: var(--white);
-  --sidebar-foreground: var(--black);
+  --sidebar-foreground: var(--ink);
   --sidebar-primary: var(--brand-color-1);
   --sidebar-primary-foreground: var(--white);
   --sidebar-accent: var(--input-field);

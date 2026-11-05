@@ -23,6 +23,7 @@ const mockAction: AdminAction = {
   result: "SUCCESS",
   severity: "INFO",
   correlationId: "corr-1",
+  edrId: "edr-1",
   ipHash: "f".repeat(64),
   adminEmail: "admin@ababro.ai",
   device: "",
@@ -113,7 +114,7 @@ describe("AuditLog", () => {
 
     expect(screen.queryByRole("columnheader", { name: /Timestamp/ })).not.toBeInTheDocument();
     const headers = screen.getAllByRole("columnheader").map((header) => header.textContent?.trim());
-    expect(headers).toEqual(["Created at", "Result", "User", "Action", "Target type", "Target", "Service", "Importance"]);
+    expect(headers).toEqual(["Created at", "Result", "User", "Action", "Target type", "Target", "Service", "Importance", "EDR ID"]);
     const row = screen.getByRole("link", { name: "Updated direct permissions" });
     expect(within(row).getByText("Users")).toBeInTheDocument();
     expect(within(row).getByText("Self")).toBeInTheDocument();
@@ -169,7 +170,9 @@ describe("AuditLog", () => {
     const strip = within(drawer).getByText("Created at").closest("dl") as HTMLElement;
     expect(within(strip).getAllByRole("term").map((term) => term.textContent)).toEqual(["Created at", "Result", "Importance"]);
     expect(within(strip).getByText("Success")).toBeInTheDocument();
-    expect(within(strip).getByText("Info")).toBeInTheDocument();
+    expect(within(strip).getByText("Info")).toHaveClass("rounded-full", "border");
+    expect(within(strip).getByText("Info").querySelector("[aria-hidden]")).toHaveClass("rounded-full", "size-1.5");
+    expect(within(strip).getByText(/\d{2}:\d{2}:\d{2}/)).toBeInTheDocument();
     expect(await within(drawer).findAllByRole("heading", { level: 3 })).toHaveLength(4);
     expect(within(drawer).getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)).toEqual([
       "User",
@@ -212,6 +215,7 @@ describe("AuditLog", () => {
     expect(within(drawer).getByText("No request details recorded.")).toBeInTheDocument();
     expect(within(drawer).getByText("Service").nextElementSibling).toHaveTextContent("Self");
     expect(within(drawer).getByText("Correlation ID").nextElementSibling).toHaveTextContent("corr-1");
+    expect(within(drawer).getByText("EDR ID").nextElementSibling).toHaveTextContent("edr-1");
     const ipHash = within(drawer).getByText(`${"f".repeat(12)}…${"f".repeat(8)}`);
     expect(ipHash).toHaveAttribute("title", "f".repeat(64));
     expect(within(drawer).queryByText("ID")).not.toBeInTheDocument();
