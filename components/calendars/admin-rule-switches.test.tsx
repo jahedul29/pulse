@@ -2,8 +2,10 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { englishTranslator } from "./calendar-test-utils";
 import { defaultCalendarParameters, useCalendarParameters } from "@/lib/calendars/parameters";
 import { useSpecialistStore } from "@/lib/specialists";
+import { AdminRuleSwitches } from "./admin-rule-switches";
 import { SpecialistAnnualCalendar } from "./specialist-annual-calendar";
 import { SpecialistWeeklyCalendar } from "./specialist-weekly-calendar";
+import type { Specialist } from "@/lib/specialists";
 
 let mockCanOverride = true;
 jest.mock("../../lib/auth/permissions", () => ({ PERMISSIONS: { TECHNICAL_EDIT: "edit" }, useHasPermission: () => mockCanOverride }));
@@ -18,6 +20,15 @@ beforeEach(() => {
 });
 
 function therapist() { return useSpecialistStore.getState().specialists.find((person) => person.role === "therapist")!; }
+
+function renderAnnualEditor(specialist: Specialist) {
+  return render(
+    <>
+      <AdminRuleSwitches specialist={specialist} kind="annual" />
+      <SpecialistAnnualCalendar specialist={specialist} today="2026-01-01" years={[2026]} adminOverrides />
+    </>,
+  );
+}
 function openSwitches() {
   fireEvent.click(screen.getByRole("button", { name: /^Calendar rule switches/ }));
 }
@@ -34,7 +45,7 @@ function select(container: HTMLElement, day: string) {
 it("switches off enforcement without modifying specialist values, then restores the latest value", () => {
   const specialist = therapist();
   useCalendarParameters.getState().customize(specialist.id, specialist.role, { annual: { maxDaysOffPerYear: 1 } });
-  const { container } = render(<SpecialistAnnualCalendar specialist={specialist} today="2026-01-01" years={[2026]} adminOverrides />);
+  const { container } = renderAnnualEditor(specialist);
   fireEvent.click(screen.getByRole("button", { name: "Got it" }));
   select(container, "2026-03-20"); select(container, "2026-03-21");
   expect(useSpecialistStore.getState().specialists.find((person) => person.id === specialist.id)?.annualOff).toHaveLength(1);
@@ -67,10 +78,10 @@ it.each([false, true])("never applies admin switches outside the privileged edit
   expect(useSpecialistStore.getState().specialists.find((person) => person.id === specialist.id)?.annualOff).toHaveLength(1);
 });
 
-it("opens the switches from the floating button and turns every bypassed rule back on", () => {
+it("opens the switches from the settings button and turns every bypassed rule back on", () => {
   const specialist = therapist();
   useCalendarParameters.getState().setRuleEnabled(specialist.id, "annual.maxConsecutiveDays", false);
-  render(<SpecialistAnnualCalendar specialist={specialist} today="2026-01-01" years={[2026]} adminOverrides />);
+  renderAnnualEditor(specialist);
   fireEvent.click(screen.getByRole("button", { name: "Got it" }));
   expect(screen.queryByRole("switch", { name: "Enforce Maximum consecutive days off" })).not.toBeInTheDocument();
   const gear = screen.getByRole("button", { name: /^Calendar rule switches/ });
@@ -93,7 +104,12 @@ it("lets an admin bypass the weekly days-off limit while editing", () => {
   const parameters = defaultCalendarParameters();
   parameters.analyst.weekly.maxDaysOff = 1;
   useCalendarParameters.getState().apply(parameters);
-  render(<SpecialistWeeklyCalendar specialist={analyst} adminOverrides />);
+  render(
+    <>
+      <AdminRuleSwitches specialist={analyst} kind="weekly" />
+      <SpecialistWeeklyCalendar specialist={analyst} adminOverrides />
+    </>,
+  );
   fireEvent.click(screen.getByRole("button", { name: "Got it" }));
   fireEvent.click(screen.getByRole("button", { name: /^Calendar rule switches/ }));
   const daysOff = screen.getByRole("switch", { name: "Enforce Maximum weekly days off" });
@@ -107,7 +123,7 @@ it("lets an admin bypass the weekly days-off limit while editing", () => {
 
 it("overrides every rule of the calendar at once and turns them back on", () => {
   const specialist = therapist();
-  render(<SpecialistAnnualCalendar specialist={specialist} today="2026-01-01" years={[2026]} adminOverrides />);
+  renderAnnualEditor(specialist);
   fireEvent.click(screen.getByRole("button", { name: "Got it" }));
   openSwitches();
   const overrideAll = screen.getByRole("switch", { name: "Override all rules" });
@@ -125,4 +141,12 @@ it("overrides every rule of the calendar at once and turns them back on", () => 
   fireEvent.click(overrideAll);
   fireEvent.click(overrideAll);
   expect(useCalendarParameters.getState().adminSwitches[specialist.id]).toEqual({});
+});
+
+it("is a plain button in the page, not a floating or draggable one", () => {
+  renderAnnualEditor(therapist());
+  fireEvent.click(screen.getByRole("button", { name: "Got it" }));
+  const gear = screen.getByRole("button", { name: /^Calendar rule switches/ });
+  expect(gear).not.toHaveAttribute("style");
+  expect(gear.className).not.toMatch(/\bfixed\b/);
 });

@@ -1,10 +1,12 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import { useTranslations } from "next-intl";
+import { AdminRuleSwitches } from "@/components/calendars/admin-rule-switches";
 import { SpecialistAnnualCalendar } from "@/components/calendars/specialist-annual-calendar";
 import { SpecialistWeeklyCalendar } from "@/components/calendars/specialist-weekly-calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { CalendarKind } from "@/lib/calendars/parameters";
 import { useSpecialistStore } from "@/lib/specialists";
 
 const PANEL = "flex flex-col gap-5 text-[length:inherit]";
@@ -17,6 +19,7 @@ export default function SpecialistAvailabilityPage({
   const { id } = use(params);
   const t = useTranslations("calendarSettings");
   const specialist = useSpecialistStore((state) => state.specialists.find((x) => x.id === id));
+  const [tab, setTab] = useState<CalendarKind>("weekly");
 
   return (
     <div className="flex flex-col gap-5">
@@ -28,11 +31,14 @@ export default function SpecialistAvailabilityPage({
           </p>
         </div>
       ) : (
-        <Tabs defaultValue="weekly" className="gap-5">
-          <TabsList>
-            <TabsTrigger value="weekly" className="px-3">{t("weekly")}</TabsTrigger>
-            <TabsTrigger value="annual" className="px-3">{t("annual")}</TabsTrigger>
-          </TabsList>
+        <Tabs value={tab} onValueChange={(next) => setTab(next as CalendarKind)} className="gap-5">
+          <div className="flex items-center justify-between gap-3">
+            <TabsList>
+              <TabsTrigger value="weekly" className="px-3">{t("weekly")}</TabsTrigger>
+              <TabsTrigger value="annual" className="px-3">{t("annual")}</TabsTrigger>
+            </TabsList>
+            <AdminRuleSwitches specialist={specialist} kind={tab} />
+          </div>
           <TabsContent value="weekly" className={PANEL}>
             <SpecialistWeeklyCalendar specialist={specialist} adminOverrides />
           </TabsContent>

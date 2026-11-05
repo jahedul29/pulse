@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { create } from "zustand";
 import Link from "next/link";
 import { Settings } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -19,30 +18,21 @@ import {
   type CalendarKind,
   type NumericKey,
   type ParameterPath,
-  type RoleParameters,
 } from "@/lib/calendars/parameters";
 import type { Specialist } from "@/lib/specialists";
-import { useDraggableOffset, type DragOffset } from "@/lib/use-draggable-offset";
 import { cn } from "@/lib/utils";
+import { useSpecialistCalendarRules } from "./use-specialist-calendar-rules";
 
 type SwitchRow = { key: string; path: ParameterPath; description: string; configurable: boolean };
 
 const SPIN: Keyframe[] = [{ transform: "rotate(0deg)" }, { transform: "rotate(180deg)" }];
 
-const useGearPosition = create<{ offset: DragOffset; setOffset: (offset: DragOffset) => void }>((set) => ({
-  offset: { x: 0, y: 0 },
-  setOffset: (offset) => set({ offset }),
-}));
-
-export function AdminRuleSwitches({ specialist, kind, parameters }: { specialist: Specialist; kind: CalendarKind; parameters: RoleParameters }) {
+export function AdminRuleSwitches({ specialist, kind }: { specialist: Specialist; kind: CalendarKind }) {
   const t = useTranslations("calendarSettings");
   const valueLabel = useParameterValueLabel();
   const [open, setOpen] = useState(false);
   const spinner = useRef<HTMLSpanElement>(null);
-  const gear = useRef<HTMLButtonElement>(null);
-  const offset = useGearPosition((state) => state.offset);
-  const setOffset = useGearPosition((state) => state.setOffset);
-  const { dragging, handlers } = useDraggableOffset(gear, offset, setOffset);
+  const { parameters } = useSpecialistCalendarRules(specialist, true);
   const flags = useCalendarParameters((state) => state.adminSwitches[specialist.id]);
   const custom = useCalendarParameters((state) => state.specialistOverrides[specialist.id]);
   const setEnabled = useCalendarParameters((state) => state.setRuleEnabled);
@@ -79,18 +69,16 @@ export function AdminRuleSwitches({ specialist, kind, parameters }: { specialist
       <Tooltip>
         <TooltipTrigger
           render={
-            <button
-              ref={gear}
+            <Button
               type="button"
+              variant="outline"
+              size="icon-lg"
               data-admin-rule-switches
-              data-dragging={dragging || undefined}
-              style={{ translate: `${offset.x}px ${offset.y}px` }}
-              {...handlers}
               aria-haspopup="dialog"
               aria-expanded={open}
               aria-label={bypassed.length ? t("openSwitchesCount", { count: bypassed.length }) : t("adminSwitches")}
               onClick={openDrawer}
-              className="group/gear fixed end-6 bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-40 grid size-12 touch-none place-items-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-primary-foreground/10 transition-[background-color,box-shadow,transform] duration-200 outline-none select-none hover:bg-primary/90 hover:shadow-xl focus-visible:ring-4 focus-visible:ring-ring/40 active:scale-95 data-[dragging]:cursor-grabbing data-[dragging]:shadow-2xl motion-reduce:transition-none"
+              className="group/gear relative shrink-0"
             />
           }
         >
@@ -109,7 +97,7 @@ export function AdminRuleSwitches({ specialist, kind, parameters }: { specialist
             </span>
           )}
         </TooltipTrigger>
-        <TooltipContent side="inline-start">{t("adminSwitches")}</TooltipContent>
+        <TooltipContent>{t("adminSwitches")}</TooltipContent>
       </Tooltip>
 
       <Sheet open={open} onOpenChange={setOpen}>
